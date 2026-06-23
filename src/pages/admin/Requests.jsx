@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext";
-import { generateJobOrderPdf, uploadJobOrderPdf } from "../../lib/jobOrderPdf";
+import { generateJobOrderPdf, uploadJobOrderPdf } from "../../lib/JobOrderPdf.js";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {

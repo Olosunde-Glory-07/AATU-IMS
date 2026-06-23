@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
-import { uploadHodApprovalProof } from "../../lib/jobOrderPdf";
+import { uploadHodApprovalProof } from "../../lib/JobOrderPdf.js";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
