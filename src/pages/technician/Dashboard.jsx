@@ -54,29 +54,175 @@ function BottomNav() {
   )
 }
 
+// ── Profile Modal ──────────────────────────────────────────────────────────────
+function ProfileModal({ profile, onClose, onLogout }) {
+  const [editing, setEditing]   = useState(false)
+  const [saving,  setSaving]    = useState(false)
+  const [toast,   setToast]     = useState(null)
+  const [form,    setForm]      = useState({
+    full_name: profile?.full_name  ?? '',
+    specialty: profile?.specialty  ?? '',
+    department: profile?.department ?? '',
+    phone:     profile?.phone      ?? '',
+  })
+
+  function showToast(msg, err = false) {
+    setToast({ msg, err })
+    setTimeout(() => setToast(null), 2500)
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name:  form.full_name.trim(),
+        specialty:  form.specialty.trim(),
+        department: form.department.trim(),
+        phone:      form.phone.trim(),
+      })
+      .eq('id', profile.id)
+
+    setSaving(false)
+    if (error) { showToast('Failed to save changes.', true); return }
+    showToast('Profile updated!')
+    setEditing(false)
+  }
+
+  const inp = 'w-full px-3 py-2 border border-[#dcc0bd] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4a0404]/20 bg-white'
+  const initials = (profile?.full_name ?? '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80]" onClick={onClose} />
+      <div className="fixed inset-0 z-[81] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+
+          {/* Header */}
+          <div className="bg-[#4a0404] p-6 text-white relative">
+            <button onClick={onClose} className="absolute top-4 right-4 p-1 hover:bg-white/10 rounded-full transition-colors">
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                {initials}
+              </div>
+              <div>
+                <h2 className="font-bold text-lg leading-tight">{profile?.full_name ?? '—'}</h2>
+                <p className="text-white/70 text-xs font-mono mt-0.5 capitalize">{profile?.role ?? 'technician'}</p>
+                {profile?.specialty && (
+                  <p className="text-white/60 text-xs mt-0.5">{profile.specialty}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="p-6 space-y-4">
+            {!editing ? (
+              <>
+                {[
+                  { label: 'DEPARTMENT', value: profile?.department || '—',   icon: 'domain' },
+                  { label: 'SPECIALTY',  value: profile?.specialty  || '—',   icon: 'build' },
+                  { label: 'PHONE',      value: profile?.phone      || '—',   icon: 'phone' },
+                  { label: 'ROLE',       value: profile?.role       || '—',   icon: 'badge' },
+                ].map(({ label, value, icon }) => (
+                  <div key={label} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#f0f3ff] flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-[#554240] text-[16px]">{icon}</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-mono text-[#554240]/60 uppercase tracking-wider">{label}</p>
+                      <p className="text-sm font-medium text-[#151c27]">{value}</p>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">edit</span> Edit Profile
+                  </button>
+                  <button
+                    onClick={onLogout}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#ffdad6] text-[#93000a] rounded-lg text-sm font-mono hover:opacity-90 transition-opacity font-bold"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">logout</span> Logout
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {[
+                  { label: 'Full Name',   key: 'full_name',  placeholder: 'Your full name' },
+                  { label: 'Specialty',   key: 'specialty',  placeholder: 'e.g. Electrical, Plumbing' },
+                  { label: 'Department',  key: 'department', placeholder: 'e.g. Engineering' },
+                  { label: 'Phone',       key: 'phone',      placeholder: 'e.g. 08012345678' },
+                ].map(({ label, key, placeholder }) => (
+                  <div key={key}>
+                    <label className="block text-[10px] font-mono text-[#554240] uppercase tracking-wider mb-1.5">{label}</label>
+                    <input
+                      value={form[key]}
+                      onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                      placeholder={placeholder}
+                      className={inp}
+                    />
+                  </div>
+                ))}
+
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setEditing(false)} className="flex-1 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors">
+                    Cancel
+                  </button>
+                  <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2.5 bg-[#4a0404] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 disabled:opacity-60 transition-opacity">
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {toast && (
+            <div className={`mx-6 mb-4 px-4 py-2.5 rounded-lg text-sm font-mono flex items-center gap-2 ${toast.err ? 'bg-[#ffdad6] text-[#93000a]' : 'bg-[#b8ecbe] text-[#1a3d25]'}`}>
+              <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                {toast.err ? 'error' : 'check_circle'}
+              </span>
+              {toast.msg}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function TechnicianDashboard() {
   const { user, profile } = useAuth()
   const navigate           = useNavigate()
   const isMobile           = useIsMobile()
 
-  const [jobs, setJobs]           = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [search, setSearch]       = useState('')
-  const [toast, setToast]         = useState(null)
+  const [jobs, setJobs]               = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [refreshing, setRefreshing]   = useState(false)
+  const [search, setSearch]           = useState('')
+  const [toast, setToast]             = useState(null)
   const [completedToday, setCompletedToday] = useState(0)
+  const [profileOpen, setProfileOpen] = useState(false)
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Technician'
   const hour      = new Date().getHours()
   const greeting  = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening'
+  const initials  = (profile?.full_name ?? '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
-  // ── Fetch active jobs (Pending Approval, Approved, In Progress) ────────────
+  // ── Fetch active jobs ──────────────────────────────────────────────────────
   const fetchJobs = useCallback(async () => {
     if (!user) return
     try {
       const { data, error } = await supabase
         .from('job_orders')
-        .select('id, title, location, department, priority, status, progress, notes, category, pdf_url, request_id, created_at')
+        .select('id, title, location, department, priority, status, progress, notes, pdf_url, request_id, created_at')
         .eq('technician_id', user.id)
         .in('status', ['Pending Approval', 'Approved', 'In Progress'])
         .order('created_at', { ascending: false })
@@ -85,13 +231,12 @@ export default function TechnicianDashboard() {
       setJobs((data ?? []).map(j => ({
         id:         j.id,
         title:      j.title,
-        location:   j.location || '—',
+        location:   j.location   || '—',
         department: j.department || '—',
-        priority:   j.priority || 'Medium',
+        priority:   j.priority   || 'Medium',
         status:     j.status,
-        progress:   j.progress ?? 0,
+        progress:   j.progress   ?? 0,
         notes:      j.notes,
-        category:   j.category || 'Other',
         pdfUrl:     j.pdf_url,
         requestId:  j.request_id,
       })))
@@ -101,7 +246,7 @@ export default function TechnicianDashboard() {
     }
   }, [user])
 
-  // ── Fetch count of jobs completed today ────────────────────────────────────
+  // ── Fetch completed today count ────────────────────────────────────────────
   const fetchCompletedToday = useCallback(async () => {
     if (!user) return
     const todayStart = new Date()
@@ -121,6 +266,19 @@ export default function TechnicianDashboard() {
     setLoading(true)
     Promise.all([fetchJobs(), fetchCompletedToday()]).finally(() => setLoading(false))
   }, [fetchJobs, fetchCompletedToday])
+
+  // ── Real-time: new job assigned to this technician appears instantly ────────
+  useEffect(() => {
+    if (!user) return
+    const channel = supabase
+      .channel('technician-jobs')
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'job_orders',
+        filter: `technician_id=eq.${user.id}`,
+      }, () => { fetchJobs(); fetchCompletedToday() })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [user, fetchJobs, fetchCompletedToday])
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const totalJobs  = jobs.length
@@ -148,7 +306,12 @@ export default function TechnicianDashboard() {
     showToast('Jobs refreshed.')
   }
 
-  // ── Start Job → update job_orders status to In Progress ───────────────────
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    navigate('/login')
+  }
+
+  // ── Start Job ──────────────────────────────────────────────────────────────
   async function startJob(job) {
     try {
       const { error } = await supabase
@@ -157,7 +320,6 @@ export default function TechnicianDashboard() {
         .eq('id', job.id)
 
       if (error) throw error
-
       setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'In Progress' } : j))
       showToast('Job started. Head to My Jobs for full controls.')
     } catch (err) {
@@ -166,7 +328,7 @@ export default function TechnicianDashboard() {
     }
   }
 
-  // ── Mark Complete → update job_orders + linked request ────────────────────
+  // ── Complete Job ───────────────────────────────────────────────────────────
   async function completeJob(job) {
     try {
       const { error: joErr } = await supabase
@@ -195,7 +357,7 @@ export default function TechnicianDashboard() {
   return (
     <main className={`flex-1 min-h-screen bg-[#f9f9ff] ${isMobile ? 'pb-[60px]' : ''}`}>
 
-      {/* ── Top App Bar ─────────────────────────────────────────────────────── */}
+      {/* ── Top App Bar ───────────────────────────────────────────────────── */}
       <header className={`flex justify-between items-center h-16 bg-[#f9f9ff] border-b border-[#dcc0bd] sticky top-0 z-40 gap-3 ${isMobile ? 'px-4' : 'px-6'}`}>
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <div className="relative flex-1 max-w-full">
@@ -208,7 +370,8 @@ export default function TechnicianDashboard() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -225,14 +388,23 @@ export default function TechnicianDashboard() {
           </button>
           <button
             onClick={() => navigate('/technician/notifications')}
-            className="p-2 text-[#554240] hover:bg-[#dce2f3] rounded-full transition-colors relative"
+            className="p-2 text-[#554240] hover:bg-[#dce2f3] rounded-full transition-colors"
           >
             <span className="material-symbols-outlined">notifications</span>
+          </button>
+
+          {/* ── Profile Avatar Button ──────────────────────────────────── */}
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="w-9 h-9 rounded-full bg-[#4a0404] text-white text-sm font-bold flex items-center justify-center hover:opacity-90 transition-opacity flex-shrink-0"
+            title="My Profile"
+          >
+            {initials}
           </button>
         </div>
       </header>
 
-      {/* ── Content Body ────────────────────────────────────────────────────── */}
+      {/* ── Content Body ──────────────────────────────────────────────────── */}
       <div className={`max-w-[1600px] mx-auto space-y-6 ${isMobile ? 'p-4' : 'p-8'}`}>
 
         {/* Greeting Hero */}
@@ -246,7 +418,7 @@ export default function TechnicianDashboard() {
               {loading
                 ? 'Loading your jobs...'
                 : totalJobs === 0
-                  ? 'No pending jobs. You\'re all caught up!'
+                  ? "No pending jobs. You're all caught up!"
                   : `You have ${totalJobs} active job${totalJobs !== 1 ? 's' : ''} today.`}
             </p>
           </div>
@@ -255,10 +427,10 @@ export default function TechnicianDashboard() {
         {/* Stats Grid */}
         <div className={`grid gap-3 sm:gap-6 ${isMobile ? 'grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'}`}>
           {[
-            { label: 'Total Jobs',    value: loading ? '—' : totalJobs,       icon: 'assignment',      hoverBg: 'group-hover:bg-[#ffb4aa]', hoverColor: 'group-hover:text-[#210000]' },
-            { label: 'Assigned',      value: loading ? '—' : assigned,        icon: 'person_add',      hoverBg: 'group-hover:bg-[#a0d3a6]', hoverColor: 'group-hover:text-[#396844]' },
-            { label: 'In Progress',   value: loading ? '—' : inProgress,      icon: 'pending_actions', hoverBg: 'group-hover:bg-[#ffb77d]', hoverColor: 'group-hover:text-[#160700]' },
-            { label: 'Done Today',    value: loading ? '—' : completedToday,  icon: 'task_alt',        hoverBg: 'group-hover:bg-[#b8ecbe]', hoverColor: 'group-hover:text-[#3e6d47]' },
+            { label: 'Total Jobs',  value: loading ? '—' : totalJobs,      icon: 'assignment',      hoverBg: 'group-hover:bg-[#ffb4aa]', hoverColor: 'group-hover:text-[#210000]' },
+            { label: 'Assigned',    value: loading ? '—' : assigned,        icon: 'person_add',      hoverBg: 'group-hover:bg-[#a0d3a6]', hoverColor: 'group-hover:text-[#396844]' },
+            { label: 'In Progress', value: loading ? '—' : inProgress,      icon: 'pending_actions', hoverBg: 'group-hover:bg-[#ffb77d]', hoverColor: 'group-hover:text-[#160700]' },
+            { label: 'Done Today',  value: loading ? '—' : completedToday,  icon: 'task_alt',        hoverBg: 'group-hover:bg-[#b8ecbe]', hoverColor: 'group-hover:text-[#3e6d47]' },
           ].map(s => (
             <div key={s.label}
               className={`bg-white border border-[#dcc0bd] rounded-xl flex items-center hover:bg-[#f0f3ff] transition-colors group cursor-pointer ${isMobile ? 'p-4 gap-3' : 'p-6 gap-5'}`}
@@ -302,7 +474,7 @@ export default function TechnicianDashboard() {
 
           <div className="grid grid-cols-12 gap-4 sm:gap-6 min-h-[400px]">
 
-            {/* ── Left: Job list ──────────────────────────────────────────── */}
+            {/* Job List */}
             {loading ? (
               <div className="col-span-12 lg:col-span-8 space-y-3">
                 {[1, 2, 3].map(i => (
@@ -321,9 +493,7 @@ export default function TechnicianDashboard() {
                 </div>
                 <h4 className="text-xl font-bold text-[#151c27] mb-2">All caught up!</h4>
                 <p className="text-[#554240] text-base max-w-md mx-auto">
-                  {search
-                    ? 'No jobs match your search.'
-                    : 'No active jobs assigned to you right now. New jobs from the admin will appear here.'}
+                  {search ? 'No jobs match your search.' : 'No active jobs assigned to you right now. New jobs will appear here automatically.'}
                 </p>
                 <button
                   onClick={handleRefresh}
@@ -344,7 +514,7 @@ export default function TechnicianDashboard() {
                         <span className="material-symbols-outlined text-[#554240]">build</span>
                       </div>
                       <div className="min-w-0">
-                        <span className="text-xs font-mono text-[#554240]">#{job.id?.toString().slice(0, 8)}</span>
+                        <span className="text-xs font-mono text-[#554240]">#{String(job.id).slice(0, 8)}</span>
                         <h4 className="text-base font-bold text-[#151c27]">{job.title}</h4>
                         <p className="text-xs text-[#554240] mt-0.5 flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px]">location_on</span>
@@ -389,7 +559,7 @@ export default function TechnicianDashboard() {
               </div>
             )}
 
-            {/* ── Right: Quick Links Panel ─────────────────────────────── */}
+            {/* Quick Links Panel */}
             <div className="col-span-12 lg:col-span-4 space-y-6">
               <div className={`bg-[#f0f3ff] border border-[#dcc0bd] rounded-2xl h-full ${isMobile ? 'p-4' : 'p-6'}`}>
                 <h5 className="text-lg font-semibold text-[#151c27] mb-6">Quick Links</h5>
@@ -406,7 +576,19 @@ export default function TechnicianDashboard() {
                   ))}
                 </div>
 
-                <div className="mt-8 p-4 bg-[#ffdad5] rounded-xl">
+                {/* Profile quick access */}
+                <button
+                  onClick={() => setProfileOpen(true)}
+                  className="mt-3 w-full flex items-center justify-between p-4 bg-white rounded-xl border border-[#dcc0bd] hover:border-[#210000] transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[#554240] group-hover:text-[#210000] transition-colors">account_circle</span>
+                    <span className="text-sm text-[#151c27]">My Profile</span>
+                  </div>
+                  <span className="material-symbols-outlined text-[#554240]">chevron_right</span>
+                </button>
+
+                <div className="mt-6 p-4 bg-[#ffdad5] rounded-xl">
                   <p className="text-[#410001] text-xs font-mono font-bold mb-1">System Status</p>
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-2 w-2">
@@ -424,6 +606,16 @@ export default function TechnicianDashboard() {
 
       {isMobile && <BottomNav />}
 
+      {/* Profile Modal */}
+      {profileOpen && (
+        <ProfileModal
+          profile={profile}
+          onClose={() => setProfileOpen(false)}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* Toast */}
       {toast && (
         <div className={`fixed left-1/2 -translate-x-1/2 z-[60] bg-[#151c27] text-white px-6 py-3 rounded-full text-sm font-mono shadow-xl flex items-center gap-2 whitespace-nowrap ${isMobile ? 'bottom-[76px]' : 'bottom-6'}`}>
           <span className="material-symbols-outlined text-[#b8ecbe] text-base">check_circle</span>

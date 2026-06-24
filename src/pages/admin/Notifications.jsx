@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -65,6 +67,22 @@ function Icon({ name, size = 22, filled = false, style = {} }) {
       }}
     >{name}</span>
   );
+}
+
+function formatTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "Just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay === 1) return "Yesterday";
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 // ─── Responsive hook ──────────────────────────────────────────────────────────
@@ -154,7 +172,7 @@ function Sidebar({ open, onClose, unreadCount }) {
       {/* Footer */}
       <div style={{ padding: "12px 8px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <button
-          onClick={() => navigate("/admin/dashboard")}
+          onClick={() => navigate("/admin/profile")}
           style={{
             width: "100%", display: "flex", alignItems: "center", gap: 12,
             padding: "10px 16px", background: "transparent",
@@ -232,6 +250,7 @@ function BottomNav() {
 
 // ─── TopBar ───────────────────────────────────────────────────────────────────
 function TopBar({ onMenuClick, search, setSearch }) {
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   return (
     <header style={{
@@ -270,21 +289,27 @@ function TopBar({ onMenuClick, search, setSearch }) {
       <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 10 }}>
         {!isMobile && (
           <div style={{ display: "flex", alignItems: "center", gap: 2, paddingRight: 16, borderRight: `1px solid ${C.outlineVariant}` }}>
-            <button style={{
-              background: "none", border: "none", cursor: "pointer",
-              padding: 8, color: C.onSurface, borderRadius: "50%", display: "flex",
-            }}>
+            <button
+              onClick={() => navigate("/admin/profile")}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                padding: 8, color: C.onSurface, borderRadius: "50%", display: "flex",
+              }}
+            >
               <Icon name="settings" size={22} />
             </button>
           </div>
         )}
         {!isMobile && (
-          <button style={{
-            background: C.primaryContainer, color: C.white,
-            border: "none", cursor: "pointer", padding: "8px 18px",
-            borderRadius: 6, fontSize: 12, fontFamily: MONO,
-            fontWeight: 500, letterSpacing: "0.04em",
-          }}>
+          <button
+            onClick={() => navigate("/admin/requests")}
+            style={{
+              background: C.primaryContainer, color: C.white,
+              border: "none", cursor: "pointer", padding: "8px 18px",
+              borderRadius: 6, fontSize: 12, fontFamily: MONO,
+              fontWeight: 500, letterSpacing: "0.04em",
+            }}
+          >
             Report Issue
           </button>
         )}
@@ -587,15 +612,17 @@ function Pagination({ page, setPage, total, perPage }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdminNotificationsPage() {
   const isMobile = useIsMobile();
+  const { user } = useAuth();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [search, setSearch]         = useState("");
   const [activeTab, setActiveTab]   = useState("ALL");
   const [page, setPage]             = useState(1);
   const [toast, setToast]           = useState(null);
+  const [loading, setLoading]       = useState(true);
   const PER_PAGE = 6;
 
-  // Starts empty — populate from Supabase. No test data.
+  // Loaded for real from Supabase — starts empty until the fetch resolves.
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -617,11 +644,79 @@ export default function AdminNotificationsPage() {
     setTimeout(() => setToast(null), 2500);
   }
 
-  const markRead    = (id) => setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, unread: false } : n));
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
+  // ── Fetch this admin's own notifications ────────────────────────────────────
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("id, type, title, body, read, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const mapped = (data ?? []).map((n) => ({
+        ...n,
+        unread: !n.read,
+        time: formatTime(n.created_at),
+      }));
+      setNotifications(mapped);
+    } catch (err) {
+      console.error("Notifications fetch error:", err);
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  // ── Realtime: new notifications pop in immediately ─────────────────────────
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel("admin-notifications")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          const n = payload.new;
+          setNotifications((prev) => [{ ...n, unread: !n.read, time: formatTime(n.created_at) }, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [user?.id]);
+
+  // ── Mark read / mark all read — real DB updates ─────────────────────────────
+  async function markRead(id) {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false, read: true } : n)));
+    const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
+    if (error) {
+      console.error("Mark read error:", error);
+      showToast("Could not update notification.");
+      fetchNotifications();
+    }
+  }
+
+  async function markAllRead() {
+    const unreadIds = notifications.filter((n) => n.unread).map((n) => n.id);
+    if (unreadIds.length === 0) return;
+    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false, read: true })));
+    const { error } = await supabase.from("notifications").update({ read: true }).in("id", unreadIds);
+    if (error) {
+      console.error("Mark all read error:", error);
+      showToast("Could not update notifications.");
+      fetchNotifications();
+      return;
+    }
     showToast("All notifications marked as read.");
-  };
+  }
 
   function handleAction(notif, action) {
     markRead(notif.id);
@@ -634,7 +729,7 @@ export default function AdminNotificationsPage() {
       (activeTab === "ALERT" && n.type === "ALERT") ||
       (activeTab === "INFO" && (n.type === "INFO" || n.type === "COMPLETED" || n.type === "USER ACTIVITY"));
     const q = search.toLowerCase();
-    const searchOk = !q || [n.title, n.body, n.type].some((f) => f.toLowerCase().includes(q));
+    const searchOk = !q || [n.title, n.body, n.type].some((f) => f?.toLowerCase().includes(q));
     return tabOk && searchOk;
   }), [notifications, activeTab, search]);
 
@@ -724,7 +819,14 @@ export default function AdminNotificationsPage() {
           <TabBar active={activeTab} setActive={(k) => { setActiveTab(k); setPage(1); }} notifications={notifications} isMobile={isMobile} />
 
           {/* Notification List */}
-          {paged.length === 0 ? (
+          {loading ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {[1, 2, 3].map((i) => (
+                <div key={i} style={{ height: 90, background: C.surfaceContainerLow, borderRadius: 12, animation: "pulse 1.5s ease-in-out infinite" }} />
+              ))}
+              <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}`}</style>
+            </div>
+          ) : paged.length === 0 ? (
             <div style={{
               padding: isMobile ? 40 : 60, textAlign: "center",
               color: C.onSurfaceVariant, fontSize: 15,
