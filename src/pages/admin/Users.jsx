@@ -47,23 +47,21 @@ function avatarColor(id = '') {
   return AVATAR_COLORS[num % AVATAR_COLORS.length]
 }
 
-// Map a raw profiles row → the shape the UI expects
 function mapUser(row) {
   return {
-    id:         row.id,
-    name:       row.full_name || '—',
-    role:       row.role || 'student',
-    dept:       row.department || '—',
-    status:     row.status || 'Active',
-    specialty:  row.specialty || null,
-    matric:     row.matric_number || null,
-    joined:     row.created_at
+    id:        row.id,
+    name:      row.full_name   || '—',
+    role:      row.role        || 'student',
+    dept:      row.department  || '—',
+    status:    row.status      || 'Active',
+    specialty: row.specialty   || null,
+    matric:    row.matric_number || null,
+    joined:    row.created_at
       ? new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
       : '—',
   }
 }
 
-// ─── Responsive hook ──────────────────────────────────────────────────────────
 function useIsMobile() {
   const [mobile, setMobile] = useState(() => window.innerWidth < 768)
   useEffect(() => {
@@ -72,6 +70,194 @@ function useIsMobile() {
     return () => window.removeEventListener('resize', fn)
   }, [])
   return mobile
+}
+
+// ─── Add User Modal ───────────────────────────────────────────────────────────
+function AddUserModal({ onClose, onAdded, showToast }) {
+  const [form, setForm] = useState({
+    full_name:  '',
+    email:      '',
+    password:   '',
+    role:       'staff',
+    department: '',
+    specialty:  '',
+  })
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState('')
+  const [showPw,  setShowPw]  = useState(false)
+
+  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+
+    if (!form.email.trim() || !form.password.trim() || !form.full_name.trim()) {
+      setError('Full name, email and password are required.'); return
+    }
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters.'); return
+    }
+
+    setSaving(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            email:      form.email.trim(),
+            password:   form.password,
+            full_name:  form.full_name.trim(),
+            role:       form.role,
+            department: form.department.trim() || null,
+            specialty:  form.specialty.trim()  || null,
+          }),
+        }
+      )
+
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to create user')
+
+      onAdded({
+        id:        json.user.id,
+        name:      form.full_name.trim(),
+        role:      form.role,
+        dept:      form.department || '—',
+        specialty: form.specialty  || null,
+        status:    'Active',
+        matric:    null,
+        joined:    new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      })
+      showToast('User created successfully.')
+      onClose()
+    } catch (err) {
+      console.error('Add user error:', err)
+      setError(err.message || 'Something went wrong. Try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inp = 'w-full px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4a0404]/20 bg-white'
+  const lbl = 'block text-xs font-mono text-[#554240] uppercase tracking-wider mb-1.5'
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]" onClick={onClose} />
+      <div className="fixed inset-0 z-[61] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+
+          {/* Header */}
+          <div className="bg-[#4a0404] px-6 py-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-white font-bold text-lg">Add New User</h2>
+              <p className="text-white/60 text-xs font-mono mt-0.5">Create account and assign role</p>
+            </div>
+            <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full transition-colors">
+              <X size={18} color="white" />
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            {error && (
+              <div className="flex items-center gap-2 text-xs text-[#ba1a1a] bg-[#ffdad6]/40 border border-[#ffdad6] rounded-lg px-3 py-2">
+                <span className="material-symbols-outlined text-[16px]">error</span>
+                {error}
+              </div>
+            )}
+
+            <div>
+              <label className={lbl}>Full Name *</label>
+              <input value={form.full_name} onChange={set('full_name')}
+                placeholder="e.g. John Doe" className={inp} required />
+            </div>
+
+            <div>
+              <label className={lbl}>Email Address *</label>
+              <input type="email" value={form.email} onChange={set('email')}
+                placeholder="e.g. john@aatu.edu.ng" className={inp} required />
+            </div>
+
+            <div>
+              <label className={lbl}>Password *</label>
+              <div className="relative">
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={set('password')}
+                  placeholder="Min. 8 characters"
+                  className={`${inp} pr-11`}
+                  required
+                />
+                <button type="button" onClick={() => setShowPw(s => !s)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#554240]/60 hover:text-[#554240]">
+                  <span className="material-symbols-outlined text-[18px]">
+                    {showPw ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
+              </div>
+              <p className="text-[11px] text-[#554240]/60 mt-1">
+                Share this temporary password with the user so they can log in.
+              </p>
+            </div>
+
+            <div>
+              <label className={lbl}>Role *</label>
+              <select value={form.role} onChange={set('role')} className={`${inp} cursor-pointer`}>
+                <option value="staff">Staff</option>
+                <option value="technician">Technician</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={lbl}>Department</label>
+              <input value={form.department} onChange={set('department')}
+                placeholder="e.g. Computer Science" className={inp} />
+            </div>
+
+            {form.role === 'technician' && (
+              <div>
+                <label className={lbl}>Specialty</label>
+                <input value={form.specialty} onChange={set('specialty')}
+                  placeholder="e.g. Electrical, Plumbing" className={inp} />
+              </div>
+            )}
+
+            {/* Info note */}
+            <div className="flex gap-2 p-3 bg-[#f0f3ff] border border-[#dcc0bd] rounded-lg">
+              <span className="material-symbols-outlined text-[#554240] text-[16px] flex-shrink-0 mt-0.5">info</span>
+              <p className="text-[11px] text-[#554240] leading-relaxed">
+                The user will receive their email and password from you directly. They can change their password after logging in via Account Settings.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={onClose}
+                className="flex-1 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors">
+                Cancel
+              </button>
+              <button type="submit" disabled={saving}
+                className="flex-1 px-4 py-2.5 bg-[#4a0404] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 disabled:opacity-60 transition-opacity flex items-center justify-center gap-2">
+                {saving
+                  ? <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span> Creating...</>
+                  : <><span className="material-symbols-outlined text-[16px]">person_add</span> Create User</>}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
+  )
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
@@ -93,9 +279,7 @@ function Sidebar({ open, onClose }) {
           </div>
         </div>
         {isMobile && (
-          <button onClick={onClose} className="text-white/70 p-1">
-            <X size={22} />
-          </button>
+          <button onClick={onClose} className="text-white/70 p-1"><X size={22} /></button>
         )}
       </div>
 
@@ -103,12 +287,10 @@ function Sidebar({ open, onClose }) {
         {NAV_ITEMS.map((item) => {
           const isActive = location.pathname === item.path
           return (
-            <button
-              key={item.label}
+            <button key={item.label}
               onClick={() => { navigate(item.path); if (isMobile) onClose() }}
               className={`w-full flex items-center gap-3 px-4 py-[11px] text-left text-xs font-mono tracking-wide transition-colors rounded
-                ${isActive ? 'bg-white/[0.12] text-white font-bold border-l-4 border-[#ffb4aa]' : 'text-white/65 hover:bg-white/[0.06] border-l-4 border-transparent'}`}
-            >
+                ${isActive ? 'bg-white/[0.12] text-white font-bold border-l-4 border-[#ffb4aa]' : 'text-white/65 hover:bg-white/[0.06] border-l-4 border-transparent'}`}>
               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>{item.icon}</span>
               {item.label}
             </button>
@@ -161,19 +343,19 @@ export default function Users() {
   const isMobile = useIsMobile()
   const navigate  = useNavigate()
 
-  const [drawerOpen, setDrawerOpen]   = useState(false)
-  const [users, setUsers]             = useState([])
-  const [loading, setLoading]         = useState(true)
-  const [search, setSearch]           = useState('')
-  const [roleFilter, setRole]         = useState('All')
-  const [page, setPage]               = useState(1)
-  const [selected, setSelected]       = useState(null)
-  const [editing, setEditing]         = useState(null)
-  const [studentMenu, setStudentMenu] = useState(null)
-  const [toast, setToast]             = useState(null)
-  const [saving, setSaving]           = useState(false)
+  const [drawerOpen,   setDrawerOpen]   = useState(false)
+  const [addUserOpen,  setAddUserOpen]  = useState(false)
+  const [users,        setUsers]        = useState([])
+  const [loading,      setLoading]      = useState(true)
+  const [search,       setSearch]       = useState('')
+  const [roleFilter,   setRole]         = useState('All')
+  const [page,         setPage]         = useState(1)
+  const [selected,     setSelected]     = useState(null)
+  const [editing,      setEditing]      = useState(null)
+  const [studentMenu,  setStudentMenu]  = useState(null)
+  const [toast,        setToast]        = useState(null)
+  const [saving,       setSaving]       = useState(false)
 
-  // Load fonts
   useEffect(() => {
     ['aatu-fonts', 'aatu-icons'].forEach((id, i) => {
       if (!document.getElementById(id)) {
@@ -187,7 +369,6 @@ export default function Users() {
     })
   }, [])
 
-  // ── Fetch all profiles from Supabase ──────────────────────────────────────
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     try {
@@ -195,12 +376,11 @@ export default function Users() {
         .from('profiles')
         .select('id, full_name, role, department, status, specialty, matric_number, created_at')
         .order('created_at', { ascending: false })
-
       if (error) throw error
       setUsers((data ?? []).map(mapUser))
     } catch (err) {
       console.error('Failed to load users:', err)
-      showToast('Failed to load users. Check console.', true)
+      showToast('Failed to load users.', true)
     } finally {
       setLoading(false)
     }
@@ -208,7 +388,6 @@ export default function Users() {
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
 
-  // ── Filtered + paginated list ─────────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return users.filter(u =>
@@ -229,35 +408,29 @@ export default function Users() {
     return result
   }, [pageUsers])
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
   function showToast(msg, isError = false) {
     setToast({ msg, isError })
     setTimeout(() => setToast(null), 3000)
   }
 
-  // ── Update role or status in Supabase ─────────────────────────────────────
+  function handleUserAdded(newUser) {
+    setUsers(prev => [newUser, ...prev])
+  }
+
   async function toggleStatus(id) {
     const user = users.find(u => u.id === id)
     if (!user) return
     const newStatus = user.status === 'Active' ? 'Inactive' : 'Active'
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ status: newStatus })
-      .eq('id', id)
-
+    const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', id)
     if (error) { showToast('Failed to update status.', true); return }
-
     setUsers(p => p.map(u => u.id === id ? { ...u, status: newStatus } : u))
     if (selected?.id === id) setSelected(s => ({ ...s, status: newStatus }))
     showToast('Status updated.')
   }
 
-  // ── Save edits to Supabase ────────────────────────────────────────────────
   async function saveEdit(e) {
     e.preventDefault()
     setSaving(true)
-
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -268,29 +441,17 @@ export default function Users() {
         status:     editing.status,
       })
       .eq('id', editing.id)
-
     setSaving(false)
-
     if (error) { showToast('Failed to save changes.', true); return }
-
     setUsers(p => p.map(u => u.id === editing.id ? { ...u, ...editing } : u))
     if (selected?.id === editing.id) setSelected(s => ({ ...s, ...editing }))
     setEditing(null)
     showToast('User updated successfully.')
   }
 
-  // ── Delete from Supabase ──────────────────────────────────────────────────
-  // NOTE: This only removes the profiles row. The auth.users row requires
-  // the Supabase admin API (service role key) or manual deletion in the dashboard.
-  // For now, we mark them Inactive instead of hard-deleting.
   async function deactivateUser(id) {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ status: 'Inactive' })
-      .eq('id', id)
-
+    const { error } = await supabase.from('profiles').update({ status: 'Inactive' }).eq('id', id)
     if (error) { showToast('Failed to deactivate user.', true); return }
-
     setUsers(p => p.map(u => u.id === id ? { ...u, status: 'Inactive' } : u))
     if (selected?.id === id) setSelected(null)
     setStudentMenu(null)
@@ -300,7 +461,7 @@ export default function Users() {
   const inp = 'w-full px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4a0404]/20 bg-white'
 
   const Avatar = ({ user, size = 'md' }) => {
-    const c = avatarColor(user.id)
+    const c  = avatarColor(user.id)
     const sz = size === 'lg' ? 'w-14 h-14 text-base' : size === 'sm' ? 'w-8 h-8 text-xs' : 'w-12 h-12 text-sm'
     return (
       <div className={`${sz} rounded-full ${c.bg} ${c.text} flex items-center justify-center font-bold flex-shrink-0`}>
@@ -322,7 +483,7 @@ export default function Users() {
 
       <main className={`flex-1 min-h-screen ${isMobile ? '' : 'ml-[260px]'} ${isMobile ? 'pb-[60px]' : ''}`}>
 
-        {/* ── Top App Bar ─────────────────────────────────────────────────── */}
+        {/* ── Top App Bar ───────────────────────────────────────────────── */}
         <header className={`sticky top-0 z-40 h-16 bg-[#f9f9ff]/90 backdrop-blur border-b border-[#dcc0bd] flex items-center justify-between gap-3 ${isMobile ? 'px-4' : 'px-8'}`}>
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {isMobile && (
@@ -341,7 +502,7 @@ export default function Users() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={() => navigate('/admin/notifications')} className="p-2 text-[#554240] hover:text-[#210000] transition-colors relative">
+            <button onClick={() => navigate('/admin/notifications')} className="p-2 text-[#554240] hover:text-[#210000] transition-colors">
               <span className="material-symbols-outlined">notifications</span>
             </button>
             <button onClick={fetchUsers} title="Refresh" className="p-2 text-[#554240] hover:text-[#210000] transition-colors">
@@ -352,17 +513,26 @@ export default function Users() {
 
         <div className={`${isMobile ? 'p-4' : 'p-8'} max-w-[1600px] mx-auto space-y-8`}>
 
-          {/* ── Page Header ─────────────────────────────────────────────── */}
+          {/* ── Page Header ───────────────────────────────────────────── */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <h2 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-[#210000]`}>User Management</h2>
               <p className="text-[#554240] mt-1 text-sm">All registered users from the database.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {/* ── Add User Button ─────────────────────────────────── */}
+              <button
+                onClick={() => setAddUserOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#4a0404] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 transition-opacity"
+              >
+                <span className="material-symbols-outlined text-[18px]">person_add</span>
+                {!isMobile && 'Add User'}
+              </button>
+
               <select
                 value={roleFilter}
                 onChange={e => { setRole(e.target.value); setPage(1) }}
-                className="flex items-center gap-2 px-4 py-2 border border-[#89726f] text-[#151c27] text-sm rounded-lg hover:bg-[#e7eefe] transition-colors focus:outline-none cursor-pointer bg-white"
+                className="px-4 py-2 border border-[#89726f] text-[#151c27] text-sm rounded-lg hover:bg-[#e7eefe] transition-colors focus:outline-none cursor-pointer bg-white"
               >
                 {['All', 'admin', 'staff', 'technician', 'student'].map(r => (
                   <option key={r} value={r}>{r === 'All' ? 'All Roles' : r.charAt(0).toUpperCase() + r.slice(1)}</option>
@@ -371,7 +541,7 @@ export default function Users() {
             </div>
           </div>
 
-          {/* ── Stats ───────────────────────────────────────────────────── */}
+          {/* ── Stats ─────────────────────────────────────────────────── */}
           <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-1 md:grid-cols-4 gap-6'}`}>
             {stats.map(s => (
               <div key={s.label} className={`bg-white border border-[#dcc0bd] ${isMobile ? 'p-4' : 'p-6'} rounded-xl flex items-center gap-4`}>
@@ -380,17 +550,14 @@ export default function Users() {
                 </div>
                 <div>
                   <p className="text-xs font-mono text-[#554240]/60">{s.label}</p>
-                  <p className="text-2xl font-bold text-[#151c27]">
-                    {loading ? '—' : s.value.toLocaleString()}
-                  </p>
+                  <p className="text-2xl font-bold text-[#151c27]">{loading ? '—' : s.value.toLocaleString()}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* ── Users List ──────────────────────────────────────────────── */}
+          {/* ── Users List ────────────────────────────────────────────── */}
           <div className="space-y-6">
-
             {loading ? (
               <div className="py-20 text-center">
                 <span className="material-symbols-outlined text-5xl text-[#dcc0bd] block mb-3 animate-spin">autorenew</span>
@@ -400,13 +567,15 @@ export default function Users() {
               <div className="py-20 text-center">
                 <span className="material-symbols-outlined text-5xl text-[#dcc0bd] block mb-3">group_add</span>
                 <p className="text-[#554240] text-sm">No users found in the database.</p>
+                <button onClick={() => setAddUserOpen(true)} className="mt-4 px-5 py-2.5 bg-[#4a0404] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 transition-opacity">
+                  Add First User
+                </button>
               </div>
             ) : (
               <>
                 {ROLE_SECTIONS.map(({ key, label, icon }) => {
                   const list = grouped[key]
                   if (!list || list.length === 0) return null
-
                   return (
                     <div key={key} className="space-y-3">
                       <div className="flex items-center justify-between border-b border-[#dcc0bd] pb-2">
@@ -419,7 +588,6 @@ export default function Users() {
                         </span>
                       </div>
 
-                      {/* Admin / Staff / Technician rows */}
                       {key !== 'student' && (
                         <div className="bg-white border border-[#dcc0bd] rounded-xl overflow-hidden divide-y divide-[#dcc0bd] shadow-sm">
                           {list.map(u => (
@@ -431,22 +599,17 @@ export default function Users() {
                                   <p className="text-xs font-mono text-[#554240]">{u.dept}{u.specialty ? ` · ${u.specialty}` : ''}</p>
                                 </div>
                               </div>
-
                               <div className="flex flex-wrap items-center gap-3 mt-4 lg:mt-0">
-                                <span className={`px-3 py-1 text-xs font-bold font-mono rounded-full uppercase ${ROLE_BADGE[u.role]}`}>
-                                  {u.role}
-                                </span>
+                                <span className={`px-3 py-1 text-xs font-bold font-mono rounded-full uppercase ${ROLE_BADGE[u.role]}`}>{u.role}</span>
                                 <div className="flex items-center gap-1.5">
                                   <span className={`w-2 h-2 rounded-full ${u.status === 'Active' ? 'bg-[#396844]' : 'bg-[#89726f]'}`} />
                                   <span className="text-xs font-mono text-[#554240]">{u.status}</span>
                                 </div>
                                 <div className="flex gap-0.5">
-                                  <button onClick={() => setEditing({ ...u })}
-                                    className="p-2 text-[#554240] hover:text-[#210000] hover:bg-[#e7eefe] rounded-full transition-colors" title="Edit">
+                                  <button onClick={() => setEditing({ ...u })} className="p-2 text-[#554240] hover:text-[#210000] hover:bg-[#e7eefe] rounded-full transition-colors" title="Edit">
                                     <span className="material-symbols-outlined text-[18px]">edit</span>
                                   </button>
-                                  <button onClick={() => deactivateUser(u.id)}
-                                    className="p-2 text-[#554240] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors" title="Deactivate">
+                                  <button onClick={() => deactivateUser(u.id)} className="p-2 text-[#554240] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors" title="Deactivate">
                                     <span className="material-symbols-outlined text-[18px]">person_off</span>
                                   </button>
                                 </div>
@@ -456,7 +619,6 @@ export default function Users() {
                         </div>
                       )}
 
-                      {/* Students — card grid */}
                       {key === 'student' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {list.map(u => (
@@ -474,24 +636,19 @@ export default function Users() {
                                   <span className="text-[10px] font-mono text-[#554240]">{u.status}</span>
                                 </div>
                               </div>
-
                               <div className="relative opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                                <button onClick={() => setStudentMenu(studentMenu === u.id ? null : u.id)}
-                                  className="p-1.5 hover:bg-[#e7eefe] rounded-full transition-colors">
+                                <button onClick={() => setStudentMenu(studentMenu === u.id ? null : u.id)} className="p-1.5 hover:bg-[#e7eefe] rounded-full transition-colors">
                                   <span className="material-symbols-outlined text-[18px] text-[#554240]">more_vert</span>
                                 </button>
                                 {studentMenu === u.id && (
                                   <div className="absolute right-0 top-8 bg-white border border-[#dcc0bd] rounded-xl shadow-lg z-20 w-44 overflow-hidden">
-                                    <button onClick={() => { setSelected(u); setStudentMenu(null) }}
-                                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f0f3ff] flex items-center gap-2">
+                                    <button onClick={() => { setSelected(u); setStudentMenu(null) }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f0f3ff] flex items-center gap-2">
                                       <span className="material-symbols-outlined text-[16px]">visibility</span> View Profile
                                     </button>
-                                    <button onClick={() => { setEditing({ ...u }); setStudentMenu(null) }}
-                                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f0f3ff] flex items-center gap-2">
+                                    <button onClick={() => { setEditing({ ...u }); setStudentMenu(null) }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f0f3ff] flex items-center gap-2">
                                       <span className="material-symbols-outlined text-[16px]">edit</span> Edit
                                     </button>
-                                    <button onClick={() => { toggleStatus(u.id); setStudentMenu(null) }}
-                                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f0f3ff] flex items-center gap-2">
+                                    <button onClick={() => { toggleStatus(u.id); setStudentMenu(null) }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f0f3ff] flex items-center gap-2">
                                       <span className="material-symbols-outlined text-[16px]">toggle_on</span>
                                       {u.status === 'Active' ? 'Deactivate' : 'Activate'}
                                     </button>
@@ -510,16 +667,14 @@ export default function Users() {
                   <div className="py-20 text-center">
                     <span className="material-symbols-outlined text-5xl text-[#dcc0bd] block mb-3">manage_accounts</span>
                     <p className="text-[#554240] text-sm">No users match your search.</p>
-                    <button onClick={() => { setSearch(''); setRole('All') }} className="mt-3 text-xs font-mono text-[#4a0404] underline">
-                      Clear filters
-                    </button>
+                    <button onClick={() => { setSearch(''); setRole('All') }} className="mt-3 text-xs font-mono text-[#4a0404] underline">Clear filters</button>
                   </div>
                 )}
               </>
             )}
           </div>
 
-          {/* ── Pagination ──────────────────────────────────────────────── */}
+          {/* ── Pagination ────────────────────────────────────────────── */}
           {totalPages > 1 && (
             <div className="flex flex-wrap items-center justify-between gap-3 pt-4 pb-8">
               <p className="text-xs font-mono text-[#554240]">
@@ -553,7 +708,16 @@ export default function Users() {
 
       {isMobile && <BottomNav />}
 
-      {/* ── User Detail Modal ─────────────────────────────────────────────── */}
+      {/* ── Add User Modal ──────────────────────────────────────────────── */}
+      {addUserOpen && (
+        <AddUserModal
+          onClose={() => setAddUserOpen(false)}
+          onAdded={handleUserAdded}
+          showToast={showToast}
+        />
+      )}
+
+      {/* ── User Detail Modal ───────────────────────────────────────────── */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
@@ -569,17 +733,11 @@ export default function Users() {
                 <X size={18} />
               </button>
             </div>
-
             <div className="p-6 space-y-4">
               <div className="flex gap-2 flex-wrap">
-                <span className={`px-3 py-1 text-xs font-bold font-mono rounded-full uppercase ${ROLE_BADGE[selected.role]}`}>
-                  {selected.role}
-                </span>
-                <span className={`px-3 py-1 text-xs font-bold font-mono rounded-full ${selected.status === 'Active' ? 'bg-[#DCFCE7] text-[#166534]' : 'bg-[#f3f4f6] text-[#6b7280]'}`}>
-                  {selected.status}
-                </span>
+                <span className={`px-3 py-1 text-xs font-bold font-mono rounded-full uppercase ${ROLE_BADGE[selected.role]}`}>{selected.role}</span>
+                <span className={`px-3 py-1 text-xs font-bold font-mono rounded-full ${selected.status === 'Active' ? 'bg-[#DCFCE7] text-[#166534]' : 'bg-[#f3f4f6] text-[#6b7280]'}`}>{selected.status}</span>
               </div>
-
               <div className="grid grid-cols-2 gap-4 text-sm">
                 {[
                   ['DEPARTMENT', selected.dept],
@@ -593,7 +751,6 @@ export default function Users() {
                   </div>
                 ))}
               </div>
-
               <div className="flex gap-3 pt-2">
                 <button onClick={() => { setEditing({ ...selected }); setSelected(null) }}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors">
@@ -609,7 +766,7 @@ export default function Users() {
         </div>
       )}
 
-      {/* ── Edit User Modal ───────────────────────────────────────────────── */}
+      {/* ── Edit User Modal ─────────────────────────────────────────────── */}
       {editing && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
@@ -626,8 +783,7 @@ export default function Users() {
               <div>
                 <label className="block text-xs font-mono text-[#554240] mb-1.5">FULL NAME</label>
                 <input type="text" required value={editing.name}
-                  onChange={e => setEditing(n => ({ ...n, name: e.target.value }))}
-                  className={inp} />
+                  onChange={e => setEditing(n => ({ ...n, name: e.target.value }))} className={inp} />
               </div>
               <div>
                 <label className="block text-xs font-mono text-[#554240] mb-1.5">DEPARTMENT</label>
@@ -643,12 +799,10 @@ export default function Users() {
                     className={inp} placeholder="e.g. Electrical, Plumbing" />
                 </div>
               )}
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-mono text-[#554240] mb-1.5">ROLE</label>
-                  <select value={editing.role} onChange={e => setEditing(n => ({ ...n, role: e.target.value }))}
-                    className={`${inp} cursor-pointer`}>
+                  <select value={editing.role} onChange={e => setEditing(n => ({ ...n, role: e.target.value }))} className={`${inp} cursor-pointer`}>
                     {['admin', 'staff', 'technician', 'student'].map(r => (
                       <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
                     ))}
@@ -656,13 +810,11 @@ export default function Users() {
                 </div>
                 <div>
                   <label className="block text-xs font-mono text-[#554240] mb-1.5">STATUS</label>
-                  <select value={editing.status} onChange={e => setEditing(n => ({ ...n, status: e.target.value }))}
-                    className={`${inp} cursor-pointer`}>
+                  <select value={editing.status} onChange={e => setEditing(n => ({ ...n, status: e.target.value }))} className={`${inp} cursor-pointer`}>
                     {['Active', 'Inactive'].map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
               </div>
-
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setEditing(null)}
                   className="flex-1 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors">
@@ -678,7 +830,7 @@ export default function Users() {
         </div>
       )}
 
-      {/* ── Toast ─────────────────────────────────────────────────────────── */}
+      {/* ── Toast ───────────────────────────────────────────────────────── */}
       {toast && (
         <div className={`fixed ${isMobile ? 'bottom-[76px]' : 'bottom-6'} left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-full text-sm font-mono shadow-xl flex items-center gap-2 whitespace-nowrap
           ${toast.isError ? 'bg-[#ba1a1a] text-white' : 'bg-[#151c27] text-white'}`}>

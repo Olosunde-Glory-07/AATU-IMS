@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -35,11 +37,11 @@ const C = {
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
-// ─── Nav config ───────────────────────────────────────────────────────────────
+// ─── Nav config — corrected to match real AppRoutes.jsx paths ────────────────
 const NAV_ITEMS = [
   { icon: "dashboard",     label: "Dashboard",     path: "/staff/dashboard" },
-  { icon: "list_alt",      label: "Requests",      path: "/staff/maintenance-requests" },
-  { icon: "history",       label: "Dept. History", path: "/staff/departmental-history" },
+  { icon: "list_alt",      label: "Requests",      path: "/staff/requests" },
+  { icon: "history",       label: "Dept. History", path: "/staff/history" },
   { icon: "notifications", label: "Notifications", path: "/staff/notifications" },
 ];
 
@@ -55,6 +57,7 @@ const STATUS_CFG = {
   "Completed":   { text: C.onTertiaryFixedVariant, dot: C.onTertiaryFixedVariant },
   "Pending":     { text: C.onSurfaceVariant,        dot: C.outline                },
   "Assigned":    { text: "#3730A3",                 dot: "#6366f1"                },
+  "Cancelled":   { text: "#6b7280",                 dot: "#9ca3af"                },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -76,6 +79,30 @@ function getGreeting() {
   if (h < 12) return "Good Morning";
   if (h < 17) return "Good Afternoon";
   return "Good Evening";
+}
+
+// Builds the "Monthly Trends" bar data from real request rows by bucketing
+// created_at into the last 6 calendar months.
+function buildMonthlyData(requests) {
+  const months = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ key: `${d.getFullYear()}-${d.getMonth()}`, month: d.toLocaleDateString("en-US", { month: "short" }), count: 0 });
+  }
+  requests.forEach((r) => {
+    if (!r.created_at) return;
+    const d = new Date(r.created_at);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    const bucket = months.find((m) => m.key === key);
+    if (bucket) bucket.count += 1;
+  });
+  const max = Math.max(1, ...months.map((m) => m.count));
+  return months.map((m, i) => ({
+    ...m,
+    pct: m.count === 0 ? 2 : Math.max(6, Math.round((m.count / max) * 100)),
+    active: i === months.length - 1,
+  }));
 }
 
 // ─── Responsive hook ──────────────────────────────────────────────────────────
@@ -149,7 +176,7 @@ function Sidebar({ open, onClose }) {
       {/* Footer */}
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", padding: "12px 8px" }}>
         <button
-          onClick={() => navigate("/staff/dashboard")}
+          onClick={() => navigate("/staff/profile")}
           style={{
             width: "100%", display: "flex", alignItems: "center", gap: 12,
             padding: "12px 16px", background: "transparent",
@@ -157,6 +184,8 @@ function Sidebar({ open, onClose }) {
             cursor: "pointer", fontSize: 12, fontFamily: MONO,
             transition: "background 0.15s",
           }}
+          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
         >
           <Icon name="account_circle" size={20} style={{ color: "rgba(255,255,255,0.7)" }} />
           User Profile
@@ -228,7 +257,7 @@ function BottomNav() {
 }
 
 // ─── TopBar ───────────────────────────────────────────────────────────────────
-function TopBar({ onMenuClick, search, setSearch, onReportIssue }) {
+function TopBar({ onMenuClick, search, setSearch, onReportIssue, onSettings }) {
   const isMobile = useIsMobile();
   return (
     <header style={{
@@ -279,7 +308,7 @@ function TopBar({ onMenuClick, search, setSearch, onReportIssue }) {
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 2, paddingLeft: isMobile ? 0 : 12, borderLeft: isMobile ? "none" : `1px solid ${C.outlineVariant}` }}>
           {!isMobile && (
-            <button style={{
+            <button onClick={onSettings} style={{
               background: "none", border: "none", cursor: "pointer",
               padding: 8, color: C.onSurfaceVariant, display: "flex",
               borderRadius: "50%", transition: "color 0.15s",
@@ -287,12 +316,16 @@ function TopBar({ onMenuClick, search, setSearch, onReportIssue }) {
               <Icon name="settings" size={22} />
             </button>
           )}
-          <div style={{
-            width: isMobile ? 30 : 34, height: isMobile ? 30 : 34, borderRadius: "50%",
-            background: C.surfaceDim, border: `1px solid ${C.outline}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontWeight: 700, color: C.onSurface, fontSize: 14, marginLeft: isMobile ? 0 : 6, flexShrink: 0,
-          }}>S</div>
+          <button
+            onClick={onSettings}
+            style={{
+              width: isMobile ? 30 : 34, height: isMobile ? 30 : 34, borderRadius: "50%",
+              background: C.surfaceDim, border: `1px solid ${C.outline}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontWeight: 700, color: C.onSurface, fontSize: 14, marginLeft: isMobile ? 0 : 6, flexShrink: 0,
+              cursor: "pointer",
+            }}
+          >S</button>
         </div>
       </div>
     </header>
@@ -300,7 +333,7 @@ function TopBar({ onMenuClick, search, setSearch, onReportIssue }) {
 }
 
 // ─── Welcome Banner — live counts, no hardcoded numbers ───────────────────────
-function WelcomeBanner({ requests, isMobile, onViewRequests, onFileRequest }) {
+function WelcomeBanner({ requests, isMobile, firstName, onViewRequests, onFileRequest }) {
   const emergencyCount = requests.filter((r) => r.priority === "Emergency").length;
   const inProgressCount = requests.filter((r) => r.status === "In Progress").length;
 
@@ -346,7 +379,7 @@ function WelcomeBanner({ requests, isMobile, onViewRequests, onFileRequest }) {
       {/* Text */}
       <div style={{ position: "relative", zIndex: 1 }}>
         <h2 style={{ margin: "0 0 10px", fontSize: isMobile ? 20 : 28, fontWeight: 700, lineHeight: 1.2 }}>
-          {getGreeting()}, Staff Member
+          {getGreeting()}, {firstName}
         </h2>
         <p style={{ margin: 0, fontSize: isMobile ? 13 : 15, color: "rgba(255,255,255,0.80)", maxWidth: 560, lineHeight: 1.65 }}>
           {requests.length === 0
@@ -398,7 +431,7 @@ function PulseDot({ color = C.error, size = 8 }) {
 }
 
 // ─── Stat Card — values derived live, no hardcoded numbers ────────────────────
-function StatCard({ card }) {
+function StatCard({ card, loading }) {
   const [hov, setHov] = useState(false);
   return (
     <div
@@ -431,9 +464,13 @@ function StatCard({ card }) {
             <Icon name={card.icon} size={18} style={{ color: card.iconColor }} />
           </div>
         </div>
-        <div style={{ fontSize: 30, fontWeight: 700, color: card.valueColor || C.onSurface }}>
-          {card.value}
-        </div>
+        {loading ? (
+          <div style={{ width: 48, height: 30, background: C.surfaceContainerLow, borderRadius: 6, animation: "pulse 1.5s ease-in-out infinite" }} />
+        ) : (
+          <div style={{ fontSize: 30, fontWeight: 700, color: card.valueColor || C.onSurface }}>
+            {card.value}
+          </div>
+        )}
       </div>
       <div style={{ fontSize: 11, fontFamily: MONO, fontWeight: 700, color: card.trendColor, marginTop: 8 }}>
         {card.trend}
@@ -465,11 +502,11 @@ function MiniBarChart({ monthlyData }) {
           }}
         >
           <option>Last 6 Months</option>
-          <option>Last Year</option>
+          <option disabled>Last Year (coming soon)</option>
         </select>
       </div>
 
-      {monthlyData.length === 0 ? (
+      {monthlyData.every((m) => m.count === 0) ? (
         <div style={{ height: 160, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: C.onSurfaceVariant }}>
           <Icon name="bar_chart" size={32} style={{ color: C.outlineVariant }} />
           <span style={{ fontSize: 12, fontFamily: MONO }}>No request data yet</span>
@@ -542,11 +579,11 @@ function MiniBarChart({ monthlyData }) {
 }
 
 // ─── Recent Requests Table ────────────────────────────────────────────────────
-function RecentRequests({ requests, search, onViewAll }) {
+function RecentRequests({ requests, search, onViewAll, onRowClick, loading }) {
   const filtered = useMemo(() => requests.filter((r) => {
     const q = search.toLowerCase();
     return !q || [r.id, r.category, r.location, r.priority, r.status]
-      .some((f) => f.toLowerCase().includes(q));
+      .some((f) => String(f).toLowerCase().includes(q));
   }), [requests, search]);
 
   return (
@@ -570,7 +607,12 @@ function RecentRequests({ requests, search, onViewAll }) {
       </div>
 
       {/* Table */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+          {[1, 2, 3].map((i) => <div key={i} style={{ height: 56, background: C.surfaceContainerLow, borderRadius: 8, animation: "pulse 1.5s ease-in-out infinite" }} />)}
+          <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}`}</style>
+        </div>
+      ) : filtered.length === 0 ? (
         <div style={{ padding: 40, textAlign: "center", color: C.onSurfaceVariant }}>
           <Icon name="inbox" size={32} style={{ display: "block", margin: "0 auto 10px", color: C.outlineVariant }} />
           {requests.length === 0 ? "No requests filed yet." : "No requests match your search."}
@@ -592,11 +634,11 @@ function RecentRequests({ requests, search, onViewAll }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((req) => {
+              {filtered.slice(0, 8).map((req) => {
                 const prCfg = PRIORITY_CFG[req.priority] || PRIORITY_CFG.Medium;
                 const stCfg = STATUS_CFG[req.status]   || STATUS_CFG["Pending"];
                 return (
-                  <TableRow key={req.id} req={req} prCfg={prCfg} stCfg={stCfg} />
+                  <TableRow key={req.id} req={req} prCfg={prCfg} stCfg={stCfg} onRowClick={onRowClick} />
                 );
               })}
             </tbody>
@@ -607,14 +649,13 @@ function RecentRequests({ requests, search, onViewAll }) {
   );
 }
 
-function TableRow({ req, prCfg, stCfg }) {
+function TableRow({ req, prCfg, stCfg, onRowClick }) {
   const [hov, setHov] = useState(false);
-  const navigate = useNavigate();
   return (
     <tr
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
-      onClick={() => navigate("/staff/maintenance-requests")}
+      onClick={() => onRowClick(req)}
       style={{
         borderTop: `1px solid ${C.outlineVariant}`,
         background: hov ? `${C.surfaceContainerLow}80` : "transparent",
@@ -622,13 +663,13 @@ function TableRow({ req, prCfg, stCfg }) {
       }}
     >
       <td style={{ padding: "16px 24px", fontSize: 12, fontFamily: MONO, color: C.primary, fontWeight: 600, whiteSpace: "nowrap" }}>
-        {req.id}
+        #{req.id}
       </td>
       <td style={{ padding: "16px 24px", fontSize: 14, fontWeight: 600, color: C.onSurface }}>
-        {req.category}
+        {req.category || "—"}
       </td>
       <td style={{ padding: "16px 24px", fontSize: 14, color: C.onSurfaceVariant }}>
-        {req.location}
+        {req.location || "—"}
       </td>
       <td style={{ padding: "16px 24px" }}>
         <span style={{
@@ -652,7 +693,7 @@ function TableRow({ req, prCfg, stCfg }) {
       </td>
       <td style={{ padding: "16px 24px", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
         <button
-          onClick={() => navigate("/staff/maintenance-requests")}
+          onClick={() => onRowClick(req)}
           style={{
             background: "none", border: "none", cursor: "pointer",
             padding: 4, color: C.onSurfaceVariant, display: "flex",
@@ -670,15 +711,19 @@ function TableRow({ req, prCfg, stCfg }) {
 export default function StaffDashboardPage() {
   const isMobile = useIsMobile();
   const navigate  = useNavigate();
+  const { user, profile } = useAuth();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [search, setSearch]         = useState("");
+  const [loading, setLoading]       = useState(true);
 
-  // Starts empty — populate from Supabase. No test data.
-  const [requests, setRequests] = useState([]);
+  // Loaded for real from Supabase — starts empty until fetch resolves.
+  const [requests, setRequests]               = useState([]);
   const [departmentCount, setDepartmentCount] = useState(0);
-  const [totalAssets, setTotalAssets] = useState(0);
-  const [monthlyData, setMonthlyData] = useState([]); // [{ month, count, pct, active }]
+  const [totalAssets, setTotalAssets]         = useState(0);
+
+  const firstName = profile?.full_name?.split(" ")[0] || "Staff Member";
+  const department = profile?.department || null;
 
   useEffect(() => {
     ["aatu-fonts", "aatu-icons"].forEach((id, i) => {
@@ -694,12 +739,74 @@ export default function StaffDashboardPage() {
     });
   }, []);
 
+  // ── Fetch — requests for this staff member's department, plus their own ────
+  const fetchDashboardData = useCallback(async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      // Requests query — scoped by department if known, otherwise falls back
+      // to just this staff member's own submitted requests. RLS on the
+      // `requests` table should already enforce the same boundary server-side.
+      let query = supabase
+        .from("requests")
+        .select("id, title, category, priority, status, location, department, created_by, created_at")
+        .order("created_at", { ascending: false });
+
+      query = department
+        ? query.or(`department.eq.${department},created_by.eq.${user.id}`)
+        : query.eq("created_by", user.id);
+
+      const { data: reqData, error: reqError } = await query;
+      if (reqError) throw reqError;
+      setRequests(reqData ?? []);
+
+      // Department count — total distinct departments in the org, if you
+      // track a separate departments table; otherwise this stays 0 safely.
+      const { count: deptCount, error: deptError } = await supabase
+        .from("departments")
+        .select("*", { count: "exact", head: true });
+      if (!deptError) setDepartmentCount(deptCount ?? 0);
+
+      // Total assets — scoped to this staff member's department if available.
+      let assetQuery = supabase.from("assets").select("*", { count: "exact", head: true });
+      if (department) assetQuery = assetQuery.eq("department", department);
+      const { count: assetCount, error: assetError } = await assetQuery;
+      if (!assetError) setTotalAssets(assetCount ?? 0);
+    } catch (err) {
+      console.error("Staff dashboard fetch error:", err);
+      setRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id, department]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // ── Realtime — refetch when requests in this department change ─────────────
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel("staff-dashboard-requests")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "requests" },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [user?.id, fetchDashboardData]);
+
   // ── Live-derived stats — no hardcoded numbers ──────────────────────────────
   const totalRequests = requests.length;
   const emergencyCount = requests.filter((r) => r.priority === "Emergency").length;
   const inProgressCount = requests.filter((r) => r.status === "In Progress").length;
   const pendingCount = requests.filter((r) => r.status === "Pending").length;
   const completedCount = requests.filter((r) => r.status === "Completed").length;
+
+  const monthlyData = useMemo(() => buildMonthlyData(requests), [requests]);
 
   const statCards = [
     {
@@ -726,7 +833,8 @@ export default function StaffDashboardPage() {
     },
     {
       label: "Total Assets", value: totalAssets, icon: "category",
-      trend: "Main Campus Hub", trendColor: C.onSurfaceVariant,
+      trend: department ? department : "Main Campus Hub",
+      trendColor: C.onSurfaceVariant,
       iconBg: C.surfaceContainerHigh, iconColor: C.primary,
       borderLeft: "none",
     },
@@ -762,7 +870,8 @@ export default function StaffDashboardPage() {
           onMenuClick={() => setDrawerOpen(true)}
           search={search}
           setSearch={setSearch}
-          onReportIssue={() => navigate("/staff/maintenance-requests")}
+          onReportIssue={() => navigate("/staff/requests")}
+          onSettings={() => navigate("/staff/profile")}
         />
 
         <div style={{
@@ -775,8 +884,9 @@ export default function StaffDashboardPage() {
           <WelcomeBanner
             requests={requests}
             isMobile={isMobile}
-            onViewRequests={() => navigate("/staff/maintenance-requests")}
-            onFileRequest={() => navigate("/staff/maintenance-requests")}
+            firstName={firstName}
+            onViewRequests={() => navigate("/staff/requests")}
+            onFileRequest={() => navigate("/staff/requests")}
           />
 
           {/* Primary Stat Cards */}
@@ -785,7 +895,7 @@ export default function StaffDashboardPage() {
             gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)",
             gap: isMobile ? 12 : 20,
           }}>
-            {statCards.map((c, i) => <StatCard key={i} card={c} />)}
+            {statCards.map((c, i) => <StatCard key={i} card={c} loading={loading} />)}
           </div>
 
           {/* Secondary Stats + Bar Chart */}
@@ -830,7 +940,9 @@ export default function StaffDashboardPage() {
           <RecentRequests
             requests={requests}
             search={search}
-            onViewAll={() => navigate("/staff/maintenance-requests")}
+            loading={loading}
+            onViewAll={() => navigate("/staff/requests")}
+            onRowClick={() => navigate("/staff/requests")}
           />
 
         </div>
