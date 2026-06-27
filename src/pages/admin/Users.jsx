@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { X, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
-// ─── Nav config ───────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { icon: 'dashboard',     label: 'Dashboard',     path: '/admin/dashboard' },
   { icon: 'list_alt',      label: 'Requests',      path: '/admin/requests' },
@@ -50,11 +49,11 @@ function avatarColor(id = '') {
 function mapUser(row) {
   return {
     id:        row.id,
-    name:      row.full_name   || '—',
-    role:      row.role        || 'student',
-    dept:      row.department  || '—',
-    status:    row.status      || 'Active',
-    specialty: row.specialty   || null,
+    name:      row.full_name     || '—',
+    role:      row.role          || 'student',
+    dept:      row.department    || '—',
+    status:    row.status        || 'Active',
+    specialty: row.specialty     || null,
     matric:    row.matric_number || null,
     joined:    row.created_at
       ? new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
@@ -72,6 +71,79 @@ function useIsMobile() {
   return mobile
 }
 
+// ─── Confirm Delete Modal ─────────────────────────────────────────────────────
+function ConfirmDeleteModal({ user, onClose, onConfirm, deleting }) {
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70]" onClick={onClose} />
+      <div className="fixed inset-0 z-[71] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+
+          {/* Header */}
+          <div className="bg-[#ba1a1a] px-6 py-5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-white text-[20px]"
+                style={{ fontVariationSettings: "'FILL' 1" }}>delete_forever</span>
+            </div>
+            <div>
+              <h2 className="text-white font-bold text-base">Delete User</h2>
+              <p className="text-white/70 text-xs font-mono mt-0.5">This action cannot be undone</p>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-4">
+            {/* User info */}
+            <div className="flex items-center gap-3 p-3 bg-[#f9f9ff] border border-[#dcc0bd] rounded-xl">
+              <div className="w-10 h-10 rounded-full bg-[#ffdad5] flex items-center justify-center font-bold text-[#4a0404] text-sm flex-shrink-0">
+                {initials(user.name)}
+              </div>
+              <div>
+                <p className="font-bold text-[#151c27] text-sm">{user.name}</p>
+                <p className="text-xs font-mono text-[#554240]">{user.role} · {user.dept}</p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 p-3 bg-[#ffdad6]/30 border border-[#ffdad6] rounded-lg">
+              <span className="material-symbols-outlined text-[#ba1a1a] text-[16px] flex-shrink-0 mt-0.5"
+                style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+              <p className="text-[11px] text-[#93000a] leading-relaxed">
+                This will permanently delete <strong>{user.name}'s</strong> account, profile, and all associated data from the database. This cannot be reversed.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={onClose}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onConfirm}
+                disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#ba1a1a] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 disabled:opacity-60 transition-opacity"
+              >
+                {deleting ? (
+                  <>
+                    <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">delete_forever</span>
+                    Yes, Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ─── Add User Modal ───────────────────────────────────────────────────────────
 function AddUserModal({ onClose, onAdded, showToast }) {
   const [form, setForm] = useState({
@@ -82,9 +154,9 @@ function AddUserModal({ onClose, onAdded, showToast }) {
     department: '',
     specialty:  '',
   })
-  const [saving,  setSaving]  = useState(false)
-  const [error,   setError]   = useState('')
-  const [showPw,  setShowPw]  = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error,  setError]  = useState('')
+  const [showPw, setShowPw] = useState(false)
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
 
@@ -136,7 +208,7 @@ function AddUserModal({ onClose, onAdded, showToast }) {
         matric:    null,
         joined:    new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       })
-      showToast('User created successfully.')
+      showToast('User created. A password setup link has been sent to their email.')
       onClose()
     } catch (err) {
       console.error('Add user error:', err)
@@ -155,7 +227,6 @@ function AddUserModal({ onClose, onAdded, showToast }) {
       <div className="fixed inset-0 z-[61] flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
 
-          {/* Header */}
           <div className="bg-[#4a0404] px-6 py-5 flex items-center justify-between">
             <div>
               <h2 className="text-white font-bold text-lg">Add New User</h2>
@@ -166,7 +237,6 @@ function AddUserModal({ onClose, onAdded, showToast }) {
             </button>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
             {error && (
               <div className="flex items-center gap-2 text-xs text-[#ba1a1a] bg-[#ffdad6]/40 border border-[#ffdad6] rounded-lg px-3 py-2">
@@ -177,18 +247,16 @@ function AddUserModal({ onClose, onAdded, showToast }) {
 
             <div>
               <label className={lbl}>Full Name *</label>
-              <input value={form.full_name} onChange={set('full_name')}
-                placeholder="e.g. John Doe" className={inp} required />
+              <input value={form.full_name} onChange={set('full_name')} placeholder="e.g. John Doe" className={inp} required />
             </div>
 
             <div>
               <label className={lbl}>Email Address *</label>
-              <input type="email" value={form.email} onChange={set('email')}
-                placeholder="e.g. john@aatu.edu.ng" className={inp} required />
+              <input type="email" value={form.email} onChange={set('email')} placeholder="e.g. john@aatu.edu.ng" className={inp} required />
             </div>
 
             <div>
-              <label className={lbl}>Password *</label>
+              <label className={lbl}>Temporary Password *</label>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
@@ -205,9 +273,6 @@ function AddUserModal({ onClose, onAdded, showToast }) {
                   </span>
                 </button>
               </div>
-              <p className="text-[11px] text-[#554240]/60 mt-1">
-                Share this temporary password with the user so they can log in.
-              </p>
             </div>
 
             <div>
@@ -221,23 +286,20 @@ function AddUserModal({ onClose, onAdded, showToast }) {
 
             <div>
               <label className={lbl}>Department</label>
-              <input value={form.department} onChange={set('department')}
-                placeholder="e.g. Computer Science" className={inp} />
+              <input value={form.department} onChange={set('department')} placeholder="e.g. Computer Science" className={inp} />
             </div>
 
             {form.role === 'technician' && (
               <div>
                 <label className={lbl}>Specialty</label>
-                <input value={form.specialty} onChange={set('specialty')}
-                  placeholder="e.g. Electrical, Plumbing" className={inp} />
+                <input value={form.specialty} onChange={set('specialty')} placeholder="e.g. Electrical, Plumbing" className={inp} />
               </div>
             )}
 
-            {/* Info note */}
             <div className="flex gap-2 p-3 bg-[#f0f3ff] border border-[#dcc0bd] rounded-lg">
               <span className="material-symbols-outlined text-[#554240] text-[16px] flex-shrink-0 mt-0.5">info</span>
               <p className="text-[11px] text-[#554240] leading-relaxed">
-                The user will receive their email and password from you directly. They can change their password after logging in via Account Settings.
+                A password setup link will be sent to the user's email automatically. They must click the link and set a new password before accessing their portal.
               </p>
             </div>
 
@@ -343,18 +405,20 @@ export default function Users() {
   const isMobile = useIsMobile()
   const navigate  = useNavigate()
 
-  const [drawerOpen,   setDrawerOpen]   = useState(false)
-  const [addUserOpen,  setAddUserOpen]  = useState(false)
-  const [users,        setUsers]        = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [search,       setSearch]       = useState('')
-  const [roleFilter,   setRole]         = useState('All')
-  const [page,         setPage]         = useState(1)
-  const [selected,     setSelected]     = useState(null)
-  const [editing,      setEditing]      = useState(null)
-  const [studentMenu,  setStudentMenu]  = useState(null)
-  const [toast,        setToast]        = useState(null)
-  const [saving,       setSaving]       = useState(false)
+  const [drawerOpen,    setDrawerOpen]    = useState(false)
+  const [addUserOpen,   setAddUserOpen]   = useState(false)
+  const [users,         setUsers]         = useState([])
+  const [loading,       setLoading]       = useState(true)
+  const [search,        setSearch]        = useState('')
+  const [roleFilter,    setRole]          = useState('All')
+  const [page,          setPage]          = useState(1)
+  const [selected,      setSelected]      = useState(null)
+  const [editing,       setEditing]       = useState(null)
+  const [studentMenu,   setStudentMenu]   = useState(null)
+  const [toast,         setToast]         = useState(null)
+  const [saving,        setSaving]        = useState(false)
+  const [deleteTarget,  setDeleteTarget]  = useState(null)  // user to delete
+  const [deleting,      setDeleting]      = useState(false)
 
   useEffect(() => {
     ['aatu-fonts', 'aatu-icons'].forEach((id, i) => {
@@ -410,7 +474,7 @@ export default function Users() {
 
   function showToast(msg, isError = false) {
     setToast({ msg, isError })
-    setTimeout(() => setToast(null), 3000)
+    setTimeout(() => setToast(null), 3500)
   }
 
   function handleUserAdded(newUser) {
@@ -449,13 +513,41 @@ export default function Users() {
     showToast('User updated successfully.')
   }
 
-  async function deactivateUser(id) {
-    const { error } = await supabase.from('profiles').update({ status: 'Inactive' }).eq('id', id)
-    if (error) { showToast('Failed to deactivate user.', true); return }
-    setUsers(p => p.map(u => u.id === id ? { ...u, status: 'Inactive' } : u))
-    if (selected?.id === id) setSelected(null)
-    setStudentMenu(null)
-    showToast('User deactivated.')
+  // ── Delete user via Edge Function ──────────────────────────────────────────
+  async function handleDeleteUser() {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ user_id: deleteTarget.id }),
+        }
+      )
+
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Failed to delete user')
+
+      // Remove from local state
+      setUsers(prev => prev.filter(u => u.id !== deleteTarget.id))
+      if (selected?.id === deleteTarget.id) setSelected(null)
+      setDeleteTarget(null)
+      setStudentMenu(null)
+      showToast(`${deleteTarget.name} has been permanently deleted.`)
+    } catch (err) {
+      console.error('Delete user error:', err)
+      showToast(err.message || 'Failed to delete user. Try again.', true)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const inp = 'w-full px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4a0404]/20 bg-white'
@@ -520,7 +612,6 @@ export default function Users() {
               <p className="text-[#554240] mt-1 text-sm">All registered users from the database.</p>
             </div>
             <div className="flex gap-2 flex-wrap">
-              {/* ── Add User Button ─────────────────────────────────── */}
               <button
                 onClick={() => setAddUserOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-[#4a0404] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 transition-opacity"
@@ -528,7 +619,6 @@ export default function Users() {
                 <span className="material-symbols-outlined text-[18px]">person_add</span>
                 {!isMobile && 'Add User'}
               </button>
-
               <select
                 value={roleFilter}
                 onChange={e => { setRole(e.target.value); setPage(1) }}
@@ -588,6 +678,7 @@ export default function Users() {
                         </span>
                       </div>
 
+                      {/* Admin / Staff / Technician rows */}
                       {key !== 'student' && (
                         <div className="bg-white border border-[#dcc0bd] rounded-xl overflow-hidden divide-y divide-[#dcc0bd] shadow-sm">
                           {list.map(u => (
@@ -606,12 +697,20 @@ export default function Users() {
                                   <span className="text-xs font-mono text-[#554240]">{u.status}</span>
                                 </div>
                                 <div className="flex gap-0.5">
-                                  <button onClick={() => setEditing({ ...u })} className="p-2 text-[#554240] hover:text-[#210000] hover:bg-[#e7eefe] rounded-full transition-colors" title="Edit">
+                                  <button onClick={() => setEditing({ ...u })}
+                                    className="p-2 text-[#554240] hover:text-[#210000] hover:bg-[#e7eefe] rounded-full transition-colors" title="Edit">
                                     <span className="material-symbols-outlined text-[18px]">edit</span>
                                   </button>
-                                  <button onClick={() => deactivateUser(u.id)} className="p-2 text-[#554240] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors" title="Deactivate">
-                                    <span className="material-symbols-outlined text-[18px]">person_off</span>
-                                  </button>
+                                  {/* Delete button — hidden for admins */}
+                                  {u.role !== 'admin' && (
+                                    <button
+                                      onClick={() => setDeleteTarget(u)}
+                                      className="p-2 text-[#554240] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors"
+                                      title="Delete user permanently"
+                                    >
+                                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -619,6 +718,7 @@ export default function Users() {
                         </div>
                       )}
 
+                      {/* Students — card grid */}
                       {key === 'student' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {list.map(u => (
@@ -651,6 +751,13 @@ export default function Users() {
                                     <button onClick={() => { toggleStatus(u.id); setStudentMenu(null) }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f0f3ff] flex items-center gap-2">
                                       <span className="material-symbols-outlined text-[16px]">toggle_on</span>
                                       {u.status === 'Active' ? 'Deactivate' : 'Activate'}
+                                    </button>
+                                    {/* Delete option in student menu */}
+                                    <button
+                                      onClick={() => { setDeleteTarget(u); setStudentMenu(null) }}
+                                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#ffdad6] text-[#ba1a1a] flex items-center gap-2"
+                                    >
+                                      <span className="material-symbols-outlined text-[16px]">delete</span> Delete
                                     </button>
                                   </div>
                                 )}
@@ -717,6 +824,16 @@ export default function Users() {
         />
       )}
 
+      {/* ── Confirm Delete Modal ────────────────────────────────────────── */}
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          user={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleDeleteUser}
+          deleting={deleting}
+        />
+      )}
+
       {/* ── User Detail Modal ───────────────────────────────────────────── */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
@@ -760,6 +877,16 @@ export default function Users() {
                   className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-mono hover:opacity-90 transition-opacity ${selected.status === 'Active' ? 'bg-[#ffdad6] text-[#93000a]' : 'bg-[#b8ecbe] text-[#1a3d25]'}`}>
                   {selected.status === 'Active' ? 'Deactivate' : 'Activate'}
                 </button>
+                {/* Delete button in detail modal — only for non-admins */}
+                {selected.role !== 'admin' && (
+                  <button
+                    onClick={() => { setDeleteTarget(selected); setSelected(null) }}
+                    className="flex items-center justify-center gap-1 px-4 py-2.5 bg-[#ffdad6] text-[#93000a] rounded-lg text-sm font-mono hover:opacity-90 transition-opacity"
+                    title="Delete permanently"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

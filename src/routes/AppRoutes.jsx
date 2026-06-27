@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Profile from '../pages/shared/Profile'
+import ChangePassword from '../pages/shared/ChangePassword'
 
 // Auth pages
 import Login from '../pages/auth/Login'
@@ -85,6 +86,9 @@ export default function AppRoutes() {
             : <Navigate to="/login" replace />
         }
       />
+
+      {/* Change Password route */}
+      <Route path="/change-password" element={<ChangePassword />} />
 
       {/* Auth routes */}
       <Route path="/login" element={<Login />} />
