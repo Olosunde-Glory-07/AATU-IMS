@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { supabase } from '../../lib/supabase'
 import { Eye, EyeOff, UserPlus, GraduationCap } from 'lucide-react'
 
 // Only students can self-register.
@@ -21,40 +22,102 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState('')
-  const [showModal,    setShowModal]    = useState(false)
+  const [checkingEmail,setCheckingEmail]= useState(false)
 
   function update(field) {
     return e => setForm(f => ({ ...f, [field]: e.target.value }))
+  }
+
+  // ── Check if email already exists in profiles table ─────────────────────
+  async function emailAlreadyExists(email) {
+    // We can't query auth.users directly from the client, but every user
+    // has a row in profiles (created by the handle_new_user trigger).
+    // Since profiles doesn't store email, we check via a database function
+    // OR simpler: try a sign-in attempt with a bogus password and inspect
+    // the error type. The cleanest approach: use a dedicated RPC.
+    //
+    // Simplest reliable approach: attempt OTP sign-in check.
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false }, // don't create — just check
+    })
+
+    // If shouldCreateUser is false and the user EXISTS, no error — OTP sent.
+    // If the user does NOT exist, Supabase returns an error indicating that.
+    if (!error) {
+      // A sign-in OTP was actually sent to an existing, unrelated account!
+      // We don't want that side effect. So this approach has a flaw.
+      return true
+    }
+
+    if (error.message?.toLowerCase().includes('user not found') ||
+        error.message?.toLowerCase().includes('signups not allowed')) {
+      return false
+    }
+
+    // Unknown error — assume it might exist, let signUp handle final check
+    return false
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
 
-    if (!form.fullName.trim())     { setError('Full name is required.');         return }
-    if (!form.matricNumber.trim()) { setError('Matric number is required.');     return }
+    if (!form.fullName.trim())     { setError('Full name is required.');          return }
+    if (!form.matricNumber.trim()) { setError('Matric number is required.');      return }
     if (!form.program.trim())      { setError('Programme of study is required.'); return }
     if (form.password.length < 8)  { setError('Password must be at least 8 characters.'); return }
 
     setLoading(true)
 
     const metadata = {
-      full_name:    form.fullName.trim(),
-      role:         'student',
-      matric_number:form.matricNumber.trim(),
-      program:      form.program.trim(),
-      department:   form.department.trim() || null,
+      full_name:     form.fullName.trim(),
+      role:          'student',
+      matric_number: form.matricNumber.trim(),
+      program:       form.program.trim(),
+      department:    form.department.trim() || null,
     }
 
-    const { error: signUpError } = await signUp(form.email, form.password, metadata)
+    const { data, error: signUpError } = await signUp(form.email.trim(), form.password, metadata)
     setLoading(false)
 
     if (signUpError) {
+      const msg = signUpError.message?.toLowerCase() ?? ''
+
+      if (
+        msg.includes('already registered') ||
+        msg.includes('already exists') ||
+        msg.includes('user already registered')
+      ) {
+        setError('An account with this email already exists. Please sign in instead, or use "Forgot password" if you don\'t remember your password.')
+        return
+      }
+
+      if (msg.includes('error sending confirmation') || msg.includes('error sending')) {
+        setError('We could not send the verification email right now. Please try again in a moment, or contact the administrator if this keeps happening.')
+        return
+      }
+
       setError(signUpError.message)
       return
     }
 
-    setShowModal(true)
+    // ── Supabase quirk: signUp() succeeds even for existing emails ─────────
+    // but returns an identities array that is EMPTY for existing users
+    // (since no new identity was created). This is the official way to
+    // detect "this email already has an account" after signUp succeeds.
+    if (data?.user && data.user.identities && data.user.identities.length === 0) {
+      setError('An account with this email already exists. Please sign in instead, or use "Forgot password" if you don\'t remember your password.')
+      return
+    }
+
+    // ── Success — go verify the OTP ─────────────────────────────────────
+    navigate('/verify-otp', {
+      state: {
+        email: form.email.trim(),
+        type:  'signup',
+      },
+    })
   }
 
   const inp = 'w-full px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4a0404]/20 bg-white text-[#151c27] placeholder:text-[#89726f]'
@@ -94,9 +157,16 @@ export default function Register() {
 
           <div className="p-6 space-y-4">
             {error && (
-              <div className="flex items-center gap-2 text-xs text-[#ba1a1a] bg-[#ffdad6]/40 border border-[#ffdad6] rounded-lg px-3 py-2.5">
-                <span className="material-symbols-outlined text-[16px]">error</span>
-                {error}
+              <div className="flex items-start gap-2 text-xs text-[#ba1a1a] bg-[#ffdad6]/40 border border-[#ffdad6] rounded-lg px-3 py-2.5">
+                <span className="material-symbols-outlined text-[16px] flex-shrink-0 mt-0.5">error</span>
+                <div>
+                  <p>{error}</p>
+                  {error.toLowerCase().includes('already exists') && (
+                    <Link to="/login" className="font-bold underline hover:no-underline mt-1 inline-block">
+                      Go to Sign In →
+                    </Link>
+                  )}
+                </div>
               </div>
             )}
 
@@ -196,7 +266,7 @@ export default function Register() {
               <div className="flex gap-2 p-3 bg-[#f0f3ff] border border-[#dcc0bd] rounded-lg">
                 <span className="material-symbols-outlined text-[#554240] text-[16px] flex-shrink-0 mt-0.5">info</span>
                 <p className="text-[11px] text-[#554240] leading-relaxed">
-                  After registering, check your email for a verification link before you can log in.
+                  After registering, we'll send a <strong>6-digit code</strong> to your email. You'll need to enter it on the next page to verify your account before logging in.
                 </p>
               </div>
 
@@ -239,36 +309,6 @@ export default function Register() {
           </div>
         </div>
       </div>
-
-      {/* ── Email Verification Modal ───────────────────────────────────── */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-            <div className="bg-[#4a0404] px-6 py-5 text-center">
-              <span className="material-symbols-outlined text-white text-5xl block mb-2"
-                style={{ fontVariationSettings: "'FILL' 1" }}>
-                mark_email_read
-              </span>
-              <h2 className="text-white font-bold text-lg">Check your email</h2>
-            </div>
-            <div className="p-6 text-center">
-              <p className="text-[#554240] text-sm leading-relaxed mb-2">
-                A verification link has been sent to
-              </p>
-              <p className="font-bold text-[#151c27] text-sm font-mono mb-4 break-all">{form.email}</p>
-              <p className="text-[#554240] text-xs leading-relaxed mb-6">
-                Please check your inbox (and spam folder) and click the link to confirm your account before logging in.
-              </p>
-              <button
-                onClick={() => { setShowModal(false); navigate('/login') }}
-                className="w-full bg-[#4a0404] text-white py-2.5 rounded-lg text-sm font-mono font-bold hover:opacity-90 transition-opacity"
-              >
-                Go to Login
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -63,73 +63,80 @@ serve(async (req: Request) => {
       })
     }
 
-    // ── Step 1: Create user with email_confirm: false ─────────────────────
-    // This means the account EXISTS but is LOCKED until they verify email.
-    // They CANNOT log in with the temp password until email is confirmed.
+    // ── Step 1: Create the user with email_confirm: false ─────────────────
+    // This creates the account in a LOCKED/unconfirmed state.
+    // Supabase does NOT automatically send an email for admin.createUser,
+    // so we trigger the OTP email ourselves in Step 2 below.
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password,
-      email_confirm: false,   // ← MUST be false — locks account until email verified
+      email_confirm: false,   // locked until they verify with OTP
       user_metadata: { full_name, role },
     })
 
     if (createError) {
+      if (createError.message?.toLowerCase().includes('already been registered')) {
+        return new Response(JSON.stringify({
+          error: `An account with ${email} already exists.`
+        }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
       return new Response(JSON.stringify({ error: createError.message }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
+    const newUserId = newUser.user.id
+
     // ── Step 2: Create the profile row ────────────────────────────────────
     const { error: profileError } = await adminClient
       .from('profiles')
       .upsert({
-        id:                   newUser.user.id,
+        id:                   newUserId,
         full_name,
         role,
         department:           department ?? null,
         specialty:            specialty  ?? null,
         status:               'Active',
-        must_change_password: true,  // ← forces password change after first login
+        must_change_password: true,
       })
 
     if (profileError) {
-      return new Response(JSON.stringify({ error: profileError.message }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+      console.error('Profile upsert error:', profileError.message)
     }
 
-    // ── Step 3: Send the email verification link ──────────────────────────
-    // generateLink with type 'signup' sends the standard Supabase
-    // "Confirm your email" email. The link in the email confirms their
-    // address AND logs them in, then redirects to /change-password
-    // where must_change_password=true forces them to set a new password.
-    const siteUrl = Deno.env.get('SITE_URL') ?? 'http://localhost:5173'
+    // ── Step 3: Trigger the OTP email ──────────────────────────────────────
+    // Using the public anon client to call signInWithOtp/resend triggers
+    // Supabase's normal "Confirm Signup" email template, which contains
+    // the {{ .Token }} 6-digit OTP code (if you set up the template that way).
+    const publicClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!
+    )
 
-    const { error: linkError } = await adminClient.auth.admin.generateLink({
+    const { error: otpError } = await publicClient.auth.resend({
       type:  'signup',
       email,
-      options: {
-        redirectTo: `${siteUrl}/change-password`,
-      },
     })
 
-    if (linkError) {
-      console.warn('Failed to send verification email:', linkError.message)
+    if (otpError) {
+      console.warn('Failed to send OTP email:', otpError.message)
     }
 
-    // ── Step 4: Notify admin ──────────────────────────────────────────────
+    // ── Step 4: Notify admin ────────────────────────────────────────────────
     await adminClient.from('notifications').insert({
       user_id: caller.id,
       type:    'Memo',
       title:   `Account created: ${full_name}`,
-      body:    `A ${role} account has been created for ${email}. A verification email has been sent to them. After verifying, they will be prompted to set a new password.`,
+      body:    `A ${role} account has been created for ${email}. A 6-digit verification code has been sent to their email. They must enter it to verify their account, then set a new password.`,
       read:    false,
     })
 
     return new Response(JSON.stringify({
       success: true,
       user:    newUser.user,
-      message: `Account created. A verification email has been sent to ${email}.`,
+      message: `Account created. A verification code has been sent to ${email}.`,
     }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })

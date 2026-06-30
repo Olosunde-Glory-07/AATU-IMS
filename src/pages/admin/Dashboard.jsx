@@ -69,10 +69,15 @@ function Icon({ name, size = 22, filled = false, style = {} }) {
   );
 }
 
+// Single source of truth for the breakpoint. SSR-safe: defaults to false
+// (desktop) when window isn't available yet, then corrects on mount.
 function useIsMobile() {
-  const [mobile, setMobile] = useState(() => window.innerWidth < 768);
+  const [mobile, setMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
   useEffect(() => {
     const fn = () => setMobile(window.innerWidth < 768);
+    fn(); // re-check immediately on mount in case the initial value was stale
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
   }, []);
@@ -86,11 +91,10 @@ function getGreeting() {
   return "Good Evening";
 }
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
-function Sidebar({ open, onClose }) {
+// ─── Sidebar — isMobile passed down, NOT re-derived internally ────────────────
+function Sidebar({ open, onClose, isMobile }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const isMobile = useIsMobile();
 
   const content = (
     <aside style={{
@@ -370,7 +374,6 @@ export default function AdminDashboard() {
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Counts from requests table
       const [
         { count: total },
         { count: pending },
@@ -383,7 +386,6 @@ export default function AdminDashboard() {
         supabase.from("requests").select("id", { count: "exact", head: true }).eq("priority", "Emergency"),
       ]);
 
-      // 2. User counts from profiles
       const [
         { count: totalUsers },
         { count: technicians },
@@ -394,7 +396,6 @@ export default function AdminDashboard() {
         supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "student"),
       ]);
 
-      // 3. Active job orders (not completed/cancelled)
       const { count: activeJobs } = await supabase
         .from("job_orders")
         .select("id", { count: "exact", head: true })
@@ -402,7 +403,6 @@ export default function AdminDashboard() {
 
       setStats({ total, pending, completed, emergency, totalUsers, technicians, students, activeJobs });
 
-      // 4. Recent 5 requests
       const { data: recent } = await supabase
         .from("requests")
         .select("id, title, location, department, status, priority, created_at, reporter_name")
@@ -410,7 +410,6 @@ export default function AdminDashboard() {
         .limit(5);
       setRecentRequests(recent ?? []);
 
-      // 5. Monthly trend — last 6 months
       const months = [];
       for (let i = 5; i >= 0; i--) {
         const d = new Date();
@@ -427,7 +426,6 @@ export default function AdminDashboard() {
       );
       setMonthlyData(months.map((m, i) => ({ month: m.month, requests: monthCounts[i].count ?? 0 })));
 
-      // 6. Category breakdown
       const { data: catRows } = await supabase
         .from("requests")
         .select("category");
@@ -451,7 +449,6 @@ export default function AdminDashboard() {
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  // ── Filtered recent requests ───────────────────────────────────────────────
   const filteredRequests = recentRequests.filter((r) => {
     const q = search.toLowerCase();
     return !q || [r.title, r.location, r.department, r.status, r.priority, r.reporter_name]
@@ -476,7 +473,7 @@ export default function AdminDashboard() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: C.surface, fontFamily: SANS, color: C.onSurface }}>
-      <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} isMobile={isMobile} />
 
       <main style={{ marginLeft: isMobile ? 0 : 260, flex: 1, display: "flex", flexDirection: "column", paddingBottom: isMobile ? 60 : 0, minWidth: 0 }}>
 
@@ -508,9 +505,12 @@ export default function AdminDashboard() {
               <Icon name="notifications" size={22} />
               {stats.pending > 0 && <span style={{ position: "absolute", top: 4, right: 4, width: 7, height: 7, background: C.error, borderRadius: "50%" }} />}
             </button>
-            <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.surfaceContainer, border: `1px solid ${C.outlineVariant}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: C.onSurfaceVariant, fontSize: 14, flexShrink: 0 }}>
+            <button
+              onClick={() => navigate("/admin/profile")}
+              style={{ width: 34, height: 34, borderRadius: "50%", background: C.surfaceContainer, border: `1px solid ${C.outlineVariant}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: C.onSurfaceVariant, fontSize: 14, flexShrink: 0, cursor: "pointer" }}
+            >
               {adminName[0]?.toUpperCase()}
-            </div>
+            </button>
           </div>
         </header>
 
@@ -558,7 +558,6 @@ export default function AdminDashboard() {
 
           {/* ── Charts ────────────────────────────────────────────────────── */}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: isMobile ? 16 : 24, marginBottom: isMobile ? 24 : 32 }}>
-            {/* Bar chart — monthly trends */}
             <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Monthly Trends</h3>
@@ -586,7 +585,6 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* Donut chart — by category */}
             <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: 20 }}>
               <h3 style={{ margin: "0 0 16px", fontSize: 17, fontWeight: 700 }}>By Category</h3>
               {loading ? (

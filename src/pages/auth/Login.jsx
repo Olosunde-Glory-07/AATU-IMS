@@ -12,12 +12,10 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState('')
-  const [infoMsg,      setInfoMsg]      = useState('')
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    setInfoMsg('')
     setLoading(true)
 
     const { error, mustChangePassword } = await signIn(email, password)
@@ -26,16 +24,17 @@ export default function Login() {
     if (error) {
       const msg = error.message ?? ''
 
-      // ── Email not verified yet ────────────────────────────────────────
+      // ── Email not verified yet → redirect straight to OTP entry page ───
       if (
         msg.toLowerCase().includes('email not confirmed') ||
         msg.toLowerCase().includes('not confirmed')
       ) {
-        setInfoMsg(
-          'Your email address has not been verified yet. ' +
-          'Please check your inbox for a verification link and click it before logging in. ' +
-          'If you cannot find it, check your spam folder.'
-        )
+        navigate('/verify-otp', {
+          state: {
+            email: email.trim(),
+            type:  'signup',
+          }
+        })
         return
       }
 
@@ -66,7 +65,6 @@ export default function Login() {
 
   async function handleGoogle() {
     setError('')
-    setInfoMsg('')
     const { error } = await signInWithGoogle()
     if (error) setError(error.message)
   }
@@ -103,28 +101,6 @@ export default function Login() {
                 error
               </span>
               {error}
-            </div>
-          )}
-
-          {/* Info banner — email not verified */}
-          {infoMsg && (
-            <div className="mb-4 flex items-start gap-3 p-4 bg-[#EEF2FF] border border-[#c7d2fe] rounded-lg">
-              <span
-                className="material-symbols-outlined text-[#4338CA] text-[20px] flex-shrink-0 mt-0.5"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                mark_email_unread
-              </span>
-              <div>
-                <p className="font-bold text-[#3730A3] text-sm mb-1">Check your email</p>
-                <p className="text-[#4338CA] text-xs leading-relaxed">{infoMsg}</p>
-                <button
-                  onClick={() => handleResendVerification()}
-                  className="mt-2 text-xs font-mono font-bold text-[#4338CA] underline hover:text-[#3730A3] transition-colors"
-                >
-                  Resend verification email
-                </button>
-              </div>
             </div>
           )}
 
@@ -209,29 +185,4 @@ export default function Login() {
       </div>
     </div>
   )
-
-  // ── Resend verification email ──────────────────────────────────────────────
-  async function handleResendVerification() {
-    if (!email.trim()) {
-      setError('Please enter your email address above first.')
-      setInfoMsg('')
-      return
-    }
-    try {
-      const { createClient } = await import('@supabase/supabase-js')
-      const sb = createClient(
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      )
-      const { error } = await sb.auth.resend({ type: 'signup', email: email.trim() })
-      if (error) throw error
-      setInfoMsg(
-        'A new verification email has been sent to ' + email.trim() + '. ' +
-        'Please check your inbox and click the link to verify your account.'
-      )
-    } catch (err) {
-      setError('Could not resend verification email. Please try again.')
-      setInfoMsg('')
-    }
-  }
 }
