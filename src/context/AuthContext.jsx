@@ -4,8 +4,8 @@ import { supabase } from '../lib/supabase'
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)   // { role, full_name, matric_number, ... }
+  const [user,    setUser]    = useState(null)
+  const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -32,14 +32,31 @@ export function AuthProvider({ children }) {
       .select('*')
       .eq('id', userId)
       .single()
-
     if (!error) setProfile(data)
     setLoading(false)
   }
 
+  // ── Sign in with email + password ─────────────────────────────────────────
+  // Returns { error, mustChangePassword } so Login.jsx can handle each case
   async function signIn(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    return { data, error }
+
+    if (error) return { data: null, error, mustChangePassword: false }
+
+    // Check if this user must change their password on first login
+    // (set by admin when creating staff/technician accounts)
+    let mustChangePassword = false
+    if (data?.user) {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('must_change_password')
+        .eq('id', data.user.id)
+        .single()
+
+      mustChangePassword = prof?.must_change_password === true
+    }
+
+    return { data, error: null, mustChangePassword }
   }
 
   async function signInWithGoogle() {
@@ -50,6 +67,7 @@ export function AuthProvider({ children }) {
     return { data, error }
   }
 
+  // ── Sign up new user (students only) ──────────────────────────────────────
   async function signUp(email, password, metadata) {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -59,14 +77,26 @@ export function AuthProvider({ children }) {
     return { data, error }
   }
 
+  // ── Sign out ──────────────────────────────────────────────────────────────
   async function signOut() {
     await supabase.auth.signOut()
   }
 
+  // ── Reset password — sends OTP to email ───────────────────────────────────
   async function resetPassword(email) {
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`
-    })
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email)
+    return { data, error }
+  }
+
+  // ── Resend OTP for signup or recovery ─────────────────────────────────────
+  async function resendOtp(email, type = 'signup') {
+    const { data, error } = await supabase.auth.resend({ type, email })
+    return { data, error }
+  }
+
+  // ── Verify OTP code entered by user ───────────────────────────────────────
+  async function verifyOtp(email, token, type = 'signup') {
+    const { data, error } = await supabase.auth.verifyOtp({ email, token, type })
     return { data, error }
   }
 
@@ -74,12 +104,14 @@ export function AuthProvider({ children }) {
     user,
     profile,
     loading,
-    role: profile?.role ?? null,   // 'admin' | 'staff' | 'technician' | 'student'
+    role: profile?.role ?? null,
     signIn,
     signInWithGoogle,
     signUp,
     signOut,
     resetPassword,
+    resendOtp,
+    verifyOtp,
     fetchProfile,
   }
 
