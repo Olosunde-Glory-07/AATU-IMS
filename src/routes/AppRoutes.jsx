@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import Profile from '../pages/shared/Profile'
+
+// change password page
 import ChangePassword from '../pages/shared/ChangePassword'
 
 // Auth pages
