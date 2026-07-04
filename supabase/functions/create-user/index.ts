@@ -24,7 +24,6 @@ serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Verify caller is authenticated
     const userClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -38,7 +37,6 @@ serve(async (req: Request) => {
       })
     }
 
-    // Verify caller is admin
     const { data: callerProfile } = await adminClient
       .from('profiles')
       .select('role')
@@ -65,31 +63,11 @@ serve(async (req: Request) => {
       })
     }
 
-    // ── Step 1: Use signInWithOtp to create + send verification in one call ──
-    // This is the KEY fix — instead of admin.createUser (which doesn't send
-    // an email automatically), we use signInWithOtp with shouldCreateUser: true.
-    // Supabase will create the user AND send the 6-digit OTP to their email
-    // in a single call. The user account starts unconfirmed.
-    const publicClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!
-    )
-
-    // First check if user already exists
-    const { data: existingUsers } = await adminClient.auth.admin.listUsers()
-    const alreadyExists = existingUsers?.users?.some(u => u.email === email)
-
-    if (alreadyExists) {
-      return new Response(JSON.stringify({ error: `An account with ${email} already exists.` }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // Create the user via admin (so we can set a temp password + metadata)
+    // ── Step 1: Create the auth user ──────────────────────────────────────
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       password,
-      email_confirm: false,  // unconfirmed — user must verify OTP first
+      email_confirm: false,
       user_metadata: { full_name, role },
     })
 
@@ -101,7 +79,21 @@ serve(async (req: Request) => {
 
     const newUserId = newUser.user.id
 
-    // ── Step 2: Create the profile row ────────────────────────────────────
+    // ── Step 1.5: Trigger the OTP verification email ──────────────────────
+    // admin.createUser() does NOT send a confirmation email on its own —
+    // we have to explicitly ask Supabase to (re)send the "signup" OTP.
+    const { error: resendError } = await adminClient.auth.resend({
+      type: 'signup',
+      email,
+    })
+
+    if (resendError) {
+      console.error('Failed to send OTP email:', resendError.message)
+      // Don't fail the whole request — the account was still created successfully.
+      // Staff can use "Resend code" on the login OTP modal if this happens.
+    }
+
+    // ── Step 2: Upsert the profile row ────────────────────────────────────
     const { error: profileError } = await adminClient
       .from('profiles')
       .upsert({
@@ -111,40 +103,34 @@ serve(async (req: Request) => {
         department:           department ?? null,
         specialty:            specialty  ?? null,
         status:               'Active',
-        must_change_password: true,  // frontend checks this after login
+        must_change_password: true,
       })
 
     if (profileError) {
       console.error('Profile upsert error:', profileError.message)
+      return new Response(JSON.stringify({ error: profileError.message }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
     }
 
-    // ── Step 3: Send OTP email via signInWithOtp ──────────────────────────
-    // This is the correct way to trigger the OTP for an admin-created user.
-    // It sends the "Confirm signup" email with the 6-digit token.
-    const { error: otpError } = await publicClient.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: false, // user already exists — just send the OTP
-      },
-    })
-
-    if (otpError) {
-      console.warn('OTP send warning:', otpError.message)
-      // Non-blocking — user was still created, admin can resend manually
+    // ── Step 3: Notify admin (non-blocking — wrapped in try/catch) ─────────
+    try {
+      await adminClient.from('notifications').insert({
+        user_id: caller.id,
+        type:    'Memo',
+        title:   `Account created: ${full_name}`,
+        body:    `A ${role} account has been created for ${email}. When they log in for the first time, they will receive an OTP to confirm their email, then be prompted to change their password.`,
+        read:    false,
+      })
+    } catch (notifErr) {
+      console.warn('Notification insert failed (non-fatal):', notifErr)
     }
 
-    // ── Step 4: Notify admin ───────────────────────────────────────────────
-    await adminClient.from('notifications').insert({
-      user_id: caller.id,
-      type:    'Memo',
-      title:   `Account created: ${full_name}`,
-      body:    `A ${role} account has been created for ${email}. A 6-digit verification code has been sent to their email. They must verify their email and set a new password before they can access the app.`,
-      read:    false,
-    })
-
+    // ── Step 4: Return the full user object so frontend can read user.id ───
     return new Response(JSON.stringify({
       success: true,
-      message: `Account created. Verification code sent to ${email}.`,
+      user:    newUser.user,   // ← full user object, not just userId
+      message: `Account created for ${email}. They will receive an OTP on first login.`,
     }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })

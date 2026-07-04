@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import Profile from '../pages/shared/Profile'
 
 // change password page
-import ChangePassword from '../pages/shared/ChangePassword'
+import ChangePassword from '../pages/auth/ChangePassword'
 
 // Auth pages
 import Login from '../pages/auth/Login'
@@ -90,7 +90,7 @@ export default function AppRoutes() {
       />
 
       {/* Change Password route */}
-      <Route path="/change-password" element={<ChangePassword />} />
+      <Route path="/auth/change-password" element={<ChangePassword />} />
 
       {/* Auth routes */}
       <Route path="/login" element={<Login />} />

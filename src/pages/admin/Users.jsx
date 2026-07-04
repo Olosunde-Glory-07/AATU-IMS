@@ -1,15 +1,16 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { X, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
+import { X, Plus, ChevronLeft, ChevronRight, Menu } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../context/AuthContext'
 
 const NAV_ITEMS = [
-  { icon: 'dashboard',     label: 'Dashboard',     path: '/admin/dashboard' },
-  { icon: 'list_alt',      label: 'Requests',      path: '/admin/requests' },
-  { icon: 'engineering',   label: 'Job Orders',    path: '/admin/job-orders' },
-  { icon: 'inventory_2',   label: 'Assets',        path: '/admin/assets' },
-  { icon: 'group',         label: 'Users',         path: '/admin/users' },
-  { icon: 'domain',        label: 'Departments',   path: '/admin/departments' },
+  { icon: 'dashboard',     label: 'Dashboard',     path: '/admin/dashboard'     },
+  { icon: 'list_alt',      label: 'Requests',      path: '/admin/requests'      },
+  { icon: 'engineering',   label: 'Job Orders',    path: '/admin/job-orders'    },
+  { icon: 'inventory_2',   label: 'Assets',        path: '/admin/assets'        },
+  { icon: 'group',         label: 'Users',         path: '/admin/users'         },
+  { icon: 'domain',        label: 'Departments',   path: '/admin/departments'   },
   { icon: 'notifications', label: 'Notifications', path: '/admin/notifications' },
 ]
 
@@ -30,35 +31,31 @@ const ROLE_BADGE = {
 
 const ROLE_SECTIONS = [
   { key: 'admin',      label: 'Administrators', icon: 'admin_panel_settings' },
-  { key: 'technician', label: 'Technicians',    icon: 'engineering' },
-  { key: 'staff',      label: 'Staff',          icon: 'badge' },
-  { key: 'student',    label: 'Students',       icon: 'school' },
+  { key: 'technician', label: 'Technicians',    icon: 'engineering'          },
+  { key: 'staff',      label: 'Staff',          icon: 'badge'                },
+  { key: 'student',    label: 'Students',       icon: 'school'               },
 ]
 
 const ITEMS_PER_PAGE = 10
 
+// Note: no password in EMPTY_FORM for staff/technician
+// Admin sets a temp password that the user must change on first login
+const EMPTY_FORM = {
+  full_name:  '',
+  email:      '',
+  role:       'staff',
+  department: '',
+  specialty:  '',
+  password:   '',  // temporary password set by admin
+}
+
 function initials(name = '') {
-  return (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 }
 
 function avatarColor(id = '') {
-  const num = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-  return AVATAR_COLORS[num % AVATAR_COLORS.length]
-}
-
-function mapUser(row) {
-  return {
-    id:        row.id,
-    name:      row.full_name     || '—',
-    role:      row.role          || 'student',
-    dept:      row.department    || '—',
-    status:    row.status        || 'Active',
-    specialty: row.specialty     || null,
-    matric:    row.matric_number || null,
-    joined:    row.created_at
-      ? new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-      : '—',
-  }
+  const n = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  return AVATAR_COLORS[n % AVATAR_COLORS.length]
 }
 
 function useIsMobile() {
@@ -69,257 +66,6 @@ function useIsMobile() {
     return () => window.removeEventListener('resize', fn)
   }, [])
   return mobile
-}
-
-// ─── Confirm Delete Modal ─────────────────────────────────────────────────────
-function ConfirmDeleteModal({ user, onClose, onConfirm, deleting }) {
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70]" onClick={onClose} />
-      <div className="fixed inset-0 z-[71] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
-
-          {/* Header */}
-          <div className="bg-[#ba1a1a] px-6 py-5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-white text-[20px]"
-                style={{ fontVariationSettings: "'FILL' 1" }}>delete_forever</span>
-            </div>
-            <div>
-              <h2 className="text-white font-bold text-base">Delete User</h2>
-              <p className="text-white/70 text-xs font-mono mt-0.5">This action cannot be undone</p>
-            </div>
-          </div>
-
-          <div className="p-6 space-y-4">
-            {/* User info */}
-            <div className="flex items-center gap-3 p-3 bg-[#f9f9ff] border border-[#dcc0bd] rounded-xl">
-              <div className="w-10 h-10 rounded-full bg-[#ffdad5] flex items-center justify-center font-bold text-[#4a0404] text-sm flex-shrink-0">
-                {initials(user.name)}
-              </div>
-              <div>
-                <p className="font-bold text-[#151c27] text-sm">{user.name}</p>
-                <p className="text-xs font-mono text-[#554240]">{user.role} · {user.dept}</p>
-              </div>
-            </div>
-
-            <div className="flex gap-2 p-3 bg-[#ffdad6]/30 border border-[#ffdad6] rounded-lg">
-              <span className="material-symbols-outlined text-[#ba1a1a] text-[16px] flex-shrink-0 mt-0.5"
-                style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
-              <p className="text-[11px] text-[#93000a] leading-relaxed">
-                This will permanently delete <strong>{user.name}'s</strong> account, profile, and all associated data from the database. This cannot be reversed.
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-1">
-              <button
-                onClick={onClose}
-                disabled={deleting}
-                className="flex-1 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={onConfirm}
-                disabled={deleting}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#ba1a1a] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 disabled:opacity-60 transition-opacity"
-              >
-                {deleting ? (
-                  <>
-                    <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[16px]">delete_forever</span>
-                    Yes, Delete
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  )
-}
-
-// ─── Add User Modal ───────────────────────────────────────────────────────────
-function AddUserModal({ onClose, onAdded, showToast }) {
-  const [form, setForm] = useState({
-    full_name:  '',
-    email:      '',
-    password:   '',
-    role:       'staff',
-    department: '',
-    specialty:  '',
-  })
-  const [saving, setSaving] = useState(false)
-  const [error,  setError]  = useState('')
-  const [showPw, setShowPw] = useState(false)
-
-  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    setError('')
-
-    if (!form.email.trim() || !form.password.trim() || !form.full_name.trim()) {
-      setError('Full name, email and password are required.'); return
-    }
-    if (form.password.length < 8) {
-      setError('Password must be at least 8 characters.'); return
-    }
-
-    setSaving(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type':  'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({
-            email:      form.email.trim(),
-            password:   form.password,
-            full_name:  form.full_name.trim(),
-            role:       form.role,
-            department: form.department.trim() || null,
-            specialty:  form.specialty.trim()  || null,
-          }),
-        }
-      )
-
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Failed to create user')
-
-      onAdded({
-        id:        json.user.id,
-        name:      form.full_name.trim(),
-        role:      form.role,
-        dept:      form.department || '—',
-        specialty: form.specialty  || null,
-        status:    'Active',
-        matric:    null,
-        joined:    new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-      })
-      showToast('User created. A password setup link has been sent to their email.')
-      onClose()
-    } catch (err) {
-      console.error('Add user error:', err)
-      setError(err.message || 'Something went wrong. Try again.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const inp = 'w-full px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4a0404]/20 bg-white'
-  const lbl = 'block text-xs font-mono text-[#554240] uppercase tracking-wider mb-1.5'
-
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]" onClick={onClose} />
-      <div className="fixed inset-0 z-[61] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-
-          <div className="bg-[#4a0404] px-6 py-5 flex items-center justify-between">
-            <div>
-              <h2 className="text-white font-bold text-lg">Add New User</h2>
-              <p className="text-white/60 text-xs font-mono mt-0.5">Create account and assign role</p>
-            </div>
-            <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full transition-colors">
-              <X size={18} color="white" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-            {error && (
-              <div className="flex items-center gap-2 text-xs text-[#ba1a1a] bg-[#ffdad6]/40 border border-[#ffdad6] rounded-lg px-3 py-2">
-                <span className="material-symbols-outlined text-[16px]">error</span>
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label className={lbl}>Full Name *</label>
-              <input value={form.full_name} onChange={set('full_name')} placeholder="e.g. John Doe" className={inp} required />
-            </div>
-
-            <div>
-              <label className={lbl}>Email Address *</label>
-              <input type="email" value={form.email} onChange={set('email')} placeholder="e.g. john@aatu.edu.ng" className={inp} required />
-            </div>
-
-            <div>
-              <label className={lbl}>Temporary Password *</label>
-              <div className="relative">
-                <input
-                  type={showPw ? 'text' : 'password'}
-                  value={form.password}
-                  onChange={set('password')}
-                  placeholder="Min. 8 characters"
-                  className={`${inp} pr-11`}
-                  required
-                />
-                <button type="button" onClick={() => setShowPw(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#554240]/60 hover:text-[#554240]">
-                  <span className="material-symbols-outlined text-[18px]">
-                    {showPw ? 'visibility_off' : 'visibility'}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className={lbl}>Role *</label>
-              <select value={form.role} onChange={set('role')} className={`${inp} cursor-pointer`}>
-                <option value="staff">Staff</option>
-                <option value="technician">Technician</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-
-            <div>
-              <label className={lbl}>Department</label>
-              <input value={form.department} onChange={set('department')} placeholder="e.g. Computer Science" className={inp} />
-            </div>
-
-            {form.role === 'technician' && (
-              <div>
-                <label className={lbl}>Specialty</label>
-                <input value={form.specialty} onChange={set('specialty')} placeholder="e.g. Electrical, Plumbing" className={inp} />
-              </div>
-            )}
-
-            <div className="flex gap-2 p-3 bg-[#f0f3ff] border border-[#dcc0bd] rounded-lg">
-              <span className="material-symbols-outlined text-[#554240] text-[16px] flex-shrink-0 mt-0.5">info</span>
-              <p className="text-[11px] text-[#554240] leading-relaxed">
-                A password setup link will be sent to the user's email automatically. They must click the link and set a new password before accessing their portal.
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button type="button" onClick={onClose}
-                className="flex-1 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors">
-                Cancel
-              </button>
-              <button type="submit" disabled={saving}
-                className="flex-1 px-4 py-2.5 bg-[#4a0404] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 disabled:opacity-60 transition-opacity flex items-center justify-center gap-2">
-                {saving
-                  ? <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span> Creating...</>
-                  : <><span className="material-symbols-outlined text-[16px]">person_add</span> Create User</>}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </>
-  )
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
@@ -344,27 +90,28 @@ function Sidebar({ open, onClose }) {
           <button onClick={onClose} className="text-white/70 p-1"><X size={22} /></button>
         )}
       </div>
-
       <nav className="flex-1 py-3 px-2 flex flex-col gap-0.5">
         {NAV_ITEMS.map((item) => {
           const isActive = location.pathname === item.path
           return (
-            <button key={item.label}
+            <button
+              key={item.label}
               onClick={() => { navigate(item.path); if (isMobile) onClose() }}
               className={`w-full flex items-center gap-3 px-4 py-[11px] text-left text-xs font-mono tracking-wide transition-colors rounded
-                ${isActive ? 'bg-white/[0.12] text-white font-bold border-l-4 border-[#ffb4aa]' : 'text-white/65 hover:bg-white/[0.06] border-l-4 border-transparent'}`}>
-              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>{item.icon}</span>
+                ${isActive
+                  ? 'bg-white/[0.12] text-white font-bold border-l-4 border-[#ffb4aa]'
+                  : 'text-white/65 hover:bg-white/[0.06] border-l-4 border-transparent'}`}
+            >
+              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
+                {item.icon}
+              </span>
               {item.label}
             </button>
           )
         })}
       </nav>
-
       <div className="p-2 border-t border-white/10">
-        <button onClick={() => navigate('/admin/profile')} className="w-full flex items-center gap-3 px-4 py-2.5 text-white/50 text-xs font-mono rounded hover:bg-white/[0.06] transition-colors">
-          <span className="material-symbols-outlined text-[18px]">account_circle</span> User Profile
-        </button>
-        <button onClick={() => supabase.auth.signOut().then(() => navigate('/login'))} className="w-full flex items-center gap-3 px-4 py-2.5 text-white/50 text-xs font-mono rounded hover:bg-white/[0.06] transition-colors">
+        <button onClick={() => navigate('/login')} className="w-full flex items-center gap-3 px-4 py-2.5 text-white/50 text-xs font-mono rounded hover:bg-white/[0.06] transition-colors">
           <span className="material-symbols-outlined text-[18px]">logout</span> Logout
         </button>
       </div>
@@ -389,9 +136,15 @@ function BottomNav() {
       {NAV_ITEMS.slice(0, 5).map((item) => {
         const isActive = location.pathname === item.path
         return (
-          <button key={item.label} onClick={() => navigate(item.path)}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-mono tracking-wide ${isActive ? 'text-[#4a0404]' : 'text-[#554240]'}`}>
-            <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>{item.icon}</span>
+          <button
+            key={item.label}
+            onClick={() => navigate(item.path)}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-mono tracking-wide
+              ${isActive ? 'text-[#4a0404]' : 'text-[#554240]'}`}
+          >
+            <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>
+              {item.icon}
+            </span>
             {item.label}
           </button>
         )
@@ -400,51 +153,57 @@ function BottomNav() {
   )
 }
 
-// ─── Main Component ────────────────────────────────────────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function Users() {
-  const isMobile = useIsMobile()
+  const isMobile  = useIsMobile()
   const navigate  = useNavigate()
+  const { user: adminUser } = useAuth()
 
-  const [drawerOpen,    setDrawerOpen]    = useState(false)
-  const [addUserOpen,   setAddUserOpen]   = useState(false)
-  const [users,         setUsers]         = useState([])
-  const [loading,       setLoading]       = useState(true)
-  const [search,        setSearch]        = useState('')
-  const [roleFilter,    setRole]          = useState('All')
-  const [page,          setPage]          = useState(1)
-  const [selected,      setSelected]      = useState(null)
-  const [editing,       setEditing]       = useState(null)
-  const [studentMenu,   setStudentMenu]   = useState(null)
-  const [toast,         setToast]         = useState(null)
-  const [saving,        setSaving]        = useState(false)
-  const [deleteTarget,  setDeleteTarget]  = useState(null)  // user to delete
-  const [deleting,      setDeleting]      = useState(false)
+  const [drawerOpen,  setDrawerOpen]  = useState(false)
+  const [users,       setUsers]       = useState([])
+  const [loading,     setLoading]     = useState(true)
+  const [search,      setSearch]      = useState('')
+  const [roleFilter,  setRole]        = useState('All')
+  const [page,        setPage]        = useState(1)
+  const [selected,    setSelected]    = useState(null)
+  const [showNew,     setShowNew]     = useState(false)
+  const [editing,     setEditing]     = useState(null)
+  const [form,        setForm]        = useState(EMPTY_FORM)
+  const [submitting,  setSubmitting]  = useState(false)
+  const [formError,   setFormError]   = useState('')
+  const [toast,       setToast]       = useState(null)
 
-  useEffect(() => {
-    ['aatu-fonts', 'aatu-icons'].forEach((id, i) => {
-      if (!document.getElementById(id)) {
-        const el = document.createElement('link')
-        el.id = id; el.rel = 'stylesheet'
-        el.href = i === 0
-          ? 'https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap'
-          : 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200'
-        document.head.appendChild(el)
-      }
-    })
-  }, [])
+  function showToast(msg) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
+  }
 
+  // ── Fetch all users from profiles table ───────────────────────────────────
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, role, department, status, specialty, matric_number, created_at')
+        .select('id, full_name, role, department, specialty, status, created_at, matric_number')
         .order('created_at', { ascending: false })
+
       if (error) throw error
-      setUsers((data ?? []).map(mapUser))
+
+      setUsers((data ?? []).map(u => ({
+        id:         u.id,
+        name:       u.full_name ?? 'Unknown',
+        email:      '',  // email not on profiles — fetched separately if needed
+        role:       u.role ?? 'student',
+        dept:       u.department ?? u.specialty ?? '—',
+        status:     u.status ?? 'Active',
+        matric:     u.matric_number ?? '',
+        joined:     u.created_at
+          ? new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+          : '—',
+      })))
     } catch (err) {
-      console.error('Failed to load users:', err)
-      showToast('Failed to load users.', true)
+      console.error('Fetch users error:', err)
+      showToast('Failed to load users.')
     } finally {
       setLoading(false)
     }
@@ -452,12 +211,128 @@ export default function Users() {
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
 
+  // ── Create user via Edge Function ─────────────────────────────────────────
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setFormError('')
+
+    if (!form.full_name.trim()) { setFormError('Full name is required.');  return }
+    if (!form.email.trim())     { setFormError('Email is required.');       return }
+    if (!form.password.trim())  { setFormError('Temporary password is required.'); return }
+    if (form.password.length < 8) { setFormError('Password must be at least 8 characters.'); return }
+
+    setSubmitting(true)
+    try {
+      // Get the admin's session token to pass to the Edge Function
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Not authenticated. Please log in again.')
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            email:      form.email.trim().toLowerCase(),
+            password:   form.password.trim(),
+            full_name:  form.full_name.trim(),
+            role:       form.role,
+            department: form.department.trim() || null,
+            specialty:  form.specialty.trim()  || null,
+          }),
+        }
+      )
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        // result.error comes from the Edge Function
+        throw new Error(result.error ?? `Server error (${response.status})`)
+      }
+
+      // Success — refresh the users list from Supabase
+      await fetchUsers()
+      setShowNew(false)
+      setForm(EMPTY_FORM)
+      showToast(`Account created for ${form.email}. They will receive an OTP on first login.`)
+    } catch (err) {
+      console.error('Add user error:', err)
+      setFormError(err.message || 'Failed to create user. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // ── Toggle status ─────────────────────────────────────────────────────────
+  async function toggleStatus(id) {
+    const user = users.find(u => u.id === id)
+    if (!user) return
+    const newStatus = user.status === 'Active' ? 'Inactive' : 'Active'
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: newStatus })
+        .eq('id', id)
+      if (error) throw error
+      setUsers(p => p.map(u => u.id === id ? { ...u, status: newStatus } : u))
+      if (selected?.id === id) setSelected(s => ({ ...s, status: newStatus }))
+      showToast('Status updated.')
+    } catch (err) {
+      showToast('Failed to update status.')
+    }
+  }
+
+  // ── Delete user ───────────────────────────────────────────────────────────
+  async function deleteUser(id) {
+    if (!window.confirm('Are you sure you want to delete this user? This cannot be undone.')) return
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', id)
+      if (error) throw error
+      setUsers(p => p.filter(u => u.id !== id))
+      if (selected?.id === id) setSelected(null)
+      showToast('User removed.')
+    } catch (err) {
+      showToast('Failed to delete user.')
+    }
+  }
+
+  // ── Save edit ─────────────────────────────────────────────────────────────
+  async function saveEdit(e) {
+    e.preventDefault()
+    if (!editing) return
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name:  editing.name,
+          role:       editing.role,
+          department: editing.dept,
+          status:     editing.status,
+        })
+        .eq('id', editing.id)
+      if (error) throw error
+      setUsers(p => p.map(u => u.id === editing.id ? { ...u, ...editing } : u))
+      if (selected?.id === editing.id) setSelected(s => ({ ...s, ...editing }))
+      setEditing(null)
+      showToast('User updated.')
+    } catch (err) {
+      showToast('Failed to update user.')
+    }
+  }
+
+  // ── Filtered list ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return users.filter(u =>
       (u.name.toLowerCase().includes(q) ||
-       u.dept.toLowerCase().includes(q) ||
-       (u.specialty || '').toLowerCase().includes(q)) &&
+       u.email.toLowerCase().includes(q) ||
+       u.dept.toLowerCase().includes(q)) &&
       (roleFilter === 'All' || u.role === roleFilter)
     )
   }, [users, search, roleFilter])
@@ -472,88 +347,10 @@ export default function Users() {
     return result
   }, [pageUsers])
 
-  function showToast(msg, isError = false) {
-    setToast({ msg, isError })
-    setTimeout(() => setToast(null), 3500)
-  }
-
-  function handleUserAdded(newUser) {
-    setUsers(prev => [newUser, ...prev])
-  }
-
-  async function toggleStatus(id) {
-    const user = users.find(u => u.id === id)
-    if (!user) return
-    const newStatus = user.status === 'Active' ? 'Inactive' : 'Active'
-    const { error } = await supabase.from('profiles').update({ status: newStatus }).eq('id', id)
-    if (error) { showToast('Failed to update status.', true); return }
-    setUsers(p => p.map(u => u.id === id ? { ...u, status: newStatus } : u))
-    if (selected?.id === id) setSelected(s => ({ ...s, status: newStatus }))
-    showToast('Status updated.')
-  }
-
-  async function saveEdit(e) {
-    e.preventDefault()
-    setSaving(true)
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        full_name:  editing.name,
-        role:       editing.role,
-        department: editing.dept,
-        specialty:  editing.specialty || null,
-        status:     editing.status,
-      })
-      .eq('id', editing.id)
-    setSaving(false)
-    if (error) { showToast('Failed to save changes.', true); return }
-    setUsers(p => p.map(u => u.id === editing.id ? { ...u, ...editing } : u))
-    if (selected?.id === editing.id) setSelected(s => ({ ...s, ...editing }))
-    setEditing(null)
-    showToast('User updated successfully.')
-  }
-
-  // ── Delete user via Edge Function ──────────────────────────────────────────
-  async function handleDeleteUser() {
-    if (!deleteTarget) return
-    setDeleting(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type':  'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ user_id: deleteTarget.id }),
-        }
-      )
-
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error ?? 'Failed to delete user')
-
-      // Remove from local state
-      setUsers(prev => prev.filter(u => u.id !== deleteTarget.id))
-      if (selected?.id === deleteTarget.id) setSelected(null)
-      setDeleteTarget(null)
-      setStudentMenu(null)
-      showToast(`${deleteTarget.name} has been permanently deleted.`)
-    } catch (err) {
-      console.error('Delete user error:', err)
-      showToast(err.message || 'Failed to delete user. Try again.', true)
-    } finally {
-      setDeleting(false)
-    }
-  }
-
   const inp = 'w-full px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4a0404]/20 bg-white'
 
   const Avatar = ({ user, size = 'md' }) => {
-    const c  = avatarColor(user.id)
+    const c = avatarColor(user.id)
     const sz = size === 'lg' ? 'w-14 h-14 text-base' : size === 'sm' ? 'w-8 h-8 text-xs' : 'w-12 h-12 text-sm'
     return (
       <div className={`${sz} rounded-full ${c.bg} ${c.text} flex items-center justify-center font-bold flex-shrink-0`}>
@@ -575,7 +372,7 @@ export default function Users() {
 
       <main className={`flex-1 min-h-screen ${isMobile ? '' : 'ml-[260px]'} ${isMobile ? 'pb-[60px]' : ''}`}>
 
-        {/* ── Top App Bar ───────────────────────────────────────────────── */}
+        {/* Top Bar */}
         <header className={`sticky top-0 z-40 h-16 bg-[#f9f9ff]/90 backdrop-blur border-b border-[#dcc0bd] flex items-center justify-between gap-3 ${isMobile ? 'px-4' : 'px-8'}`}>
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {isMobile && (
@@ -589,50 +386,42 @@ export default function Users() {
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1) }}
                 className="w-full bg-[#f0f3ff] border-none rounded-full pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4a0404]/20"
-                placeholder="Search users, department..."
+                placeholder="Search users..."
               />
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={() => navigate('/admin/notifications')} className="p-2 text-[#554240] hover:text-[#210000] transition-colors">
-              <span className="material-symbols-outlined">notifications</span>
-            </button>
-            <button onClick={fetchUsers} title="Refresh" className="p-2 text-[#554240] hover:text-[#210000] transition-colors">
-              <span className="material-symbols-outlined">refresh</span>
+            {!isMobile && (
+              <select
+                value={roleFilter}
+                onChange={e => { setRole(e.target.value); setPage(1) }}
+                className="px-3 py-2 border border-[#dcc0bd] text-sm rounded-lg focus:outline-none bg-white text-[#151c27] cursor-pointer"
+              >
+                {['All', 'admin', 'staff', 'technician', 'student'].map(r => (
+                  <option key={r} value={r}>{r === 'All' ? 'All Roles' : r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                ))}
+              </select>
+            )}
+            <button
+              onClick={() => { setForm(EMPTY_FORM); setFormError(''); setShowNew(true) }}
+              className="flex items-center gap-2 px-4 py-2 bg-[#4a0404] text-white text-xs font-mono rounded-lg hover:opacity-90 transition-opacity"
+            >
+              <span className="material-symbols-outlined text-[16px]">person_add</span>
+              {!isMobile && 'Add User'}
             </button>
           </div>
         </header>
 
         <div className={`${isMobile ? 'p-4' : 'p-8'} max-w-[1600px] mx-auto space-y-8`}>
 
-          {/* ── Page Header ───────────────────────────────────────────── */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div>
-              <h2 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-[#210000]`}>User Management</h2>
-              <p className="text-[#554240] mt-1 text-sm">All registered users from the database.</p>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => setAddUserOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#4a0404] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 transition-opacity"
-              >
-                <span className="material-symbols-outlined text-[18px]">person_add</span>
-                {!isMobile && 'Add User'}
-              </button>
-              <select
-                value={roleFilter}
-                onChange={e => { setRole(e.target.value); setPage(1) }}
-                className="px-4 py-2 border border-[#89726f] text-[#151c27] text-sm rounded-lg hover:bg-[#e7eefe] transition-colors focus:outline-none cursor-pointer bg-white"
-              >
-                {['All', 'admin', 'staff', 'technician', 'student'].map(r => (
-                  <option key={r} value={r}>{r === 'All' ? 'All Roles' : r.charAt(0).toUpperCase() + r.slice(1)}</option>
-                ))}
-              </select>
-            </div>
+          {/* Page Header */}
+          <div>
+            <h2 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-[#210000]`}>User Management</h2>
+            <p className="text-[#554240] mt-1 text-sm">Directory of university administrative and maintenance personnel.</p>
           </div>
 
-          {/* ── Stats ─────────────────────────────────────────────────── */}
-          <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-1 md:grid-cols-4 gap-6'}`}>
+          {/* Stat Cards */}
+          <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-4 gap-6'}`}>
             {stats.map(s => (
               <div key={s.label} className={`bg-white border border-[#dcc0bd] ${isMobile ? 'p-4' : 'p-6'} rounded-xl flex items-center gap-4`}>
                 <div className={`w-12 h-12 ${s.iconBg} flex items-center justify-center rounded-full flex-shrink-0`}>
@@ -646,168 +435,97 @@ export default function Users() {
             ))}
           </div>
 
-          {/* ── Users List ────────────────────────────────────────────── */}
-          <div className="space-y-6">
-            {loading ? (
-              <div className="py-20 text-center">
-                <span className="material-symbols-outlined text-5xl text-[#dcc0bd] block mb-3 animate-spin">autorenew</span>
-                <p className="text-[#554240] text-sm font-mono">Loading users from database...</p>
-              </div>
-            ) : users.length === 0 ? (
-              <div className="py-20 text-center">
-                <span className="material-symbols-outlined text-5xl text-[#dcc0bd] block mb-3">group_add</span>
-                <p className="text-[#554240] text-sm">No users found in the database.</p>
-                <button onClick={() => setAddUserOpen(true)} className="mt-4 px-5 py-2.5 bg-[#4a0404] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 transition-opacity">
-                  Add First User
-                </button>
-              </div>
-            ) : (
-              <>
-                {ROLE_SECTIONS.map(({ key, label, icon }) => {
-                  const list = grouped[key]
-                  if (!list || list.length === 0) return null
-                  return (
-                    <div key={key} className="space-y-3">
-                      <div className="flex items-center justify-between border-b border-[#dcc0bd] pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-[#554240] text-[18px]">{icon}</span>
-                          <h3 className="text-lg font-semibold text-[#554240]">{label}</h3>
-                        </div>
-                        <span className="px-2 py-0.5 bg-[#dce2f3] text-[#151c27] text-xs font-bold font-mono rounded">
-                          {list.length} {list.length === 1 ? 'entry' : 'entries'}
-                        </span>
+          {/* User List */}
+          {loading ? (
+            <div className="py-20 text-center">
+              <span className="material-symbols-outlined text-4xl text-[#dcc0bd] block mb-3 animate-spin">progress_activity</span>
+              <p className="text-[#554240] text-sm">Loading users…</p>
+            </div>
+          ) : users.length === 0 ? (
+            <div className="py-20 text-center">
+              <span className="material-symbols-outlined text-5xl text-[#dcc0bd] block mb-3">group_add</span>
+              <p className="text-[#554240] text-sm">No users yet. Click "Add User" to create the first account.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {ROLE_SECTIONS.map(({ key, label, icon }) => {
+                const list = grouped[key]
+                if (!list || list.length === 0) return null
+                return (
+                  <div key={key} className="space-y-3">
+                    <div className="flex items-center justify-between border-b border-[#dcc0bd] pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[#554240] text-[18px]">{icon}</span>
+                        <h3 className="text-lg font-semibold text-[#554240]">{label}</h3>
                       </div>
-
-                      {/* Admin / Staff / Technician rows */}
-                      {key !== 'student' && (
-                        <div className="bg-white border border-[#dcc0bd] rounded-xl overflow-hidden divide-y divide-[#dcc0bd] shadow-sm">
-                          {list.map(u => (
-                            <div key={u.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-4 hover:bg-[#f0f3ff] transition-colors group">
-                              <div className="flex items-center gap-4 cursor-pointer" onClick={() => setSelected(u)}>
-                                <Avatar user={u} />
-                                <div>
-                                  <h4 className="font-bold text-[#151c27]">{u.name}</h4>
-                                  <p className="text-xs font-mono text-[#554240]">{u.dept}{u.specialty ? ` · ${u.specialty}` : ''}</p>
-                                </div>
-                              </div>
-                              <div className="flex flex-wrap items-center gap-3 mt-4 lg:mt-0">
-                                <span className={`px-3 py-1 text-xs font-bold font-mono rounded-full uppercase ${ROLE_BADGE[u.role]}`}>{u.role}</span>
-                                <div className="flex items-center gap-1.5">
-                                  <span className={`w-2 h-2 rounded-full ${u.status === 'Active' ? 'bg-[#396844]' : 'bg-[#89726f]'}`} />
-                                  <span className="text-xs font-mono text-[#554240]">{u.status}</span>
-                                </div>
-                                <div className="flex gap-0.5">
-                                  <button onClick={() => setEditing({ ...u })}
-                                    className="p-2 text-[#554240] hover:text-[#210000] hover:bg-[#e7eefe] rounded-full transition-colors" title="Edit">
-                                    <span className="material-symbols-outlined text-[18px]">edit</span>
-                                  </button>
-                                  {/* Delete button — hidden for admins */}
-                                  {u.role !== 'admin' && (
-                                    <button
-                                      onClick={() => setDeleteTarget(u)}
-                                      className="p-2 text-[#554240] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors"
-                                      title="Delete user permanently"
-                                    >
-                                      <span className="material-symbols-outlined text-[18px]">delete</span>
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Students — card grid */}
-                      {key === 'student' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {list.map(u => (
-                            <div key={u.id}
-                              className="bg-white border border-[#dcc0bd] p-4 rounded-xl flex items-center gap-4 hover:border-[#ffb4aa] transition-all group cursor-pointer relative"
-                              onClick={() => setSelected(u)}
-                            >
-                              <Avatar user={u} size="lg" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-[#151c27] truncate">{u.name}</p>
-                                <p className="text-xs font-mono text-[#554240] truncate">{u.matric || u.dept}</p>
-                                <div className="mt-2 flex items-center gap-2">
-                                  <span className="px-2 py-0.5 bg-[#ffdcc3]/20 text-[#6e3900] text-[10px] font-bold rounded uppercase">student</span>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${u.status === 'Active' ? 'bg-[#396844]' : 'bg-[#89726f]'}`} />
-                                  <span className="text-[10px] font-mono text-[#554240]">{u.status}</span>
-                                </div>
-                              </div>
-                              <div className="relative opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                                <button onClick={() => setStudentMenu(studentMenu === u.id ? null : u.id)} className="p-1.5 hover:bg-[#e7eefe] rounded-full transition-colors">
-                                  <span className="material-symbols-outlined text-[18px] text-[#554240]">more_vert</span>
-                                </button>
-                                {studentMenu === u.id && (
-                                  <div className="absolute right-0 top-8 bg-white border border-[#dcc0bd] rounded-xl shadow-lg z-20 w-44 overflow-hidden">
-                                    <button onClick={() => { setSelected(u); setStudentMenu(null) }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f0f3ff] flex items-center gap-2">
-                                      <span className="material-symbols-outlined text-[16px]">visibility</span> View Profile
-                                    </button>
-                                    <button onClick={() => { setEditing({ ...u }); setStudentMenu(null) }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f0f3ff] flex items-center gap-2">
-                                      <span className="material-symbols-outlined text-[16px]">edit</span> Edit
-                                    </button>
-                                    <button onClick={() => { toggleStatus(u.id); setStudentMenu(null) }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#f0f3ff] flex items-center gap-2">
-                                      <span className="material-symbols-outlined text-[16px]">toggle_on</span>
-                                      {u.status === 'Active' ? 'Deactivate' : 'Activate'}
-                                    </button>
-                                    {/* Delete option in student menu */}
-                                    <button
-                                      onClick={() => { setDeleteTarget(u); setStudentMenu(null) }}
-                                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#ffdad6] text-[#ba1a1a] flex items-center gap-2"
-                                    >
-                                      <span className="material-symbols-outlined text-[16px]">delete</span> Delete
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <span className="px-2 py-0.5 bg-[#dce2f3] text-[#151c27] text-xs font-bold font-mono rounded">
+                        {list.length} {list.length === 1 ? 'entry' : 'entries'}
+                      </span>
                     </div>
-                  )
-                })}
 
-                {filtered.length === 0 && (
-                  <div className="py-20 text-center">
-                    <span className="material-symbols-outlined text-5xl text-[#dcc0bd] block mb-3">manage_accounts</span>
-                    <p className="text-[#554240] text-sm">No users match your search.</p>
-                    <button onClick={() => { setSearch(''); setRole('All') }} className="mt-3 text-xs font-mono text-[#4a0404] underline">Clear filters</button>
+                    <div className="bg-white border border-[#dcc0bd] rounded-xl overflow-hidden divide-y divide-[#dcc0bd] shadow-sm">
+                      {list.map(u => (
+                        <div key={u.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-4 hover:bg-[#f0f3ff] transition-colors">
+                          <div className="flex items-center gap-4 cursor-pointer" onClick={() => setSelected(u)}>
+                            <Avatar user={u} />
+                            <div>
+                              <h4 className="font-bold text-[#151c27]">{u.name}</h4>
+                              <p className="text-xs font-mono text-[#554240]">{u.dept}</p>
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 mt-4 lg:mt-0">
+                            <span className={`px-3 py-1 text-xs font-bold font-mono rounded-full uppercase ${ROLE_BADGE[u.role] ?? ''}`}>
+                              {u.role}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full ${u.status === 'Active' ? 'bg-[#396844]' : 'bg-[#89726f]'}`} />
+                              <span className="text-xs font-mono text-[#554240]">{u.status}</span>
+                            </div>
+                            <div className="flex gap-0.5">
+                              <button
+                                onClick={() => setEditing({ ...u })}
+                                className="p-2 text-[#554240] hover:text-[#210000] hover:bg-[#e7eefe] rounded-full transition-colors"
+                                title="Edit user"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">edit</span>
+                              </button>
+                              <button
+                                onClick={() => toggleStatus(u.id)}
+                                className="p-2 text-[#554240] hover:text-[#396844] hover:bg-[#b8ecbe]/30 rounded-full transition-colors"
+                                title={u.status === 'Active' ? 'Deactivate' : 'Activate'}
+                              >
+                                <span className="material-symbols-outlined text-[18px]">{u.status === 'Active' ? 'person_off' : 'person'}</span>
+                              </button>
+                              <button
+                                onClick={() => deleteUser(u.id)}
+                                className="p-2 text-[#554240] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors"
+                                title="Delete user"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                )}
-              </>
-            )}
-          </div>
+                )
+              })}
 
-          {/* ── Pagination ────────────────────────────────────────────── */}
-          {totalPages > 1 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 pb-8">
-              <p className="text-xs font-mono text-[#554240]">
-                Showing {(safePage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(safePage * ITEMS_PER_PAGE, filtered.length)} of {filtered.length} entries
-              </p>
-              <div className="flex gap-2">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}
-                  className="flex items-center gap-1 px-3 py-2 border border-[#dcc0bd] rounded-lg text-xs font-mono hover:bg-[#e7eefe] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  <ChevronLeft size={14} /> {!isMobile && 'Previous'}
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
-                  .map((p, idx, arr) => (
-                    <span key={p} className="flex items-center gap-2">
-                      {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-[#554240]">...</span>}
-                      <button onClick={() => setPage(p)}
-                        className={`w-9 h-9 rounded-lg text-xs font-mono transition-colors ${p === safePage ? 'bg-[#210000] text-white shadow-sm' : 'border border-[#dcc0bd] hover:bg-[#e7eefe]'}`}>
-                        {p}
-                      </button>
-                    </span>
-                  ))}
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
-                  className="flex items-center gap-1 px-3 py-2 border border-[#dcc0bd] rounded-lg text-xs font-mono hover:bg-[#e7eefe] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  {!isMobile && 'Next'} <ChevronRight size={14} />
-                </button>
-              </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-[#dcc0bd]">
+                  <span className="text-sm text-[#554240]">Page {safePage} of {totalPages}</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="p-2 border border-[#dcc0bd] rounded-lg disabled:opacity-40 hover:bg-[#e7eefe] transition-colors">
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="p-2 border border-[#dcc0bd] rounded-lg disabled:opacity-40 hover:bg-[#e7eefe] transition-colors">
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -815,160 +533,241 @@ export default function Users() {
 
       {isMobile && <BottomNav />}
 
-      {/* ── Add User Modal ──────────────────────────────────────────────── */}
-      {addUserOpen && (
-        <AddUserModal
-          onClose={() => setAddUserOpen(false)}
-          onAdded={handleUserAdded}
-          showToast={showToast}
-        />
-      )}
+      {/* ── Add User Modal ──────────────────────────────────────────────────── */}
+      {showNew && (
+        <>
+          <div onClick={() => setShowNew(false)} className="fixed inset-0 bg-black/30 z-[200]" />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-xl shadow-2xl z-[201] overflow-hidden" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
 
-      {/* ── Confirm Delete Modal ────────────────────────────────────────── */}
-      {deleteTarget && (
-        <ConfirmDeleteModal
-          user={deleteTarget}
-          onClose={() => setDeleteTarget(null)}
-          onConfirm={handleDeleteUser}
-          deleting={deleting}
-        />
-      )}
-
-      {/* ── User Detail Modal ───────────────────────────────────────────── */}
-      {selected && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-start p-6 border-b border-[#dcc0bd]">
-              <div className="flex items-center gap-4">
-                <Avatar user={selected} size="lg" />
+            {/* Modal header */}
+            <div className="bg-[#4a0404] px-6 py-5">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-[#151c27]">{selected.name}</h2>
-                  <p className="text-xs font-mono text-[#554240]">{selected.dept}</p>
+                  <h3 className="text-white font-bold text-lg">Create User Account</h3>
+                  <p className="text-white/60 text-xs font-mono mt-0.5">For staff and technician accounts only</p>
                 </div>
-              </div>
-              <button onClick={() => setSelected(null)} className="p-2 hover:bg-[#f0f3ff] rounded-full transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex gap-2 flex-wrap">
-                <span className={`px-3 py-1 text-xs font-bold font-mono rounded-full uppercase ${ROLE_BADGE[selected.role]}`}>{selected.role}</span>
-                <span className={`px-3 py-1 text-xs font-bold font-mono rounded-full ${selected.status === 'Active' ? 'bg-[#DCFCE7] text-[#166534]' : 'bg-[#f3f4f6] text-[#6b7280]'}`}>{selected.status}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                {[
-                  ['DEPARTMENT', selected.dept],
-                  ['JOINED',     selected.joined],
-                  selected.specialty && ['SPECIALTY', selected.specialty],
-                  selected.matric    && ['MATRIC NO.', selected.matric],
-                ].filter(Boolean).map(([l, v]) => (
-                  <div key={l}>
-                    <p className="text-[10px] font-mono text-[#554240]/60 uppercase tracking-wider mb-1">{l}</p>
-                    <p className="font-medium text-[#151c27]">{v}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => { setEditing({ ...selected }); setSelected(null) }}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors">
-                  <span className="material-symbols-outlined text-[16px]">edit</span> Edit
+                <button onClick={() => setShowNew(false)} className="text-white/70 hover:text-white p-1">
+                  <X size={20} />
                 </button>
-                <button onClick={() => toggleStatus(selected.id)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-mono hover:opacity-90 transition-opacity ${selected.status === 'Active' ? 'bg-[#ffdad6] text-[#93000a]' : 'bg-[#b8ecbe] text-[#1a3d25]'}`}>
-                  {selected.status === 'Active' ? 'Deactivate' : 'Activate'}
-                </button>
-                {/* Delete button in detail modal — only for non-admins */}
-                {selected.role !== 'admin' && (
-                  <button
-                    onClick={() => { setDeleteTarget(selected); setSelected(null) }}
-                    className="flex items-center justify-center gap-1 px-4 py-2.5 bg-[#ffdad6] text-[#93000a] rounded-lg text-sm font-mono hover:opacity-90 transition-opacity"
-                    title="Delete permanently"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">delete</span>
-                  </button>
-                )}
               </div>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* ── Edit User Modal ─────────────────────────────────────────────── */}
-      {editing && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-6 border-b border-[#dcc0bd]">
-              <div>
-                <h2 className="text-xl font-bold text-[#210000]">Edit User</h2>
-                <p className="text-xs font-mono text-[#554240] mt-0.5 truncate max-w-[280px]">ID: {editing.id}</p>
-              </div>
-              <button onClick={() => setEditing(null)} className="p-2 hover:bg-[#f0f3ff] rounded-full transition-colors">
-                <X size={18} />
-              </button>
-            </div>
-            <form onSubmit={saveEdit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-mono text-[#554240] mb-1.5">FULL NAME</label>
-                <input type="text" required value={editing.name}
-                  onChange={e => setEditing(n => ({ ...n, name: e.target.value }))} className={inp} />
-              </div>
-              <div>
-                <label className="block text-xs font-mono text-[#554240] mb-1.5">DEPARTMENT</label>
-                <input type="text" value={editing.dept}
-                  onChange={e => setEditing(n => ({ ...n, dept: e.target.value }))}
-                  className={inp} placeholder="e.g. Computer Science" />
-              </div>
-              {editing.role === 'technician' && (
-                <div>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">SPECIALTY</label>
-                  <input type="text" value={editing.specialty || ''}
-                    onChange={e => setEditing(n => ({ ...n, specialty: e.target.value }))}
-                    className={inp} placeholder="e.g. Electrical, Plumbing" />
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+
+              {formError && (
+                <div className="flex items-start gap-2 p-3 bg-[#ffdad6] border border-[#ffb4aa] rounded-lg text-[#93000a] text-sm">
+                  <span className="material-symbols-outlined text-[16px] flex-shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>error</span>
+                  {formError}
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">ROLE</label>
-                  <select value={editing.role} onChange={e => setEditing(n => ({ ...n, role: e.target.value }))} className={`${inp} cursor-pointer`}>
-                    {['admin', 'staff', 'technician', 'student'].map(r => (
-                      <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">STATUS</label>
-                  <select value={editing.status} onChange={e => setEditing(n => ({ ...n, status: e.target.value }))} className={`${inp} cursor-pointer`}>
-                    {['Active', 'Inactive'].map(s => <option key={s}>{s}</option>)}
-                  </select>
-                </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#554240] uppercase tracking-wider mb-1.5">Full Name *</label>
+                <input
+                  className={inp}
+                  value={form.full_name}
+                  onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
+                  placeholder="e.g. Adeyemi Okafor"
+                  required
+                />
               </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#554240] uppercase tracking-wider mb-1.5">Email Address *</label>
+                <input
+                  type="email"
+                  className={inp}
+                  value={form.email}
+                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="e.g. adeyemi@aatu.edu.ng"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#554240] uppercase tracking-wider mb-1.5">Role *</label>
+                <select
+                  className={`${inp} cursor-pointer`}
+                  value={form.role}
+                  onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                  required
+                >
+                  <option value="staff">Staff</option>
+                  <option value="technician">Technician</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <p className="text-[11px] text-[#554240]/60 mt-1">Students must self-register via the student portal.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-[#554240] uppercase tracking-wider mb-1.5">Department</label>
+                <input
+                  className={inp}
+                  value={form.department}
+                  onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
+                  placeholder="e.g. Faculty of Engineering"
+                />
+              </div>
+
+              {form.role === 'technician' && (
+                <div>
+                  <label className="block text-xs font-mono text-[#554240] uppercase tracking-wider mb-1.5">Specialty</label>
+                  <input
+                    className={inp}
+                    value={form.specialty}
+                    onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))}
+                    placeholder="e.g. Electrical, Plumbing, HVAC"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-mono text-[#554240] uppercase tracking-wider mb-1.5">Temporary Password *</label>
+                <input
+                  type="password"
+                  className={inp}
+                  value={form.password}
+                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  placeholder="Min. 8 characters"
+                  required
+                  minLength={8}
+                />
+                <p className="text-[11px] text-[#554240]/60 mt-1">
+                  Share this with the user. They will be required to change it on first login.
+                </p>
+              </div>
+
+              {/* Info banner */}
+              <div className="flex gap-2 p-3 bg-[#f0f3ff] border border-[#dcc0bd] rounded-lg">
+                <span className="material-symbols-outlined text-[#554240] text-[16px] flex-shrink-0 mt-0.5">info</span>
+                <p className="text-[11px] text-[#554240] leading-relaxed">
+                  When the user logs in for the first time, Supabase will send a <strong>6-digit OTP</strong> to their email to confirm it. After verification they will be required to <strong>change their password</strong> before accessing the app.
+                </p>
+              </div>
+
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setEditing(null)}
-                  className="flex-1 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setShowNew(false)}
+                  className="flex-1 py-2.5 border border-[#dcc0bd] rounded-lg text-sm text-[#151c27] hover:bg-[#f0f3ff] transition-colors"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={saving}
-                  className="flex-1 px-4 py-2.5 bg-[#4a0404] text-white rounded-lg text-sm font-mono hover:opacity-90 transition-opacity font-bold disabled:opacity-60">
-                  {saving ? 'Saving...' : 'Save Changes'}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 py-2.5 bg-[#4a0404] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 disabled:opacity-60 transition-opacity flex items-center justify-center gap-2"
+                >
+                  {submitting ? (
+                    <>
+                      <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                      Creating…
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[16px]">person_add</span>
+                      Create Account
+                    </>
+                  )}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </>
       )}
 
-      {/* ── Toast ───────────────────────────────────────────────────────── */}
+      {/* ── Edit User Modal ─────────────────────────────────────────────────── */}
+      {editing && (
+        <>
+          <div onClick={() => setEditing(null)} className="fixed inset-0 bg-black/30 z-[200]" />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-xl shadow-2xl z-[201] overflow-hidden">
+            <div className="bg-[#4a0404] px-6 py-5 flex items-center justify-between">
+              <h3 className="text-white font-bold text-lg">Edit User</h3>
+              <button onClick={() => setEditing(null)} className="text-white/70 hover:text-white p-1"><X size={20} /></button>
+            </div>
+            <form onSubmit={saveEdit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-mono text-[#554240] uppercase tracking-wider mb-1.5">Full Name</label>
+                <input className={inp} value={editing.name} onChange={e => setEditing(s => ({ ...s, name: e.target.value }))} required />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-[#554240] uppercase tracking-wider mb-1.5">Role</label>
+                <select className={`${inp} cursor-pointer`} value={editing.role} onChange={e => setEditing(s => ({ ...s, role: e.target.value }))}>
+                  <option value="admin">Admin</option>
+                  <option value="staff">Staff</option>
+                  <option value="technician">Technician</option>
+                  <option value="student">Student</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-[#554240] uppercase tracking-wider mb-1.5">Department</label>
+                <input className={inp} value={editing.dept} onChange={e => setEditing(s => ({ ...s, dept: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-[#554240] uppercase tracking-wider mb-1.5">Status</label>
+                <select className={`${inp} cursor-pointer`} value={editing.status} onChange={e => setEditing(s => ({ ...s, status: e.target.value }))}>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setEditing(null)} className="flex-1 py-2.5 border border-[#dcc0bd] rounded-lg text-sm hover:bg-[#f0f3ff] transition-colors">Cancel</button>
+                <button type="submit" className="flex-1 py-2.5 bg-[#4a0404] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
+
+      {/* ── User Detail Modal ───────────────────────────────────────────────── */}
+      {selected && (
+        <>
+          <div onClick={() => setSelected(null)} className="fixed inset-0 bg-black/25 z-[200]" />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-xl shadow-2xl z-[201] overflow-hidden">
+            <div className="bg-[#4a0404] px-6 py-5 flex items-center justify-between">
+              <h3 className="text-white font-bold">User Profile</h3>
+              <button onClick={() => setSelected(null)} className="text-white/70 hover:text-white p-1"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-4">
+                <Avatar user={selected} size="lg" />
+                <div>
+                  <h4 className="font-bold text-[#151c27] text-lg">{selected.name}</h4>
+                  <span className={`px-2 py-0.5 text-xs font-bold font-mono rounded-full uppercase ${ROLE_BADGE[selected.role] ?? ''}`}>
+                    {selected.role}
+                  </span>
+                </div>
+              </div>
+              {[
+                ['Department', selected.dept],
+                ['Status',     selected.status],
+                ['Joined',     selected.joined],
+              ].map(([label, value]) => (
+                <div key={label} className="flex justify-between text-sm border-b border-[#f0f3ff] pb-2 last:border-0">
+                  <span className="text-[#554240] font-mono text-xs uppercase tracking-wide">{label}</span>
+                  <span className="font-medium text-[#151c27]">{value || '—'}</span>
+                </div>
+              ))}
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => { setEditing({ ...selected }); setSelected(null) }} className="flex-1 py-2 border border-[#dcc0bd] rounded-lg text-sm hover:bg-[#f0f3ff] transition-colors flex items-center justify-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px]">edit</span> Edit
+                </button>
+                <button onClick={() => { toggleStatus(selected.id) }} className="flex-1 py-2 border border-[#dcc0bd] rounded-lg text-sm hover:bg-[#f0f3ff] transition-colors flex items-center justify-center gap-1.5">
+                  <span className="material-symbols-outlined text-[16px]">{selected.status === 'Active' ? 'person_off' : 'person'}</span>
+                  {selected.status === 'Active' ? 'Deactivate' : 'Activate'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Toast */}
       {toast && (
-        <div className={`fixed ${isMobile ? 'bottom-[76px]' : 'bottom-6'} left-1/2 -translate-x-1/2 z-[60] px-6 py-3 rounded-full text-sm font-mono shadow-xl flex items-center gap-2 whitespace-nowrap
-          ${toast.isError ? 'bg-[#ba1a1a] text-white' : 'bg-[#151c27] text-white'}`}>
-          <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 1" }}>
-            {toast.isError ? 'error' : 'check_circle'}
-          </span>
-          {toast.msg}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#151c27] text-white px-6 py-3 rounded-full text-sm font-mono shadow-xl z-[300] whitespace-nowrap">
+          {toast}
         </div>
       )}
-
-      {studentMenu && <div className="fixed inset-0 z-10" onClick={() => setStudentMenu(null)} />}
     </div>
   )
 }
