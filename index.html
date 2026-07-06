@@ -3,35 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#4a0404" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AATU IMS" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>AATU IMS – Infrastructure Management System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
-
-    <style>
-      /* Hide icon ligature text until the font has actually loaded,
-         so users never see raw words like "account_balance" or "menu" */
-      .material-symbols-outlined {
-        opacity: 0;
-      }
-      .fonts-loaded .material-symbols-outlined {
-        opacity: 1;
-        transition: opacity 0.1s ease;
-      }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
-    <script>
-      document.fonts.load('24px "Material Symbols Outlined"').then(() => {
-        document.documentElement.classList.add('fonts-loaded');
-      });
-      // Fallback in case the Font Loading API is slow/unsupported
-      document.fonts.ready.then(() => {
-        document.documentElement.classList.add('fonts-loaded');
-      });
-    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
