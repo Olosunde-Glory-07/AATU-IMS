@@ -7,27 +7,37 @@ import {
 } from "recharts";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
+// These pull from the CSS variables defined in index.css, so they flip
+// automatically with the `dark` class on <html>.
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  onPrimaryContainer:     "#d26a5f",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  tertiaryFixedDim:       "#ffb77d",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-on-surface)",
+  primaryContainer:       "var(--color-primary-container)",
+  onPrimaryContainer:     "var(--color-on-primary-container)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  tertiaryFixedDim:       "var(--color-tertiary-fixed-dim)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-background)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
+// Cards/tables/modals should use this instead of C.white so they flip to a
+// dark surface in dark mode. C.white itself is kept for TEXT/ICON color on
+// top of colored backgrounds (sidebar, badges) which should stay literal white.
+const CARD = "var(--color-surface-container-lowest)";
+// The sidebar stays a fixed brand color in both themes (same as the other
+// layout files) instead of flipping with primaryContainer.
+const SIDEBAR_BG = "#4a0404";
+
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
@@ -69,15 +79,13 @@ function Icon({ name, size = 22, filled = false, style = {} }) {
   );
 }
 
-// Single source of truth for the breakpoint. SSR-safe: defaults to false
-// (desktop) when window isn't available yet, then corrects on mount.
 function useIsMobile() {
   const [mobile, setMobile] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth < 768 : false
   );
   useEffect(() => {
     const fn = () => setMobile(window.innerWidth < 768);
-    fn(); // re-check immediately on mount in case the initial value was stale
+    fn();
     window.addEventListener("resize", fn);
     return () => window.removeEventListener("resize", fn);
   }, []);
@@ -91,14 +99,14 @@ function getGreeting() {
   return "Good Evening";
 }
 
-// ─── Sidebar — isMobile passed down, NOT re-derived internally ────────────────
+// ─── Sidebar — pinned brand color, does not change with dark mode ────────────
 function Sidebar({ open, onClose, isMobile }) {
   const navigate = useNavigate();
   const location = useLocation();
 
   const content = (
     <aside style={{
-      width: 260, background: C.primaryContainer, color: C.white,
+      width: 260, background: SIDEBAR_BG, color: C.white,
       display: "flex", flexDirection: "column", height: "100%",
       overflowY: "auto", borderRight: `1px solid ${C.outlineVariant}`,
       fontFamily: SANS,
@@ -177,7 +185,7 @@ function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
   return (
-    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90, background: C.white, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 60 }}>
+    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90, background: CARD, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 60 }}>
       {NAV_ITEMS.slice(0, 5).map((item) => {
         const isActive = location.pathname === item.path;
         return (
@@ -196,7 +204,7 @@ function BottomNav() {
 function MetricCard({ card, loading }) {
   return (
     <div style={{
-      background: card.cardBg || C.white, border: card.border || `1px solid ${C.outlineVariant}`,
+      background: card.cardBg || CARD, border: card.border || `1px solid ${C.outlineVariant}`,
       borderRadius: 12, padding: 20, transition: "box-shadow 0.2s, transform 0.15s", cursor: "default",
     }}
       onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
@@ -328,7 +336,7 @@ function RequestCard({ req }) {
   const statusCfg = STATUS_CFG[req.status] || STATUS_CFG.Pending;
   return (
     <div onClick={() => navigate("/admin/requests")} style={{
-      background: C.white, border: `1px solid ${C.outlineVariant}`,
+      background: CARD, border: `1px solid ${C.outlineVariant}`,
       borderLeft: `4px solid ${req.priority === "Emergency" || req.priority === "High" ? C.error : req.status === "Completed" ? C.secondary : C.outlineVariant}`,
       borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 8, fontFamily: SANS, cursor: "pointer",
     }}>
@@ -361,7 +369,6 @@ export default function AdminDashboard() {
   const [search,     setSearch]     = useState("");
   const [loading,    setLoading]    = useState(true);
 
-  // ── Data state ─────────────────────────────────────────────────────────────
   const [stats, setStats] = useState({
     totalRequests: null, pending: null, completed: null, emergency: null,
     totalUsers: null, activeJobs: null, technicians: null, students: null,
@@ -370,7 +377,6 @@ export default function AdminDashboard() {
   const [categoryData,   setCategoryData]   = useState([]);
   const [recentRequests, setRecentRequests] = useState([]);
 
-  // ── Fetch everything ───────────────────────────────────────────────────────
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
     try {
@@ -461,7 +467,7 @@ export default function AdminDashboard() {
     { icon: "inbox",           label: "Total Requests",    value: stats.total,     badge: "All time",       badgeColor: C.secondary,         iconBg: C.surfaceContainerHigh, iconColor: C.primaryContainer },
     { icon: "pending_actions", label: "Pending",           value: stats.pending,   badge: "Awaiting",       badgeColor: C.onSurfaceVariant,  iconBg: "#ffdcc3",              iconColor: "#2f1500"          },
     { icon: "check_circle",    label: "Completed",         value: stats.completed, badge: "Resolved",       badgeColor: C.secondary,         iconBg: C.secondaryContainer,   iconColor: C.onSecondaryContainer },
-    { icon: "emergency_home",  label: "Emergency",         value: stats.emergency, badge: "Urgent",         badgeColor: C.error,             iconBg: C.error,                iconColor: C.white,            cardBg: C.errorContainer, border: `1px solid ${C.error}33`, isError: true },
+    { icon: "emergency_home",  label: "Emergency",         value: stats.emergency, badge: "Urgent",         badgeColor: C.error,             iconBg: C.error,                iconColor: "#ffffff",            cardBg: C.errorContainer, border: `1px solid ${C.error}33`, isError: true },
   ];
 
   const secondaryStats = [
@@ -477,12 +483,11 @@ export default function AdminDashboard() {
 
       <main style={{ marginLeft: isMobile ? 0 : 260, flex: 1, display: "flex", flexDirection: "column", paddingBottom: isMobile ? 60 : 0, minWidth: 0 }}>
 
-        {/* ── Top Bar ───────────────────────────────────────────────────────── */}
         <header style={{
           height: 64, display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: isMobile ? "0 16px" : "0 32px",
           position: "sticky", top: 0, zIndex: 40,
-          background: "rgba(249,249,255,0.92)", backdropFilter: "blur(12px)",
+          background: "color-mix(in srgb, var(--color-background) 92%, transparent)", backdropFilter: "blur(12px)",
           borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 12,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
@@ -516,7 +521,6 @@ export default function AdminDashboard() {
 
         <div style={{ flex: 1, padding: isMobile ? "20px 16px" : "32px", boxSizing: "border-box" }}>
 
-          {/* ── Greeting ──────────────────────────────────────────────────── */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "flex-end", flexDirection: isMobile ? "column" : "row", gap: 16, marginBottom: 28 }}>
             <div>
               <h2 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, margin: 0 }}>
@@ -529,38 +533,35 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => navigate("/admin/requests")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: C.white, cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
+              <button onClick={() => navigate("/admin/requests")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: CARD, cursor: "pointer", fontSize: 12, fontFamily: MONO, color: C.onSurface }}>
                 <Icon name="list_alt" size={15} /> View Requests
               </button>
-              <button onClick={fetchDashboard} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: C.white, cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
+              <button onClick={fetchDashboard} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: CARD, cursor: "pointer", fontSize: 12, fontFamily: MONO, color: C.onSurface }}>
                 <Icon name="refresh" size={15} /> Refresh
               </button>
             </div>
           </div>
 
-          {/* ── Primary Metric Cards ───────────────────────────────────────── */}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 12 : 20, marginBottom: isMobile ? 16 : 20 }}>
             {metricCards.map((c, i) => <MetricCard key={i} card={c} loading={loading} />)}
           </div>
 
-          {/* ── Secondary Stats ────────────────────────────────────────────── */}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 10 : 20, marginBottom: isMobile ? 24 : 32 }}>
             {secondaryStats.map((s, i) => (
-              <div key={i} style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: isMobile ? "14px 16px" : 20, display: "flex", alignItems: "center", gap: 10 }}>
+              <div key={i} style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: isMobile ? "14px 16px" : 20, display: "flex", alignItems: "center", gap: 10 }}>
                 <Icon name={s.icon} size={20} style={{ color: s.iconColor, flexShrink: 0 }} />
                 {!isMobile && <span style={{ fontSize: 13, color: C.onSurfaceVariant }}>{s.label}</span>}
-                <span style={{ marginLeft: "auto", fontWeight: 700, fontSize: isMobile ? 16 : 18 }}>
+                <span style={{ marginLeft: "auto", fontWeight: 700, fontSize: isMobile ? 16 : 18, color: C.onSurface }}>
                   {loading ? "—" : (s.value ?? 0)}
                 </span>
               </div>
             ))}
           </div>
 
-          {/* ── Charts ────────────────────────────────────────────────────── */}
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr", gap: isMobile ? 16 : 24, marginBottom: isMobile ? 24 : 32 }}>
-            <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: 20 }}>
+            <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Monthly Trends</h3>
+                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: C.onSurface }}>Monthly Trends</h3>
                 <span style={{ fontSize: 11, color: C.onSurfaceVariant, fontFamily: MONO }}>Last 6 months</span>
               </div>
               {loading ? (
@@ -574,10 +575,10 @@ export default function AdminDashboard() {
                 <div style={{ height: isMobile ? 180 : 260 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyData} barSize={16}>
-                      <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.04)" />
-                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} allowDecimals={false} />
-                      <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} contentStyle={{ borderRadius: 8, border: `1px solid ${C.outlineVariant}`, fontFamily: SANS }} />
+                      <CartesianGrid vertical={false} stroke="rgba(128,128,128,0.15)" />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: C.onSurfaceVariant }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: C.onSurfaceVariant }} allowDecimals={false} />
+                      <Tooltip cursor={{ fill: "rgba(128,128,128,0.10)" }} contentStyle={{ borderRadius: 8, border: `1px solid ${C.outlineVariant}`, fontFamily: SANS, background: CARD, color: C.onSurface }} />
                       <Bar dataKey="requests" fill={C.primaryContainer} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -585,8 +586,8 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: 20 }}>
-              <h3 style={{ margin: "0 0 16px", fontSize: 17, fontWeight: 700 }}>By Category</h3>
+            <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: 20 }}>
+              <h3 style={{ margin: "0 0 16px", fontSize: 17, fontWeight: 700, color: C.onSurface }}>By Category</h3>
               {loading ? (
                 <div style={{ height: 200, background: C.surfaceContainerLow, borderRadius: 8 }} />
               ) : (
@@ -595,10 +596,9 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* ── Recent Requests ────────────────────────────────────────────── */}
-          <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, overflow: "hidden", marginBottom: isMobile ? 24 : 32 }}>
+          <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, overflow: "hidden", marginBottom: isMobile ? 24 : 32 }}>
             <div style={{ padding: "18px 20px", borderBottom: `1px solid ${C.outlineVariant}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Recent Requests</h3>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: C.onSurface }}>Recent Requests</h3>
               <button onClick={() => navigate("/admin/requests")}
                 style={{ background: "none", border: "none", cursor: "pointer", color: C.primaryContainer, fontWeight: 700, fontSize: 12, fontFamily: MONO }}>
                 View All →
@@ -639,9 +639,8 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          {/* ── Banner ────────────────────────────────────────────────────── */}
-          <div style={{ borderRadius: 12, overflow: "hidden", position: "relative", height: isMobile ? 160 : 220, background: `linear-gradient(135deg, ${C.primaryContainer} 0%, #7e2b23 100%)` }}>
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(33,0,0,0.80) 0%, transparent 60%)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: isMobile ? 20 : 32, color: C.white }}>
+          <div style={{ borderRadius: 12, overflow: "hidden", position: "relative", height: isMobile ? 160 : 220, background: `linear-gradient(135deg, ${SIDEBAR_BG} 0%, #7e2b23 100%)` }}>
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(33,0,0,0.80) 0%, transparent 60%)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: isMobile ? 20 : 32, color: "#ffffff" }}>
               <h4 style={{ margin: "0 0 6px", fontSize: isMobile ? 16 : 20, fontWeight: 700 }}>Campus Monitoring Infrastructure</h4>
               {!isMobile && <p style={{ margin: 0, fontSize: 14, maxWidth: 540, opacity: 0.85 }}>A centralized view of all university assets, facility requests, and personnel workflows in real-time.</p>}
             </div>

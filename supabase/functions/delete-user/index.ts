@@ -60,14 +60,7 @@ serve(async (req: Request) => {
       })
     }
 
-    // ── Prevent deleting yourself ─────────────────────────────────────────
-    if (user_id === caller.id) {
-      return new Response(JSON.stringify({ error: 'You cannot delete your own account.' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
-    }
-
-    // ── Prevent deleting another admin ────────────────────────────────────
+    // ── Look up the target user's profile ─────────────────────────────────
     const { data: targetProfile } = await adminClient
       .from('profiles')
       .select('role, full_name')
@@ -80,8 +73,11 @@ serve(async (req: Request) => {
       })
     }
 
-    if (targetProfile.role === 'admin') {
-      return new Response(JSON.stringify({ error: 'Admin accounts cannot be deleted. Deactivate them instead.' }), {
+    const isSelf = user_id === caller.id
+
+    // ── Admins can delete their OWN account, but never another admin's ────
+    if (targetProfile.role === 'admin' && !isSelf) {
+      return new Response(JSON.stringify({ error: 'You cannot delete another admin. Admins may only delete their own account.' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
@@ -109,7 +105,10 @@ serve(async (req: Request) => {
 
     return new Response(JSON.stringify({
       success: true,
-      message: `User ${targetProfile.full_name} has been permanently deleted.`,
+      selfDeleted: isSelf,
+      message: isSelf
+        ? 'Your account has been permanently deleted.'
+        : `User ${targetProfile.full_name} has been permanently deleted.`,
     }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
