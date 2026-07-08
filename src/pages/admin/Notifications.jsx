@@ -5,38 +5,46 @@ import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  onPrimaryContainer:     "#d26a5f",
-  primaryFixedDim:        "#ffb4aa",
-  onPrimaryFixed:         "#410001",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  onSecondaryFixed:       "#00210b",
-  secondaryFixed:         "#bbefc1",
-  tertiaryFixed:          "#ffdcc3",
-  onTertiaryFixed:        "#2f1500",
-  tertiaryFixedDim:       "#ffb77d",
-  onTertiaryFixedVariant: "#6e3900",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  surfaceContainerHighest:"#dce2f3",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-on-surface)",
+  primaryContainer:       "var(--color-primary-container)",
+  onPrimaryContainer:     "var(--color-on-primary-container)",
+  primaryFixedDim:        "var(--color-primary-fixed-dim)",
+  onPrimaryFixed:         "var(--color-on-primary-fixed)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  onSecondaryFixed:       "var(--color-on-secondary-fixed)",
+  secondaryFixed:         "var(--color-secondary-fixed)",
+  tertiaryFixed:          "var(--color-tertiary-fixed)",
+  onTertiaryFixed:        "var(--color-on-tertiary-fixed)",
+  tertiaryFixedDim:       "var(--color-tertiary-fixed-dim)",
+  onTertiaryFixedVariant: "var(--color-on-tertiary-fixed-variant)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-background)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  surfaceContainerHighest:"var(--color-surface-container-highest)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
+// Card surfaces — flips to a dark surface in dark mode. Distinct from C.white,
+// which stays literal white for text/icons sitting on top of colored backgrounds.
+const CARD = "var(--color-surface-container-lowest)";
+// Sidebar stays a fixed brand color in both themes (same as other pages).
+const SIDEBAR_BG = "#4a0404";
+
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
 // ─── Notification type config (styling only — not records) ───────────────────
+// These already reference C.* tokens, so they automatically follow dark mode
+// once C's values become CSS variables — no literal hex needed here.
 const TYPE_CFG = {
   CRITICAL:        { bg: C.errorContainer,          text: C.onErrorContainer,       iconBg: C.errorContainer,          iconColor: C.error,                  dotColor: C.error,    icon: "report"               },
   ALERT:           { bg: C.tertiaryFixed,            text: C.onTertiaryFixedVariant, iconBg: C.tertiaryFixed,           iconColor: C.onTertiaryFixedVariant, dotColor: "#cf7000",  icon: "warning"               },
@@ -104,17 +112,16 @@ function Sidebar({ open, onClose, unreadCount }) {
 
   const content = (
     <aside style={{
-      width: 260, background: C.primaryContainer, color: C.white,
+      width: 260, background: SIDEBAR_BG, color: C.white,
       display: "flex", flexDirection: "column", height: "100%",
       overflowY: "auto", borderRight: `1px solid ${C.outlineVariant}`,
       fontFamily: SANS,
     }}>
-      {/* Brand */}
       <div style={{ padding: "24px 24px 20px", borderBottom: "1px solid rgba(255,255,255,0.1)", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{
             width: 40, height: 40, borderRadius: 8,
-            background: C.onPrimaryContainer,
+            background: "rgba(255,255,255,0.16)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <span style={{ fontWeight: 700, fontSize: 18, color: C.white, fontFamily: SANS }}>A</span>
@@ -133,7 +140,6 @@ function Sidebar({ open, onClose, unreadCount }) {
         )}
       </div>
 
-      {/* Nav */}
       <nav style={{ flex: 1, padding: "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
         {NAV_ITEMS.map((item) => {
           const isActive = location.pathname === item.path;
@@ -169,7 +175,6 @@ function Sidebar({ open, onClose, unreadCount }) {
         })}
       </nav>
 
-      {/* Footer */}
       <div style={{ padding: "12px 8px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <button
           onClick={() => navigate("/admin/profile")}
@@ -222,7 +227,7 @@ function BottomNav() {
   return (
     <nav style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90,
-      background: C.white, borderTop: `1px solid ${C.outlineVariant}`,
+      background: CARD, borderTop: `1px solid ${C.outlineVariant}`,
       display: "flex", height: 60,
     }}>
       {quickNav.map((item) => {
@@ -257,7 +262,7 @@ function TopBar({ onMenuClick, search, setSearch }) {
       height: 64, display: "flex", alignItems: "center",
       justifyContent: "space-between", padding: isMobile ? "0 16px" : "0 32px",
       position: "sticky", top: 0, zIndex: 40,
-      background: "rgba(249,249,255,0.94)", backdropFilter: "blur(12px)",
+      background: "color-mix(in srgb, var(--color-background) 94%, transparent)", backdropFilter: "blur(12px)",
       borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 12,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
@@ -337,7 +342,7 @@ function StatCards({ notifications, isMobile }) {
       gap: isMobile ? 12 : 24, marginBottom: isMobile ? 20 : 32,
     }}>
       <div style={{
-        background: C.white, padding: isMobile ? 16 : 20,
+        background: CARD, padding: isMobile ? 16 : 20,
         border: `1px solid ${C.outlineVariant}`, borderRadius: 12,
         display: "flex", alignItems: "center", gap: isMobile ? 10 : 16,
       }}>
@@ -357,7 +362,7 @@ function StatCards({ notifications, isMobile }) {
       </div>
 
       <div style={{
-        background: C.white, padding: isMobile ? 16 : 20,
+        background: CARD, padding: isMobile ? 16 : 20,
         border: `1px solid ${C.outlineVariant}`, borderRadius: 12,
         display: "flex", alignItems: "center", gap: isMobile ? 10 : 16,
       }}>
@@ -377,7 +382,7 @@ function StatCards({ notifications, isMobile }) {
       </div>
 
       <div style={{
-        background: C.white, padding: isMobile ? 16 : 20,
+        background: CARD, padding: isMobile ? 16 : 20,
         border: `1px solid ${C.outlineVariant}`, borderRadius: 12,
         position: "relative", overflow: "hidden", gridColumn: isMobile ? "1 / -1" : "auto",
         display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10,
@@ -453,7 +458,7 @@ function NotificationItem({ notif, onMarkRead, onAction, isMobile }) {
       onMouseLeave={() => setHov(false)}
       style={{
         position: "relative",
-        background: notif.unread ? C.white : `${C.surfaceContainerLow}80`,
+        background: notif.unread ? CARD : "color-mix(in srgb, var(--color-surface-container-low) 80%, transparent)",
         border: `1px solid ${notif.unread ? C.outlineVariant : C.outlineVariant + "80"}`,
         borderRadius: 12,
         padding: isMobile ? "16px 16px 16px 20px" : "20px 24px",
@@ -525,7 +530,7 @@ function NotificationItem({ notif, onMarkRead, onAction, isMobile }) {
                     marginLeft: i > 0 ? -6 : 0, zIndex: 10 - i,
                     width: 26, height: 26, borderRadius: "50%",
                     background: i === 0 ? C.surfaceContainerHigh : C.surfaceContainerHighest,
-                    border: `2px solid ${C.white}`,
+                    border: `2px solid ${CARD}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: 9, fontWeight: 700, color: C.onSurface, fontFamily: MONO,
                   }}>{c}</div>
@@ -582,7 +587,7 @@ function Pagination({ page, setPage, total, perPage }) {
           width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
           border: `1px solid ${C.outlineVariant}`, borderRadius: 6,
           background: "none", cursor: page === 1 ? "default" : "pointer",
-          opacity: page === 1 ? 0.4 : 1,
+          opacity: page === 1 ? 0.4 : 1, color: C.onSurface,
         }}>
           <Icon name="chevron_left" size={18} />
         </button>
@@ -600,7 +605,7 @@ function Pagination({ page, setPage, total, perPage }) {
           width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
           border: `1px solid ${C.outlineVariant}`, borderRadius: 6,
           background: "none", cursor: page === totalPages ? "default" : "pointer",
-          opacity: page === totalPages ? 0.4 : 1,
+          opacity: page === totalPages ? 0.4 : 1, color: C.onSurface,
         }}>
           <Icon name="chevron_right" size={18} />
         </button>
@@ -622,7 +627,6 @@ export default function AdminNotificationsPage() {
   const [loading, setLoading]       = useState(true);
   const PER_PAGE = 6;
 
-  // Loaded for real from Supabase — starts empty until the fetch resolves.
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -633,7 +637,7 @@ export default function AdminNotificationsPage() {
         el.rel = "stylesheet";
         el.href = i === 0
           ? "https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-          : "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200";
+          : "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block";
         document.head.appendChild(el);
       }
     });
@@ -644,7 +648,6 @@ export default function AdminNotificationsPage() {
     setTimeout(() => setToast(null), 2500);
   }
 
-  // ── Fetch this admin's own notifications ────────────────────────────────────
   const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
@@ -675,7 +678,6 @@ export default function AdminNotificationsPage() {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // ── Realtime: new notifications pop in immediately ─────────────────────────
   useEffect(() => {
     if (!user?.id) return;
     const channel = supabase
@@ -693,7 +695,6 @@ export default function AdminNotificationsPage() {
     return () => supabase.removeChannel(channel);
   }, [user?.id]);
 
-  // ── Mark read / mark all read — real DB updates ─────────────────────────────
   async function markRead(id) {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false, read: true } : n)));
     const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
@@ -723,7 +724,6 @@ export default function AdminNotificationsPage() {
     showToast(`"${action.label}" acknowledged for "${notif.title}".`);
   }
 
-  // Filter
   const filtered = useMemo(() => notifications.filter((n) => {
     const tabOk = activeTab === "ALL" || n.type === activeTab ||
       (activeTab === "ALERT" && n.type === "ALERT") ||
@@ -751,7 +751,6 @@ export default function AdminNotificationsPage() {
           maxWidth: 1400, width: "100%", margin: "0 auto", boxSizing: "border-box",
         }}>
 
-          {/* Page Header */}
           <div style={{
             display: "flex", justifyContent: "space-between",
             alignItems: isMobile ? "flex-start" : "flex-end",
@@ -801,24 +800,21 @@ export default function AdminNotificationsPage() {
                   display: "flex", alignItems: "center", gap: 8, flex: isMobile ? 1 : "initial",
                   justifyContent: "center",
                   padding: "9px 18px",
-                  background: activeTab === "CRITICAL" ? C.error : C.onSurface, color: C.white,
+                  background: activeTab === "CRITICAL" ? C.error : C.onSurface, color: activeTab === "CRITICAL" ? "#ffffff" : "var(--color-background)",
                   border: "none", borderRadius: 8, cursor: "pointer",
                   fontSize: 12, fontFamily: MONO, fontWeight: 500, letterSpacing: "0.04em",
                 }}
               >
-                <Icon name="filter_list" size={16} style={{ color: C.white }} />
+                <Icon name="filter_list" size={16} style={{ color: activeTab === "CRITICAL" ? "#ffffff" : "var(--color-background)" }} />
                 {!isMobile && (activeTab === "CRITICAL" ? "Showing Critical" : "Filters")}
               </button>
             </div>
           </div>
 
-          {/* Stat Cards */}
           <StatCards notifications={notifications} isMobile={isMobile} />
 
-          {/* Tabs */}
           <TabBar active={activeTab} setActive={(k) => { setActiveTab(k); setPage(1); }} notifications={notifications} isMobile={isMobile} />
 
-          {/* Notification List */}
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {[1, 2, 3].map((i) => (
@@ -845,7 +841,6 @@ export default function AdminNotificationsPage() {
             </div>
           )}
 
-          {/* Pagination */}
           {filtered.length > PER_PAGE && (
             <Pagination page={page} setPage={setPage} total={filtered.length} perPage={PER_PAGE} />
           )}
@@ -857,7 +852,8 @@ export default function AdminNotificationsPage() {
       {toast && (
         <div style={{
           position: "fixed", bottom: isMobile ? 76 : 24, left: "50%", transform: "translateX(-50%)",
-          background: C.onSurface, color: C.white, padding: "12px 24px",
+          background: "var(--color-inverse-surface)", color: "var(--color-inverse-on-surface)",
+          padding: "12px 24px",
           borderRadius: 30, fontSize: 13, fontFamily: MONO, zIndex: 300,
           boxShadow: "0 8px 24px rgba(0,0,0,0.2)", whiteSpace: "nowrap",
         }}>

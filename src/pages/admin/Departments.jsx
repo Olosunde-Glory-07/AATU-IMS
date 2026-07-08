@@ -3,29 +3,34 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  onPrimaryContainer:     "#d26a5f",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  tertiaryFixed:          "#ffdcc3",
-  onTertiaryFixed:        "#2f1500",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  surfaceContainerHighest:"#dce2f3",
-  surfaceDim:             "#d3daea",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-on-surface)",
+  primaryContainer:       "var(--color-primary-container)",
+  onPrimaryContainer:     "var(--color-on-primary-container)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  tertiaryFixed:          "var(--color-tertiary-fixed)",
+  onTertiaryFixed:        "var(--color-on-tertiary-fixed)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-background)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  surfaceContainerHighest:"var(--color-surface-container-highest)",
+  surfaceDim:             "var(--color-surface-dim)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
+// Card surfaces — flips to a dark surface in dark mode.
+const CARD = "var(--color-surface-container-lowest)";
+// Sidebar stays a fixed brand color in both themes.
+const SIDEBAR_BG = "#4a0404";
+
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
@@ -37,6 +42,8 @@ const FACULTY_BADGE = {
   "Administration":         { bg: C.surfaceContainerHigh,    text: C.onSurface             },
 };
 
+// Semantic health chip colors — intentionally kept as literal light hex, same
+// convention as other pages (no dark-mode equivalent token set yet).
 const HEALTH_BADGE = {
   "Optimal":         { bg: "#DCFCE7", text: "#166534" },
   "Maintenance Due": { bg: "#FEF3C7", text: "#92400E" },
@@ -109,12 +116,11 @@ function Sidebar({ open, onClose }) {
 
   const content = (
     <aside style={{
-      width: 260, background: C.primaryContainer, color: C.white,
+      width: 260, background: SIDEBAR_BG, color: C.white,
       display: "flex", flexDirection: "column", height: "100%",
       overflowY: "auto", borderRight: `1px solid ${C.outlineVariant}`,
       fontFamily: SANS,
     }}>
-      {/* Brand */}
       <div style={{ padding: "24px 24px 20px", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
@@ -138,7 +144,6 @@ function Sidebar({ open, onClose }) {
         )}
       </div>
 
-      {/* Nav */}
       <nav style={{ flex: 1, padding: "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
         {NAV_ITEMS.map((item) => {
           const isActive = location.pathname === item.path;
@@ -167,7 +172,6 @@ function Sidebar({ open, onClose }) {
         })}
       </nav>
 
-      {/* Footer */}
       <div style={{ padding: "12px 8px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <button
           onClick={() => navigate("/admin/dashboard")}
@@ -219,7 +223,7 @@ function BottomNav() {
   return (
     <nav style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90,
-      background: C.white, borderTop: `1px solid ${C.outlineVariant}`,
+      background: CARD, borderTop: `1px solid ${C.outlineVariant}`,
       display: "flex", height: 60,
     }}>
       {quickNav.map((item) => {
@@ -255,7 +259,7 @@ function TopBar({ onMenuClick, search, setSearch }) {
       height: 64, display: "flex", alignItems: "center",
       justifyContent: "space-between", padding: isMobile ? "0 16px" : "0 32px",
       position: "sticky", top: 0, zIndex: 40,
-      background: "rgba(249,249,255,0.92)", backdropFilter: "blur(12px)",
+      background: "color-mix(in srgb, var(--color-background) 92%, transparent)", backdropFilter: "blur(12px)",
       borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 12,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
@@ -321,7 +325,7 @@ function DeptCard({ dept, onSelect }) {
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        background: C.white,
+        background: CARD,
         border: `1px solid ${C.outlineVariant}`,
         borderRadius: 12, padding: 24,
         cursor: "pointer", position: "relative", overflow: "hidden",
@@ -375,7 +379,7 @@ function DeptCard({ dept, onSelect }) {
       <div style={{ marginTop: 18, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{
           width: 34, height: 34, borderRadius: "50%",
-          background: C.surfaceDim, border: `2px solid ${C.white}`,
+          background: C.surfaceDim, border: `2px solid ${CARD}`,
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 10, fontWeight: 700, color: C.onSurface,
           fontFamily: MONO,
@@ -433,9 +437,11 @@ function AddCard({ onClick }) {
 }
 
 // ─── Detail Drawer ────────────────────────────────────────────────────────────
+// FIX: hooks must run unconditionally — moved useIsMobile() above the early
+// return so this component follows the Rules of Hooks.
 function DetailDrawer({ dept, onClose, onEdit, onDelete, onQuickAction }) {
-  if (!dept) return null;
   const isMobile = useIsMobile();
+  if (!dept) return null;
 
   return (
     <>
@@ -443,12 +449,11 @@ function DetailDrawer({ dept, onClose, onEdit, onDelete, onQuickAction }) {
       <div style={{
         position: "fixed", right: 0, top: 0, bottom: 0,
         width: isMobile ? "100%" : 440,
-        background: C.white, zIndex: 101,
+        background: CARD, zIndex: 101,
         boxShadow: "-6px 0 32px rgba(0,0,0,0.13)",
         display: "flex", flexDirection: "column",
         fontFamily: SANS, overflowY: "auto",
       }}>
-        {/* Header */}
         <div style={{ padding: "22px 24px 18px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
@@ -471,7 +476,6 @@ function DetailDrawer({ dept, onClose, onEdit, onDelete, onQuickAction }) {
           </div>
         </div>
 
-        {/* Stat row */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: `1px solid ${C.outlineVariant}` }}>
           {[
             { label: "Members",   value: `+${dept.members}`,  icon: "group" },
@@ -486,7 +490,6 @@ function DetailDrawer({ dept, onClose, onEdit, onDelete, onQuickAction }) {
           ))}
         </div>
 
-        {/* Body */}
         <div style={{ flex: 1, padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
           {[
             ["HOD",      dept.hod,      "person"],
@@ -508,13 +511,11 @@ function DetailDrawer({ dept, onClose, onEdit, onDelete, onQuickAction }) {
             </div>
           ))}
 
-          {/* Health Status */}
           <div>
             <div style={{ fontSize: 10, color: C.onSurfaceVariant, fontFamily: MONO, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>Health Status</div>
             <HealthBadge health={dept.health} />
           </div>
 
-          {/* Quick actions */}
           <div style={{ marginTop: 8 }}>
             <div style={{ fontSize: 10, color: C.onSurfaceVariant, fontFamily: MONO, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 10 }}>Quick Actions</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -542,7 +543,6 @@ function DetailDrawer({ dept, onClose, onEdit, onDelete, onQuickAction }) {
           </div>
         </div>
 
-        {/* Footer */}
         <div style={{ padding: "16px 24px", borderTop: `1px solid ${C.outlineVariant}`, display: "flex", gap: 10 }}>
           <button onClick={() => onEdit(dept)} style={{
             flex: 1, padding: "11px 16px", background: C.primaryContainer,
@@ -597,7 +597,7 @@ function DeptFormModal({ initial, onClose, onSave }) {
       <div style={{
         position: "fixed", top: "50%", left: "50%",
         transform: "translate(-50%,-50%)",
-        width: 500, maxWidth: "calc(100vw - 32px)", background: C.white, borderRadius: 16,
+        width: 500, maxWidth: "calc(100vw - 32px)", background: CARD, borderRadius: 16,
         boxShadow: "0 20px 60px rgba(0,0,0,0.20)",
         zIndex: 201, fontFamily: SANS, overflow: "hidden",
         maxHeight: "calc(100vh - 32px)", overflowY: "auto",
@@ -685,8 +685,7 @@ function DeptFormModal({ initial, onClose, onSave }) {
 // ─── Summary Table ────────────────────────────────────────────────────────────
 function SummaryTable({ departments, onExport, onPrint, onSelect, isMobile }) {
   return (
-    <div style={{ marginTop: 48, background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, overflow: "hidden" }}>
-      {/* Table Header */}
+    <div style={{ marginTop: 48, background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, overflow: "hidden" }}>
       <div style={{
         padding: "16px 24px",
         borderBottom: `1px solid ${C.outlineVariant}`,
@@ -710,7 +709,6 @@ function SummaryTable({ departments, onExport, onPrint, onSelect, isMobile }) {
         </div>
       </div>
 
-      {/* Table / mobile cards */}
       {departments.length === 0 ? (
         <div style={{ padding: 48, textAlign: "center", color: C.onSurfaceVariant }}>
           <Icon name="domain" size={36} style={{ display: "block", margin: "0 auto 10px", color: C.outlineVariant }} />
@@ -741,7 +739,7 @@ function SummaryTable({ departments, onExport, onPrint, onSelect, isMobile }) {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: SANS }}>
             <thead>
-              <tr style={{ background: C.white }}>
+              <tr style={{ background: CARD }}>
                 {["Department", "Faculty", "Assets Count", "Open Requests", "Health Status", ""].map((h, i) => (
                   <th key={i} style={{
                     padding: "12px 24px", textAlign: i === 5 ? "right" : "left",
@@ -801,7 +799,7 @@ function SummaryRow({ dept, onSelect }) {
         {menuOpen && (
           <div style={{
             position: "absolute", top: "100%", right: 24, marginTop: 4,
-            background: C.white, border: `1px solid ${C.outlineVariant}`,
+            background: CARD, border: `1px solid ${C.outlineVariant}`,
             borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
             zIndex: 30, width: 170, overflow: "hidden", textAlign: "left",
           }}>
@@ -833,7 +831,6 @@ export default function AdminDepartmentsPage() {
   const [editing, setEditing]       = useState(null);
   const [toast, setToast]           = useState(null);
 
-  // Starts empty — populate from Supabase. No test data.
   const [departments, setDepartments] = useState([]);
 
   useEffect(() => {
@@ -844,7 +841,7 @@ export default function AdminDepartmentsPage() {
         el.rel = "stylesheet";
         el.href = i === 0
           ? "https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-          : "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200";
+          : "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block";
         document.head.appendChild(el);
       }
     });
@@ -855,13 +852,11 @@ export default function AdminDepartmentsPage() {
     setTimeout(() => setToast(null), 2500);
   }
 
-  // Search filter
   const filtered = useMemo(() => departments.filter((d) => {
     const q = search.toLowerCase();
     return !q || [d.name, d.code, d.faculty, d.hod, d.location].some((f) => f.toLowerCase().includes(q));
   }), [departments, search]);
 
-  // Live totals — no hardcoded "412" faculty count
   const totalMembers = departments.reduce((sum, d) => sum + (d.members || 0), 0);
   const optimalCount  = departments.filter((d) => d.health === "Optimal").length;
   const attnCount     = departments.filter((d) => d.health !== "Optimal").length;
@@ -932,7 +927,6 @@ export default function AdminDepartmentsPage() {
           maxWidth: 1600, width: "100%", margin: "0 auto", boxSizing: "border-box",
         }}>
 
-          {/* Page Header */}
           <div style={{
             display: "flex", justifyContent: "space-between",
             alignItems: isMobile ? "flex-start" : "flex-end",
@@ -963,12 +957,11 @@ export default function AdminDepartmentsPage() {
             </button>
           </div>
 
-          {/* Hero Banner */}
           <div style={{
             position: "relative", width: "100%", height: isMobile ? 170 : 220,
             borderRadius: 16, overflow: "hidden", marginBottom: isMobile ? 20 : 32,
             border: `1px solid ${C.outlineVariant}`,
-            background: `linear-gradient(135deg, ${C.primaryContainer} 0%, #7e2b23 60%, #a03c34 100%)`,
+            background: `linear-gradient(135deg, #4a0404 0%, #7e2b23 60%, #a03c34 100%)`,
           }}>
             {!isMobile && [200, 280, 360, 440].map((size, i) => (
               <div key={i} style={{
@@ -985,7 +978,7 @@ export default function AdminDepartmentsPage() {
               display: "flex", flexDirection: "column", justifyContent: "flex-end",
               padding: isMobile ? 20 : 32,
             }}>
-              <h3 style={{ margin: "0 0 6px", fontSize: isMobile ? 17 : 22, fontWeight: 700, color: C.white }}>
+              <h3 style={{ margin: "0 0 6px", fontSize: isMobile ? 17 : 22, fontWeight: 700, color: "#ffffff" }}>
                 Main Campus Hierarchy
               </h3>
               <p style={{ margin: 0, fontSize: isMobile ? 12 : 14, color: "rgba(255,255,255,0.8)" }}>
@@ -1010,14 +1003,12 @@ export default function AdminDepartmentsPage() {
             </div>
           </div>
 
-          {/* Search result count */}
           {search && (
             <p style={{ fontSize: 13, color: C.onSurfaceVariant, marginBottom: 16, fontFamily: MONO }}>
               {filtered.length} result{filtered.length !== 1 ? "s" : ""} for "{search}"
             </p>
           )}
 
-          {/* Department Cards Grid */}
           {departments.length === 0 && !search ? (
             <div style={{
               display: "grid",
@@ -1044,7 +1035,6 @@ export default function AdminDepartmentsPage() {
             </div>
           )}
 
-          {/* Status Summary Table */}
           <SummaryTable
             departments={filtered}
             onExport={exportCSV}
@@ -1057,7 +1047,6 @@ export default function AdminDepartmentsPage() {
 
       {isMobile && <BottomNav />}
 
-      {/* Detail Drawer */}
       {selected && (
         <DetailDrawer
           dept={selected}
@@ -1068,17 +1057,14 @@ export default function AdminDepartmentsPage() {
         />
       )}
 
-      {/* Add Modal */}
       {adding && <DeptFormModal onClose={() => setAdding(false)} onSave={handleAdd} />}
 
-      {/* Edit Modal */}
       {editing && <DeptFormModal initial={editing} onClose={() => setEditing(null)} onSave={handleSaveEdit} />}
 
-      {/* Toast */}
       {toast && (
         <div style={{
           position: "fixed", bottom: isMobile ? 76 : 24, left: "50%", transform: "translateX(-50%)",
-          background: C.onSurface, color: C.white, padding: "12px 24px",
+          background: "var(--color-inverse-surface)", color: "var(--color-inverse-on-surface)", padding: "12px 24px",
           borderRadius: 30, fontSize: 13, fontFamily: MONO, zIndex: 300,
           boxShadow: "0 8px 24px rgba(0,0,0,0.2)", whiteSpace: "nowrap",
         }}>

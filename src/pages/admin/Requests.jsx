@@ -6,26 +6,31 @@ import { generateJobOrderPdf, uploadJobOrderPdf } from "../../lib/JobOrderPdf";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  onPrimaryContainer:     "#d26a5f",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  surfaceContainerHighest:"#dce2f3",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-on-surface)",
+  primaryContainer:       "var(--color-primary-container)",
+  onPrimaryContainer:     "var(--color-on-primary-container)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-background)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  surfaceContainerHighest:"var(--color-surface-container-highest)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
+// Card/table/modal surfaces — flips to a dark surface in dark mode.
+const CARD = "var(--color-surface-container-lowest)";
+// Sidebar stays a fixed brand color in both themes.
+const SIDEBAR_BG = "#4a0404";
+
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
@@ -39,6 +44,9 @@ const NAV_ITEMS = [
   { icon: "notifications", label: "Notifications", path: "/admin/notifications" },
 ];
 
+// These are semantic priority/status colors (not theme colors), so they stay
+// as literal light hex — they're intentionally light chips with dark text
+// regardless of app theme, same convention as most dashboards use for badges.
 const PRIORITY_CFG = {
   Emergency: { bg: "#FEE2E2", text: "#991B1B" },
   High:      { bg: "#FEF3C7", text: "#92400E" },
@@ -102,7 +110,7 @@ function StatusBadge({ status }) {
 
 function Sidebar({ currentPath, onNavigate, onLogout }) {
   return (
-    <aside style={{ width: 260, background: C.primaryContainer, color: C.white, display: "flex", flexDirection: "column", height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 50, overflowY: "auto", fontFamily: SANS }}>
+    <aside style={{ width: 260, background: SIDEBAR_BG, color: C.white, display: "flex", flexDirection: "column", height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 50, overflowY: "auto", fontFamily: SANS }}>
       <div style={{ padding: "24px 24px 12px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 38, height: 38, borderRadius: 6, background: "rgba(255,255,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -147,7 +155,7 @@ function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout }) {
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.40)", zIndex: 70 }} />
-      <aside style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 260, background: C.primaryContainer, zIndex: 71, display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto" }}>
+      <aside style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 260, background: SIDEBAR_BG, zIndex: 71, display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto" }}>
         <div style={{ padding: "20px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontWeight: 700, fontSize: 17, color: C.white }}>AATU</div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "rgba(255,255,255,0.7)", display: "flex" }}>
@@ -178,7 +186,7 @@ function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout }) {
 
 function MobileBottomNav({ currentPath, onNavigate }) {
   return (
-    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60, background: C.white, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 62 }}>
+    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60, background: CARD, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 62 }}>
       {NAV_ITEMS.slice(0, 5).map((item) => {
         const isActive = currentPath.startsWith(item.path);
         return (
@@ -194,7 +202,7 @@ function MobileBottomNav({ currentPath, onNavigate }) {
 
 function TopBar({ search, setSearch, onMenu, isMobile }) {
   return (
-    <header style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px 0 20px", position: "sticky", top: 0, zIndex: 40, background: "rgba(249,249,255,0.94)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 10 }}>
+    <header style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px 0 20px", position: "sticky", top: 0, zIndex: 40, background: "color-mix(in srgb, var(--color-background) 94%, transparent)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 10 }}>
       {isMobile && (
         <button onClick={onMenu} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: C.onSurface, display: "flex", flexShrink: 0 }}>
           <Icon name="menu" size={24} />
@@ -218,7 +226,7 @@ function TopBar({ search, setSearch, onMenu, isMobile }) {
 
 function StatCard({ icon, iconBg, iconColor, label, value, loading }) {
   return (
-    <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: 18 }}>
+    <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: 18 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <div style={{ width: 36, height: 36, borderRadius: 8, background: iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Icon name={icon} size={19} style={{ color: iconColor }} />
@@ -238,7 +246,7 @@ function RequestCard({ req, onOpen }) {
 
   return (
     <div onClick={() => onOpen(req)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{
-      background: C.white, border: `1px solid ${C.outlineVariant}`, borderLeft: `4px solid ${leftAccent}`,
+      background: CARD, border: `1px solid ${C.outlineVariant}`, borderLeft: `4px solid ${leftAccent}`,
       borderRadius: 12, padding: "16px 18px", display: "flex", alignItems: "center", gap: 16,
       cursor: "pointer", boxShadow: hov ? "0 4px 14px rgba(0,0,0,0.07)" : "none", transition: "box-shadow 0.18s",
     }}>
@@ -297,7 +305,7 @@ function AssignTechnicianModal({ req, technicians, onClose, onAssign, loadingTec
   return (
     <>
       <div onClick={!submitting ? onClose : undefined} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.30)", zIndex: 200 }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(560px,95vw)", maxHeight: "85vh", background: C.white, borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.20)", zIndex: 201, fontFamily: SANS, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(560px,95vw)", maxHeight: "85vh", background: CARD, borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.20)", zIndex: 201, fontFamily: SANS, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.onSurface }}>Assign Technician</h3>
@@ -355,7 +363,7 @@ function AssignTechnicianModal({ req, technicians, onClose, onAssign, loadingTec
                     const loadColor = tech.activeJobs === 0 ? C.secondary : tech.activeJobs <= 2 ? "#b45309" : C.error;
                     const loadLabel = tech.activeJobs === 0 ? "Available" : tech.activeJobs <= 2 ? "Moderate load" : "High load";
                     return (
-                      <button key={tech.id} onClick={() => setSelectedId(tech.id)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", border: `2px solid ${isSelected ? C.primaryContainer : C.outlineVariant}`, background: isSelected ? `${C.primaryContainer}08` : C.white, borderRadius: 10, cursor: "pointer", textAlign: "left", width: "100%", transition: "all 0.15s" }}>
+                      <button key={tech.id} onClick={() => setSelectedId(tech.id)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", border: `2px solid ${isSelected ? C.primaryContainer : C.outlineVariant}`, background: isSelected ? "color-mix(in srgb, var(--color-primary-container) 5%, transparent)" : CARD, borderRadius: 10, cursor: "pointer", textAlign: "left", width: "100%", transition: "all 0.15s" }}>
                         <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.surfaceContainerHigh, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, color: C.onSurfaceVariant, fontSize: 14 }}>
                           {tech.name?.[0] ?? "T"}
                         </div>
@@ -390,8 +398,8 @@ function AssignTechnicianModal({ req, technicians, onClose, onAssign, loadingTec
             </div>
             <div style={{ padding: "14px 24px", borderTop: `1px solid ${C.outlineVariant}`, display: "flex", justifyContent: "flex-end", gap: 10, background: C.surfaceContainerLow }}>
               <button onClick={onClose} style={{ padding: "9px 20px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO, color: C.onSurface }}>Cancel</button>
-              <button onClick={handleConfirm} disabled={!selectedId || submitting} style={{ padding: "9px 22px", background: C.primaryContainer, color: C.white, border: "none", borderRadius: 8, cursor: (!selectedId || submitting) ? "not-allowed" : "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, opacity: (!selectedId || submitting) ? 0.5 : 1, display: "flex", alignItems: "center", gap: 6 }}>
-                <Icon name="task_alt" size={15} style={{ color: C.white }} />
+              <button onClick={handleConfirm} disabled={!selectedId || submitting} style={{ padding: "9px 22px", background: C.primaryContainer, color: "#ffffff", border: "none", borderRadius: 8, cursor: (!selectedId || submitting) ? "not-allowed" : "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, opacity: (!selectedId || submitting) ? 0.5 : 1, display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="task_alt" size={15} style={{ color: "#ffffff" }} />
                 Confirm Assignment
               </button>
             </div>
@@ -407,7 +415,7 @@ function DetailDrawer({ req, onClose, onAssignClick, onMarkComplete, onViewPdf }
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.22)", zIndex: 100 }} />
-      <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: "min(440px,100vw)", background: C.white, zIndex: 101, boxShadow: "-6px 0 32px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto" }}>
+      <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: "min(440px,100vw)", background: CARD, zIndex: 101, boxShadow: "-6px 0 32px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto" }}>
         <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div style={{ flex: 1 }}>
@@ -486,7 +494,7 @@ function DetailDrawer({ req, onClose, onAssignClick, onMarkComplete, onViewPdf }
             <div>
               <p style={{ margin: "0 0 8px", fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase" }}>Job Order Document</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button onClick={() => onViewPdf(req)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.outlineVariant}`, background: C.white, cursor: "pointer", textAlign: "left" }}>
+                <button onClick={() => onViewPdf(req)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.outlineVariant}`, background: CARD, cursor: "pointer", textAlign: "left" }}>
                   <Icon name="picture_as_pdf" size={20} style={{ color: C.error }} />
                   <span style={{ flex: 1, fontSize: 13, color: C.onSurface, fontWeight: 600 }}>View Job Order PDF</span>
                   <Icon name="open_in_new" size={16} style={{ color: C.onSurfaceVariant }} />
@@ -520,9 +528,10 @@ function DetailDrawer({ req, onClose, onAssignClick, onMarkComplete, onViewPdf }
 
 function Toast({ msg, type = "default" }) {
   if (!msg) return null;
-  const bg = type === "error" ? C.error : C.onSurface;
+  const bg = type === "error" ? C.error : "var(--color-inverse-surface)";
+  const fg = type === "error" ? "#ffffff" : "var(--color-inverse-on-surface)";
   return (
-    <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: bg, color: C.white, padding: "10px 22px", borderRadius: 99, fontSize: 13, fontFamily: SANS, fontWeight: 600, zIndex: 300, whiteSpace: "nowrap", boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
+    <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: bg, color: fg, padding: "10px 22px", borderRadius: 99, fontSize: 13, fontFamily: SANS, fontWeight: 600, zIndex: 300, whiteSpace: "nowrap", boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
       {msg}
     </div>
   );
@@ -555,7 +564,6 @@ export default function AdminRequests() {
     setTimeout(() => setToast(null), 3000);
   }
 
-  // ── FIXED: fetch without the broken job_orders join ───────────────────────
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
@@ -593,8 +601,8 @@ export default function AdminRequests() {
         reporterRole: r.reporter?.role ?? "user",
         technicianName: r.technician?.full_name ?? null,
         jobOrderId: r.job_order_id,
-        pdfUrl: null,       // loaded separately when drawer opens
-        hodSignedAt: null,  // loaded separately when drawer opens
+        pdfUrl: null,
+        hodSignedAt: null,
       })));
     } catch (err) {
       console.error("Unexpected fetch error:", err);
@@ -748,7 +756,6 @@ export default function AdminRequests() {
     if (req.pdfUrl) window.open(req.pdfUrl, "_blank", "noopener,noreferrer");
   }
 
-  // ── FIXED: handleOpen now fetches job order details separately ────────────
   async function handleOpen(req, assignDirect = false) {
     setSelected(req);
     setDrawerOpen(true);
@@ -789,7 +796,7 @@ export default function AdminRequests() {
 
   const STAT_CARDS = [
     { icon: "emergency",       label: "Emergency",       value: emergencyCount,  iconBg: "#FEE2E255", iconColor: C.error },
-    { icon: "pending_actions", label: "Active Requests", value: activeCount,     iconBg: `${C.secondaryContainer}55`, iconColor: C.secondary },
+    { icon: "pending_actions", label: "Active Requests", value: activeCount,     iconBg: `color-mix(in srgb, var(--color-secondary-container) 55%, transparent)`, iconColor: C.secondary },
     { icon: "assignment_ind",  label: "Unassigned",      value: unassignedCount, iconBg: C.surfaceContainerHigh, iconColor: C.primary },
     { icon: "check_circle",    label: "Completed",       value: completedCount,  iconBg: C.secondaryContainer, iconColor: C.onSecondaryContainer },
   ];
@@ -824,17 +831,17 @@ export default function AdminRequests() {
                 padding: "6px 16px", borderRadius: 99, fontSize: 12, fontWeight: 700, fontFamily: MONO,
                 border: "none", cursor: "pointer",
                 background: tab === t ? C.primaryContainer : C.surfaceContainerHigh,
-                color: tab === t ? C.white : C.onSurfaceVariant,
+                color: tab === t ? "#ffffff" : C.onSurfaceVariant,
               }}>{t}</button>
             ))}
           </div>
 
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {[1, 2, 3].map((i) => <div key={i} style={{ height: 76, background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, animation: "pulse 1.5s ease-in-out infinite" }} />)}
+              {[1, 2, 3].map((i) => <div key={i} style={{ height: 76, background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, animation: "pulse 1.5s ease-in-out infinite" }} />)}
             </div>
           ) : paged.length === 0 ? (
-            <div style={{ padding: "56px 24px", textAlign: "center", background: C.white, borderRadius: 14, border: `1px solid ${C.outlineVariant}` }}>
+            <div style={{ padding: "56px 24px", textAlign: "center", background: CARD, borderRadius: 14, border: `1px solid ${C.outlineVariant}` }}>
               <Icon name="inbox" size={44} style={{ color: C.outlineVariant, display: "block", margin: "0 auto 12px" }} />
               <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.onSurface }}>
                 {requests.length === 0 ? "No requests yet" : "No requests match your filters"}
@@ -855,11 +862,11 @@ export default function AdminRequests() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 24, paddingTop: 16, borderTop: `1px solid ${C.outlineVariant}` }}>
               <span style={{ fontSize: 13, color: C.onSurfaceVariant }}>Showing {paged.length} of {filtered.length}</span>
               <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: "6px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: "none", cursor: page === 1 ? "default" : "pointer", opacity: page === 1 ? 0.4 : 1, fontSize: 13 }}>Previous</button>
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: "6px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: "none", cursor: page === 1 ? "default" : "pointer", opacity: page === 1 ? 0.4 : 1, fontSize: 13, color: C.onSurface }}>Previous</button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button key={p} onClick={() => setPage(p)} style={{ padding: "6px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: page === p ? C.primaryContainer : "none", color: page === p ? C.white : C.onSurface, cursor: "pointer", fontSize: 13, fontWeight: page === p ? 700 : 400, fontFamily: MONO }}>{p}</button>
+                  <button key={p} onClick={() => setPage(p)} style={{ padding: "6px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: page === p ? C.primaryContainer : "none", color: page === p ? "#ffffff" : C.onSurface, cursor: "pointer", fontSize: 13, fontWeight: page === p ? 700 : 400, fontFamily: MONO }}>{p}</button>
                 ))}
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: "6px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: "none", cursor: page === totalPages ? "default" : "pointer", opacity: page === totalPages ? 0.4 : 1, fontSize: 13 }}>Next</button>
+                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: "6px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: "none", cursor: page === totalPages ? "default" : "pointer", opacity: page === totalPages ? 0.4 : 1, fontSize: 13, color: C.onSurface }}>Next</button>
               </div>
             </div>
           )}
