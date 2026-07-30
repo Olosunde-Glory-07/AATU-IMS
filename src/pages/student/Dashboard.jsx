@@ -798,7 +798,7 @@ export default function StudentDashboard() {
                     { icon: "list_alt",      label: "View All My Requests",  action: () => go("/student/my-requests")          },
                     { icon: "history",       label: "View Request History",  action: () => go("/student/my-history")           },
                     { icon: "notifications", label: "Check Notifications",   action: () => go("/student/notifications")        },
-                    { icon: "account_circle",label: "My Profile",            action: () => setProfileOpen(true)               },
+                    { icon: "account_circle",label: "My Profile",            action: () => go("/pages/shared/profile")               },
                   ].map((a) => (
                     <button key={a.label} onClick={a.action} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`, borderRadius: 8, cursor: "pointer", color: C.onSurface, fontSize: 13, fontFamily: SANS, textAlign: "left", transition: "background 0.12s" }}
                       onMouseEnter={(e) => e.currentTarget.style.background = C.surfaceContainerHigh}

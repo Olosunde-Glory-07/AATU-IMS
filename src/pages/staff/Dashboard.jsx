@@ -5,33 +5,33 @@ import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  onPrimaryContainer:     "#d26a5f",
-  primaryFixed:           "#ffdad5",
-  primaryFixedDim:        "#ffb4aa",
-  onPrimaryFixed:         "#410001",
-  onPrimaryFixedVariant:  "#7e2b23",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  secondaryFixed:         "#bbefc1",
-  tertiaryFixed:          "#ffdcc3",
-  onTertiaryFixed:        "#2f1500",
-  onTertiaryFixedVariant: "#6e3900",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  surfaceContainerHighest:"#dce2f3",
-  surfaceDim:             "#d3daea",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-primary)",
+  primaryContainer:       "var(--color-primary-container)",
+  onPrimaryContainer:     "var(--color-on-primary-container)",
+  primaryFixed:           "var(--color-primary-fixed)",
+  primaryFixedDim:        "var(--color-primary-fixed-dim)",
+  onPrimaryFixed:         "var(--color-on-primary-fixed)",
+  onPrimaryFixedVariant:  "var(--color-on-primary-fixed-variant)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  secondaryFixed:         "var(--color-secondary-fixed)",
+  tertiaryFixed:          "var(--color-tertiary-fixed)",
+  onTertiaryFixed:        "var(--color-on-tertiary-fixed)",
+  onTertiaryFixedVariant: "var(--color-on-tertiary-fixed-variant)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-surface)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  surfaceContainerHighest:"var(--color-surface-container-highest)",
+  surfaceDim:             "var(--color-surface-dim)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
 const MONO = "'JetBrains Mono', monospace";
@@ -230,7 +230,7 @@ function BottomNav() {
   return (
     <nav style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90,
-      background: C.white, borderTop: `1px solid ${C.outlineVariant}`,
+      background: 'var(--color-surface-container-lowest)', borderTop: `1px solid ${C.outlineVariant}`,
       display: "flex", height: 60,
     }}>
       {NAV_ITEMS.map((item) => {
@@ -395,7 +395,7 @@ function WelcomeBanner({ requests, isMobile, firstName, onViewRequests, onFileRe
         </p>
         <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
           <button onClick={onViewRequests} style={{
-            padding: "9px 20px", background: C.white, color: C.primary,
+            padding: "9px 20px", background: 'var(--color-surface-container-lowest)', color: C.primary,
             border: "none", borderRadius: 8, cursor: "pointer",
             fontSize: 12, fontFamily: MONO, fontWeight: 700, letterSpacing: "0.04em",
           }}>
@@ -438,7 +438,7 @@ function StatCard({ card, loading }) {
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        background: C.white,
+        background: 'var(--color-surface-container-lowest)',
         border: `1px solid ${C.outlineVariant}`,
         borderLeft: card.borderLeft || `1px solid ${C.outlineVariant}`,
         borderRadius: 10, padding: "20px 20px",
@@ -486,7 +486,7 @@ function MiniBarChart({ monthlyData }) {
 
   return (
     <div style={{
-      background: C.white, border: `1px solid ${C.outlineVariant}`,
+      background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`,
       borderRadius: 10, padding: "22px 24px",
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -519,7 +519,7 @@ function MiniBarChart({ monthlyData }) {
               <div key={pct} style={{
                 position: "absolute", left: 8, right: 8,
                 bottom: `${pct}%`, height: 1,
-                background: `${C.outlineVariant}60`,
+                background: `color-mix(in srgb, var(--color-outline-variant) 38%, transparent)`,
                 zIndex: 0,
               }} />
             ))}
@@ -544,17 +544,17 @@ function MiniBarChart({ monthlyData }) {
                 <div style={{
                   width: "100%",
                   height: `${bar.pct}%`,
-                  background: bar.active ? C.primaryContainer : `${C.primaryFixedDim}40`,
+                  background: bar.active ? C.primaryContainer : `color-mix(in srgb, var(--color-primary-fixed-dim) 25%, transparent)`,
                   borderRadius: "4px 4px 0 0",
                   transition: "background 0.2s",
                   cursor: "pointer",
                   zIndex: 1,
                 }}
                   onMouseEnter={(e) => {
-                    if (!bar.active) e.currentTarget.style.background = `${C.primaryFixedDim}70`;
+                    if (!bar.active) e.currentTarget.style.background = `color-mix(in srgb, var(--color-primary-fixed-dim) 44%, transparent)`;
                   }}
                   onMouseLeave={(e) => {
-                    if (!bar.active) e.currentTarget.style.background = `${C.primaryFixedDim}40`;
+                    if (!bar.active) e.currentTarget.style.background = `color-mix(in srgb, var(--color-primary-fixed-dim) 25%, transparent)`;
                   }}
                 />
               </div>
@@ -567,7 +567,7 @@ function MiniBarChart({ monthlyData }) {
               <span key={bar.month} style={{
                 flex: 1, textAlign: "center",
                 fontSize: 11, fontFamily: MONO,
-                color: bar.active ? C.primary : `${C.onSurfaceVariant}80`,
+                color: bar.active ? C.primary : `color-mix(in srgb, var(--color-on-surface-variant) 50%, transparent)`,
                 fontWeight: bar.active ? 700 : 400,
               }}>{bar.month}</span>
             ))}
@@ -588,7 +588,7 @@ function RecentRequests({ requests, search, onViewAll, onRowClick, loading }) {
 
   return (
     <section style={{
-      background: C.white, border: `1px solid ${C.outlineVariant}`,
+      background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`,
       borderRadius: 10, overflow: "hidden", fontFamily: SANS,
     }}>
       {/* Header */}
@@ -658,7 +658,7 @@ function TableRow({ req, prCfg, stCfg, onRowClick }) {
       onClick={() => onRowClick(req)}
       style={{
         borderTop: `1px solid ${C.outlineVariant}`,
-        background: hov ? `${C.surfaceContainerLow}80` : "transparent",
+        background: hov ? `color-mix(in srgb, var(--color-surface-container-low) 50%, transparent)` : "transparent",
         transition: "background 0.12s", cursor: "pointer",
       }}
     >
@@ -913,7 +913,7 @@ export default function StaffDashboardPage() {
             }}>
               {secondaryStats.map((s, i) => (
                 <div key={i} style={{
-                  background: C.white, border: `1px solid ${C.outlineVariant}`,
+                  background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`,
                   borderRadius: 10, padding: isMobile ? "14px 12px" : "20px 22px",
                   display: "flex", alignItems: isMobile ? "flex-start" : "center",
                   justifyContent: "space-between", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 8 : 0,

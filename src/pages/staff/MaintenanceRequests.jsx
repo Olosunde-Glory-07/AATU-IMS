@@ -5,30 +5,30 @@ import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  onPrimaryContainer:     "#d26a5f",
-  primaryFixed:           "#ffdad5",
-  primaryFixedDim:        "#ffb4aa",
-  onPrimaryFixed:         "#410001",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  tertiaryFixed:          "#ffdcc3",
-  onTertiaryFixedVariant: "#6e3900",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  surfaceContainerHighest:"#dce2f3",
-  surfaceDim:             "#d3daea",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-primary)",
+  primaryContainer:       "var(--color-primary-container)",
+  onPrimaryContainer:     "var(--color-on-primary-container)",
+  primaryFixed:           "var(--color-primary-fixed)",
+  primaryFixedDim:        "var(--color-primary-fixed-dim)",
+  onPrimaryFixed:         "var(--color-on-primary-fixed)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  tertiaryFixed:          "var(--color-tertiary-fixed)",
+  onTertiaryFixedVariant: "var(--color-on-tertiary-fixed-variant)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-surface)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  surfaceContainerHighest:"var(--color-surface-container-highest)",
+  surfaceDim:             "var(--color-surface-dim)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
 const MONO = "'JetBrains Mono', monospace";
@@ -37,8 +37,8 @@ const SANS = "'Hanken Grotesk', sans-serif";
 // ─── Nav config ───────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { icon: "dashboard",     label: "Dashboard",     path: "/staff/dashboard" },
-  { icon: "list_alt",      label: "Requests",      path: "/staff/maintenance-requests" },
-  { icon: "history",       label: "Dept. History", path: "/staff/departmental-history" },
+  { icon: "list_alt",      label: "Requests",      path: "/staff/requests" },
+  { icon: "history",       label: "Dept. History", path: "/staff/history" },
   { icon: "notifications", label: "Notifications", path: "/staff/notifications" },
 ];
 
@@ -244,7 +244,7 @@ function BottomNav() {
   return (
     <nav style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90,
-      background: C.white, borderTop: `1px solid ${C.outlineVariant}`,
+      background: 'var(--color-surface-container-lowest)', borderTop: `1px solid ${C.outlineVariant}`,
       display: "flex", height: 60,
     }}>
       {NAV_ITEMS.map((item) => {
@@ -348,8 +348,8 @@ function AnalyticsRow({ requests, isMobile, loading }) {
   const pendingCount    = requests.filter((r) => r.status === "Pending").length;
 
   const statCards = [
-    { icon: "emergency",       label: "Emergency",       value: String(emergencyCount).padStart(2, "0"), iconBg: `${C.errorContainer}55`,     iconColor: C.error },
-    { icon: "pending_actions", label: "Active Requests", value: String(activeCount).padStart(2, "0"),     iconBg: `${C.secondaryContainer}55`, iconColor: C.secondary },
+    { icon: "emergency",       label: "Emergency",       value: String(emergencyCount).padStart(2, "0"), iconBg: `color-mix(in srgb, var(--color-error-container) 33%, transparent)`,     iconColor: C.error },
+    { icon: "pending_actions", label: "Active Requests", value: String(activeCount).padStart(2, "0"),     iconBg: `color-mix(in srgb, var(--color-secondary-container) 33%, transparent)`, iconColor: C.secondary },
     { icon: "assignment_ind",  label: "Pending Review",  value: String(pendingCount).padStart(2, "0"),    iconBg: C.surfaceContainerHigh,       iconColor: C.primary },
   ];
 
@@ -571,7 +571,7 @@ function DetailDrawer({ req, onClose, onCancelRequest, isMobile, canCancel }) {
       <div style={{
         position: "fixed", right: 0, top: 0, bottom: 0,
         width: isMobile ? "100%" : 420,
-        background: C.white, zIndex: 101,
+        background: 'var(--color-surface-container-lowest)', zIndex: 101,
         boxShadow: "-6px 0 32px rgba(0,0,0,0.13)",
         display: "flex", flexDirection: "column",
         fontFamily: SANS, overflowY: "auto",
@@ -744,7 +744,7 @@ function NewRequestModal({ onClose, onSubmit, isMobile }) {
       <div style={{
         position: "fixed", top: "50%", left: "50%",
         transform: "translate(-50%,-50%)",
-        width: 500, maxWidth: "calc(100vw - 32px)", background: C.white, borderRadius: 16,
+        width: 500, maxWidth: "calc(100vw - 32px)", background: 'var(--color-surface-container-lowest)', borderRadius: 16,
         boxShadow: "0 20px 60px rgba(0,0,0,0.20)",
         zIndex: 201, fontFamily: SANS, overflow: "hidden",
         maxHeight: "calc(100vh - 32px)", overflowY: "auto",
@@ -1096,7 +1096,7 @@ export default function StaffMaintenanceRequestsPage() {
                   onClick={() => showToast("Use the search bar or status tabs above to filter requests.")}
                   style={{
                     display: "flex", alignItems: "center", gap: 6,
-                    padding: "8px 14px", background: C.white,
+                    padding: "8px 14px", background: 'var(--color-surface-container-lowest)',
                     border: `1px solid ${C.outlineVariant}`, borderRadius: 8,
                     cursor: "pointer", fontSize: 13, fontWeight: 600,
                     color: C.onSurface, fontFamily: SANS,
@@ -1110,7 +1110,7 @@ export default function StaffMaintenanceRequestsPage() {
                 onClick={() => setSortDesc((p) => !p)}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  padding: "8px 14px", background: C.white,
+                  padding: "8px 14px", background: 'var(--color-surface-container-lowest)',
                   border: `1px solid ${C.outlineVariant}`, borderRadius: 8,
                   cursor: "pointer", fontSize: 13, fontWeight: 600,
                   color: C.onSurface, fontFamily: SANS, flex: isMobile ? 1 : "initial",
@@ -1139,7 +1139,7 @@ export default function StaffMaintenanceRequestsPage() {
           {/* Request List / Grid */}
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {[1, 2, 3].map((i) => <div key={i} style={{ height: 96, background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, animation: "pulse 1.5s ease-in-out infinite" }} />)}
+              {[1, 2, 3].map((i) => <div key={i} style={{ height: 96, background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`, borderRadius: 12, animation: "pulse 1.5s ease-in-out infinite" }} />)}
             </div>
           ) : paged.length === 0 ? (
             <div style={{

@@ -4,13 +4,16 @@ import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
+// Semantic notification-type chip colors — intentionally kept as literal light
+// hex chips in both themes (no dark-mode equivalent token set exists yet for
+// these specific badge shades), matching the convention used elsewhere.
 const TYPE_CONFIG = {
   Emergency:    { iconBg: 'bg-[#ffdad6]', iconColor: 'text-[#ba1a1a]', icon: 'emergency',    border: 'bg-[#ba1a1a]', badge: 'bg-[#ffdad6] text-[#ba1a1a]' },
   Assigned:     { iconBg: 'bg-[#b8ecbe]', iconColor: 'text-[#3e6d47]', icon: 'assignment',   border: 'bg-[#396844]', badge: 'bg-[#b8ecbe] text-[#3e6d47]' },
   StatusUpdate: { iconBg: 'bg-[#e2e8f8]', iconColor: 'text-[#4338ca]', icon: 'update',       border: 'bg-[#6366f1]', badge: 'bg-[#EEF2FF] text-[#4338ca]' },
   Completed:    { iconBg: 'bg-[#b8ecbe]', iconColor: 'text-[#396844]', icon: 'check_circle', border: 'bg-[#a0d3a6]', badge: 'bg-[#b8ecbe] text-[#3e6d47]' },
   NewRequest:   { iconBg: 'bg-[#ffdcc3]', iconColor: 'text-[#6e3900]', icon: 'inbox',        border: 'bg-[#ffb77d]', badge: 'bg-[#ffdcc3] text-[#6e3900]' },
-  Message:      { iconBg: 'bg-white border border-[#dcc0bd]', iconColor: 'text-[#d26a5f]', icon: 'mail', border: null, badge: 'bg-[#e2e8f8] text-[#554240]' },
+  Message:      { iconBg: 'bg-surface-container-lowest border border-outline-variant', iconColor: 'text-[#d26a5f]', icon: 'mail', border: null, badge: 'bg-[#e2e8f8] text-[#554240]' },
   Memo:         { iconBg: 'bg-[#e2e8f8]', iconColor: 'text-[#554240]', icon: 'info',         border: null, badge: 'bg-[#e2e8f8] text-[#554240]' },
 }
 
@@ -55,10 +58,10 @@ function isRecent(iso) {
 function BottomNav() {
   const navigate = useNavigate()
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[90] bg-white border-t border-[#dcc0bd] flex h-[60px]">
+    <nav className="fixed bottom-0 left-0 right-0 z-[90] bg-surface-container-lowest border-t border-outline-variant flex h-[60px]">
       {NAV_ITEMS.map(item => (
         <button key={item.label} onClick={() => navigate(item.href)}
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-mono tracking-wide text-[#554240]">
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-mono tracking-wide text-on-surface-variant">
           <span className="material-symbols-outlined text-[22px]">{item.icon}</span>
           {item.label}
         </button>
@@ -80,28 +83,28 @@ function SettingsPanel({ prefs, onChange, onClose }) {
   return (
     <>
       <div className="fixed inset-0 bg-black/40 z-[110]" onClick={onClose} />
-      <div className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-white z-[111] shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-5 border-b border-[#dcc0bd]">
+      <div className="fixed right-0 top-0 bottom-0 w-full max-w-sm bg-surface-container-lowest z-[111] shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-5 border-b border-outline-variant">
           <div>
-            <h3 className="font-bold text-[#151c27] text-lg">Notification Settings</h3>
-            <p className="text-xs text-[#554240] mt-0.5">Choose what alerts you receive</p>
+            <h3 className="font-bold text-on-surface text-lg">Notification Settings</h3>
+            <p className="text-xs text-on-surface-variant mt-0.5">Choose what alerts you receive</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-[#f0f3ff] rounded-full transition-colors">
-            <span className="material-symbols-outlined text-[20px] text-[#554240]">close</span>
+          <button onClick={onClose} className="p-2 hover:bg-surface-container-low rounded-full transition-colors">
+            <span className="material-symbols-outlined text-[20px] text-on-surface-variant">close</span>
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-3">
           {TOGGLES.map(t => (
-            <div key={t.key} className="flex items-center justify-between p-4 bg-[#f9f9ff] border border-[#dcc0bd] rounded-xl gap-4">
+            <div key={t.key} className="flex items-center justify-between p-4 bg-background border border-outline-variant rounded-xl gap-4">
               <div className="min-w-0">
-                <p className="text-sm font-bold text-[#151c27]">{t.label}</p>
-                <p className="text-xs text-[#554240] mt-0.5 leading-relaxed">{t.desc}</p>
+                <p className="text-sm font-bold text-on-surface">{t.label}</p>
+                <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">{t.desc}</p>
               </div>
               {/* Toggle switch */}
               <button
                 onClick={() => onChange(t.key, !prefs[t.key])}
-                className={`relative flex-shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${prefs[t.key] ? 'bg-[#4a0404]' : 'bg-[#dcc0bd]'}`}
+                className={`relative flex-shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none ${prefs[t.key] ? 'bg-[#4a0404]' : 'bg-outline-variant'}`}
               >
                 <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${prefs[t.key] ? 'translate-x-6' : 'translate-x-0'}`} />
               </button>
@@ -109,8 +112,8 @@ function SettingsPanel({ prefs, onChange, onClose }) {
           ))}
         </div>
 
-        <div className="p-5 border-t border-[#dcc0bd]">
-          <p className="text-xs text-[#554240] text-center">
+        <div className="p-5 border-t border-outline-variant">
+          <p className="text-xs text-on-surface-variant text-center">
             Settings are saved automatically to your profile.
           </p>
         </div>
@@ -275,7 +278,7 @@ export default function TechnicianNotifications() {
     return (
       <div
         onClick={() => markRead(n.id)}
-        className={`bg-white border border-[#dcc0bd] rounded-lg flex gap-4 items-start hover:border-[#4a0404]/40 transition-all group relative overflow-hidden cursor-pointer
+        className={`bg-surface-container-lowest border border-outline-variant rounded-lg flex gap-4 items-start hover:border-[#4a0404]/40 dark:hover:border-[#ffb4aa]/40 transition-all group relative overflow-hidden cursor-pointer
           ${isMobile ? 'p-3.5 flex-col' : 'p-4'} ${n.read ? 'opacity-70' : ''}`}
       >
         {cfg.border && <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${cfg.border}`} />}
@@ -291,12 +294,12 @@ export default function TechnicianNotifications() {
           <div className="flex-grow min-w-0">
             <div className={`flex justify-between items-start mb-1 gap-3 ${isMobile ? 'flex-col gap-1' : ''}`}>
               <div className="flex items-center gap-2">
-                {!n.read && <span className="w-2 h-2 rounded-full bg-[#4a0404] flex-shrink-0" />}
-                <h4 className={`font-bold text-[#151c27] ${isMobile ? 'text-sm' : 'text-base'}`}>{n.title}</h4>
+                {!n.read && <span className="w-2 h-2 rounded-full bg-[#4a0404] dark:bg-[#ffb4aa] flex-shrink-0" />}
+                <h4 className={`font-bold text-on-surface ${isMobile ? 'text-sm' : 'text-base'}`}>{n.title}</h4>
               </div>
-              <span className="text-xs text-[#554240] font-medium flex-shrink-0">{timeAgo(n.created_at)}</span>
+              <span className="text-xs text-on-surface-variant font-medium flex-shrink-0">{timeAgo(n.created_at)}</span>
             </div>
-            <p className={`text-[#554240] max-w-3xl ${isMobile ? 'text-xs mb-3' : 'text-sm mb-4'}`}>{n.body}</p>
+            <p className={`text-on-surface-variant max-w-3xl ${isMobile ? 'text-xs mb-3' : 'text-sm mb-4'}`}>{n.body}</p>
 
             {actions.length > 0 && (
               <div className="flex items-center gap-3 flex-wrap" onClick={e => e.stopPropagation()}>
@@ -307,7 +310,7 @@ export default function TechnicianNotifications() {
                         ? n.type === 'Emergency'
                           ? 'bg-[#ba1a1a] text-white hover:brightness-110'
                           : 'bg-[#4a0404] text-white hover:opacity-90'
-                        : 'border border-[#89726f] text-[#554240] hover:bg-[#e2e8f8]'
+                        : 'border border-outline text-on-surface-variant hover:bg-surface-container'
                     }`}>
                     {a.label}
                   </button>
@@ -321,7 +324,7 @@ export default function TechnicianNotifications() {
             <div className="flex flex-col items-end flex-shrink-0" onClick={e => e.stopPropagation()}>
               <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-sm mb-2 ${cfg.badge}`}>{n.type}</span>
               <button onClick={() => dismiss(n.id)}
-                className="text-[#89726f] hover:text-[#ba1a1a] opacity-0 group-hover:opacity-100 transition-opacity">
+                className="text-outline hover:text-error opacity-0 group-hover:opacity-100 transition-opacity">
                 <span className="material-symbols-outlined text-[20px]">delete</span>
               </button>
             </div>
@@ -332,7 +335,7 @@ export default function TechnicianNotifications() {
         {isMobile && (
           <div className="flex items-center justify-between w-full mt-1 pl-[56px]" onClick={e => e.stopPropagation()}>
             <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-sm ${cfg.badge}`}>{n.type}</span>
-            <button onClick={() => dismiss(n.id)} className="text-[#89726f] p-1">
+            <button onClick={() => dismiss(n.id)} className="text-outline p-1">
               <span className="material-symbols-outlined text-[18px]">delete</span>
             </button>
           </div>
@@ -342,16 +345,16 @@ export default function TechnicianNotifications() {
   }
 
   return (
-    <main className={`flex-1 min-h-screen bg-[#f9f9ff] ${isMobile ? 'pb-[60px]' : ''}`}>
+    <main className={`flex-1 min-h-screen bg-background ${isMobile ? 'pb-[60px]' : ''}`}>
 
       {/* ── Top App Bar ───────────────────────────────────────────────────── */}
-      <header className={`h-16 flex justify-between items-center bg-[#f9f9ff]/90 backdrop-blur border-b border-[#dcc0bd] sticky top-0 z-40 gap-3 ${isMobile ? 'px-4' : 'px-6'}`}>
+      <header className={`h-16 flex justify-between items-center bg-background/90 backdrop-blur border-b border-outline-variant sticky top-0 z-40 gap-3 ${isMobile ? 'px-4' : 'px-6'}`}>
         <div className="relative flex-1 max-w-md">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#554240] text-[18px]">search</span>
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full bg-[#f0f3ff] border-none rounded-full pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4a0404]/20"
+            className="w-full bg-surface-container-low border-none rounded-full pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-container/20 text-on-surface"
             placeholder="Search notifications..."
           />
         </div>
@@ -364,7 +367,7 @@ export default function TechnicianNotifications() {
           </button>
           <button
             onClick={() => setSettingsOpen(true)}
-            className="p-2 text-[#554240] hover:text-[#210000] hover:bg-[#e2e8f8] rounded-full transition-colors"
+            className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-full transition-colors"
             title="Notification Settings"
           >
             <span className="material-symbols-outlined">settings</span>
@@ -406,7 +409,7 @@ export default function TechnicianNotifications() {
             {FILTER_TABS.map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className={`px-4 py-2 rounded-full text-xs font-bold transition-colors flex-shrink-0 ${
-                  tab === t ? 'bg-[#4a0404] text-white' : 'bg-[#e2e8f8] text-[#554240] hover:bg-[#dcc0bd]'
+                  tab === t ? 'bg-[#4a0404] text-white' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
                 }`}>
                 {t}
               </button>
@@ -414,7 +417,7 @@ export default function TechnicianNotifications() {
           </div>
           <div className="flex items-center gap-3">
             <button onClick={fetchNotifications}
-              className="text-[#554240] text-sm flex items-center gap-1 hover:text-[#210000] transition-colors">
+              className="text-on-surface-variant text-sm flex items-center gap-1 hover:text-on-surface transition-colors">
               <span className="material-symbols-outlined text-[18px]">refresh</span>
               {!isMobile && 'Refresh'}
             </button>
@@ -431,10 +434,10 @@ export default function TechnicianNotifications() {
           {loading ? (
             // Skeleton
             [1,2,3].map(i => (
-              <div key={i} className="h-[96px] bg-white border border-[#dcc0bd] rounded-lg animate-pulse" />
+              <div key={i} className="h-[96px] bg-surface-container-lowest border border-outline-variant rounded-lg animate-pulse" />
             ))
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center text-[#554240]">
+            <div className="flex flex-col items-center justify-center py-16 text-center text-on-surface-variant">
               <span className="material-symbols-outlined text-6xl opacity-20 mb-4">notifications_none</span>
               <p className="text-lg font-semibold">You're all caught up!</p>
               <p className="text-sm max-w-xs mt-1">
@@ -444,7 +447,7 @@ export default function TechnicianNotifications() {
               </p>
               {(search || tab !== 'All') && (
                 <button onClick={() => { setSearch(''); setTab('All') }}
-                  className="mt-3 text-xs font-mono text-[#4a0404] underline">
+                  className="mt-3 text-xs font-mono text-[#4a0404] dark:text-[#ffb4aa] underline">
                   Clear filters
                 </button>
               )}
@@ -454,15 +457,15 @@ export default function TechnicianNotifications() {
               {recent.length > 0 && (
                 <>
                   <div className="py-2">
-                    <span className="text-xs text-[#89726f] font-bold uppercase tracking-widest">Recent</span>
+                    <span className="text-xs text-outline font-bold uppercase tracking-widest">Recent</span>
                   </div>
                   {recent.map(n => <NotifCard key={n.id} n={n} />)}
                 </>
               )}
               {earlier.length > 0 && (
                 <>
-                  <div className="py-4 border-b border-[#dcc0bd]/30 mt-2">
-                    <span className="text-xs text-[#89726f] font-bold uppercase tracking-widest">Earlier</span>
+                  <div className="py-4 border-b border-outline-variant/30 mt-2">
+                    <span className="text-xs text-outline font-bold uppercase tracking-widest">Earlier</span>
                   </div>
                   {earlier.map(n => <NotifCard key={n.id} n={n} />)}
                 </>
@@ -485,7 +488,7 @@ export default function TechnicianNotifications() {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed left-1/2 -translate-x-1/2 z-[60] bg-[#151c27] text-white px-6 py-3 rounded-full text-sm font-mono shadow-xl flex items-center gap-2 whitespace-nowrap ${isMobile ? 'bottom-[76px]' : 'bottom-6'}`}>
+        <div className={`fixed left-1/2 -translate-x-1/2 z-[60] bg-inverse-surface text-inverse-on-surface px-6 py-3 rounded-full text-sm font-mono shadow-xl flex items-center gap-2 whitespace-nowrap ${isMobile ? 'bottom-[76px]' : 'bottom-6'}`}>
           <span className="material-symbols-outlined text-[#b8ecbe] text-base">check_circle</span>
           {toast}
         </div>
