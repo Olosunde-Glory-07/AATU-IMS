@@ -5,24 +5,24 @@ import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  primaryFixedDim:        "#ffb4aa",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  surfaceContainerHighest:"#dce2f3",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-primary)",
+  primaryContainer:       "var(--color-primary-container)",
+  primaryFixedDim:        "var(--color-primary-fixed-dim)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-surface)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  surfaceContainerHighest:"var(--color-surface-container-highest)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
 const MONO = "'JetBrains Mono', monospace";
@@ -96,7 +96,7 @@ function Toggle({ on, onChange, loading }) {
     }}>
       <div style={{
         position: "absolute", top: 3, left: on ? 23 : 3,
-        width: 18, height: 18, borderRadius: "50%", background: C.white,
+        width: 18, height: 18, borderRadius: "50%", background: 'var(--color-surface-container-lowest)',
         transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
       }} />
     </button>
@@ -108,7 +108,7 @@ function SettingsModal({ notificationsEnabled, onToggle, toggling, onClose }) {
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.30)", zIndex: 200 }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(400px,95vw)", background: C.white, borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.18)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(400px,95vw)", background: 'var(--color-surface-container-lowest)', borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.18)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
         <div style={{ padding: "18px 24px 14px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.onSurface }}>Notification Settings</h3>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 6, color: C.onSurfaceVariant, display: "flex" }}>
@@ -256,7 +256,7 @@ function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout, firstN
 // ─── Mobile Bottom Nav ────────────────────────────────────────────────────────
 function MobileBottomNav({ currentPath, onNavigate, unreadCount }) {
   return (
-    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60, background: C.white, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 62 }}>
+    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60, background: 'var(--color-surface-container-lowest)', borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 62 }}>
       {NAV_ITEMS.map((item) => {
         const isActive = currentPath.startsWith(item.path);
         return (
@@ -317,7 +317,7 @@ function RatingModal({ onClose, onSubmit }) {
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.40)", zIndex: 200 }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px,95vw)", background: C.white, borderRadius: 20, boxShadow: "0 24px 64px rgba(0,0,0,0.22)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(420px,95vw)", background: 'var(--color-surface-container-lowest)', borderRadius: 20, boxShadow: "0 24px 64px rgba(0,0,0,0.22)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
         <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.onSurface }}>Rate the Service</h3>
@@ -359,7 +359,7 @@ function NotifCard({ notif, onMarkRead, onDismiss, onAction }) {
   const [hov, setHov] = useState(false);
   const cfg = TYPE_CFG[notif.type] || TYPE_CFG.Update;
   return (
-    <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{ background: notif.read ? `${C.surfaceContainerLow}70` : C.white, border: `1px solid ${C.outlineVariant}`, borderLeft: `4px solid ${cfg.leftBorder}`, borderRadius: 12, padding: "18px 20px", display: "flex", gap: 16, boxShadow: hov ? "0 4px 14px rgba(0,0,0,0.07)" : "none", transition: "box-shadow 0.18s, background 0.15s", opacity: notif.read ? 0.85 : 1, position: "relative" }}>
+    <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{ background: notif.read ? `color-mix(in srgb, var(--color-surface-container-low) 70%, transparent)` : "var(--color-surface-container-lowest)", border: `1px solid ${C.outlineVariant}`, borderLeft: `4px solid ${cfg.leftBorder}`, borderRadius: 12, padding: "18px 20px", display: "flex", gap: 16, boxShadow: hov ? "0 4px 14px rgba(0,0,0,0.07)" : "none", transition: "box-shadow 0.18s, background 0.15s", opacity: notif.read ? 0.85 : 1, position: "relative" }}>
       {!notif.read && (
         <div style={{ position: "absolute", top: 14, right: 14, width: 8, height: 8, borderRadius: "50%", background: cfg.dotColor }} />
       )}
@@ -404,7 +404,7 @@ function StatsSidebar({ notifications, onNavigate, notificationsEnabled, onSetti
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Notification toggle status */}
-      <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
+      <div style={{ background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
         <div style={{ padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.onSurface }}>Notifications</p>
@@ -420,7 +420,7 @@ function StatsSidebar({ notifications, onNavigate, notificationsEnabled, onSetti
       </div>
 
       {/* Summary */}
-      <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
+      <div style={{ background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow }}>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.onSurface }}>Summary</h3>
         </div>
@@ -444,7 +444,7 @@ function StatsSidebar({ notifications, onNavigate, notificationsEnabled, onSetti
       </div>
 
       {/* Quick links */}
-      <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
+      <div style={{ background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow }}>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.onSurface }}>Quick Links</h3>
         </div>
@@ -467,7 +467,7 @@ function StatsSidebar({ notifications, onNavigate, notificationsEnabled, onSetti
       </div>
 
       {/* Support */}
-      <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
+      <div style={{ background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow }}>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.onSurface }}>Support</h3>
         </div>
@@ -696,7 +696,7 @@ export default function StudentNotifications() {
             <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
               {/* Mobile settings button */}
               {isMobile && (
-                <button onClick={() => setShowSettings(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: C.white, cursor: "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.onSurface }}>
+                <button onClick={() => setShowSettings(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: 'var(--color-surface-container-lowest)', cursor: "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.onSurface }}>
                   <Icon name="settings" size={16} />
                   Settings
                 </button>
@@ -704,13 +704,13 @@ export default function StudentNotifications() {
               {notifications.length > 0 && (
                 <>
                   {unreadCount > 0 && (
-                    <button onClick={markAllRead} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: C.white, cursor: "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.onSurface }}>
+                    <button onClick={markAllRead} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: 'var(--color-surface-container-lowest)', cursor: "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.onSurface }}>
                       <Icon name="done_all" size={16} />
                       Mark all read
                       <span style={{ background: C.primaryContainer, color: C.white, borderRadius: 99, fontSize: 9, fontWeight: 700, padding: "1px 6px", fontFamily: MONO }}>{unreadCount}</span>
                     </button>
                   )}
-                  <button onClick={dismissAll} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: C.white, cursor: "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.onSurfaceVariant }}>
+                  <button onClick={dismissAll} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: 'var(--color-surface-container-lowest)', cursor: "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.onSurfaceVariant }}>
                     <Icon name="clear_all" size={16} />
                     Clear all
                   </button>
@@ -758,10 +758,10 @@ export default function StudentNotifications() {
               {/* Notification list */}
               {loading ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {[1, 2, 3].map((i) => <div key={i} style={{ height: 120, background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, animation: "pulse 1.5s ease-in-out infinite" }} />)}
+                  {[1, 2, 3].map((i) => <div key={i} style={{ height: 120, background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`, borderRadius: 12, animation: "pulse 1.5s ease-in-out infinite" }} />)}
                 </div>
               ) : filtered.length === 0 ? (
-                <div style={{ padding: "56px 24px", textAlign: "center", background: C.white, borderRadius: 14, border: `1px solid ${C.outlineVariant}` }}>
+                <div style={{ padding: "56px 24px", textAlign: "center", background: 'var(--color-surface-container-lowest)', borderRadius: 14, border: `1px solid ${C.outlineVariant}` }}>
                   <Icon name="notifications_off" size={44} style={{ color: C.outlineVariant, display: "block", margin: "0 auto 12px" }} />
                   <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.onSurface }}>
                     {notifications.length === 0 ? "No notifications yet" : "No notifications match your filters"}

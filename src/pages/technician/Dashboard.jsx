@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 
+// Semantic priority/status chip colors — intentionally kept as literal light
+// hex chips in both themes (no dark-mode equivalent token set exists yet for
+// these specific badge shades), matching the convention used elsewhere.
 const PRIORITY_STYLE = {
   Emergency: 'bg-[#ffdad6] text-[#ba1a1a]',
   High:      'bg-amber-100 text-amber-800',
@@ -42,10 +45,10 @@ function useIsMobile() {
 function BottomNav() {
   const navigate = useNavigate()
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[90] bg-white border-t border-[#dcc0bd] flex h-[60px]">
+    <nav className="fixed bottom-0 left-0 right-0 z-[90] bg-surface-container-lowest border-t border-outline-variant flex h-[60px]">
       {NAV_ITEMS.map(item => (
         <button key={item.label} onClick={() => navigate(item.href)}
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-mono tracking-wide text-[#554240]">
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-mono tracking-wide text-on-surface-variant">
           <span className="material-symbols-outlined text-[22px]">{item.icon}</span>
           {item.label}
         </button>
@@ -89,14 +92,14 @@ function ProfileModal({ profile, onClose, onLogout }) {
     setEditing(false)
   }
 
-  const inp = 'w-full px-3 py-2 border border-[#dcc0bd] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4a0404]/20 bg-white'
+  const inp = 'w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-container/20 bg-surface-container-lowest text-on-surface'
   const initials = (profile?.full_name ?? '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
   return (
     <>
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[80]" onClick={onClose} />
       <div className="fixed inset-0 z-[81] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
 
           {/* Header */}
           <div className="bg-[#4a0404] p-6 text-white relative">
@@ -128,12 +131,12 @@ function ProfileModal({ profile, onClose, onLogout }) {
                   { label: 'ROLE',       value: profile?.role       || '—',   icon: 'badge' },
                 ].map(({ label, value, icon }) => (
                   <div key={label} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#f0f3ff] flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-[#554240] text-[16px]">{icon}</span>
+                    <div className="w-8 h-8 rounded-lg bg-surface-container-low flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-on-surface-variant text-[16px]">{icon}</span>
                     </div>
                     <div>
-                      <p className="text-[10px] font-mono text-[#554240]/60 uppercase tracking-wider">{label}</p>
-                      <p className="text-sm font-medium text-[#151c27]">{value}</p>
+                      <p className="text-[10px] font-mono text-on-surface-variant/60 uppercase tracking-wider">{label}</p>
+                      <p className="text-sm font-medium text-on-surface">{value}</p>
                     </div>
                   </div>
                 ))}
@@ -141,13 +144,13 @@ function ProfileModal({ profile, onClose, onLogout }) {
                 <div className="flex gap-3 pt-2">
                   <button
                     onClick={() => setEditing(true)}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-mono hover:bg-surface-container-low transition-colors text-on-surface"
                   >
                     <span className="material-symbols-outlined text-[16px]">edit</span> Edit Profile
                   </button>
                   <button
                     onClick={onLogout}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#ffdad6] text-[#93000a] rounded-lg text-sm font-mono hover:opacity-90 transition-opacity font-bold"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-error-container text-on-error-container rounded-lg text-sm font-mono hover:opacity-90 transition-opacity font-bold"
                   >
                     <span className="material-symbols-outlined text-[16px]">logout</span> Logout
                   </button>
@@ -162,7 +165,7 @@ function ProfileModal({ profile, onClose, onLogout }) {
                   { label: 'Phone',       key: 'phone',      placeholder: 'e.g. 08012345678' },
                 ].map(({ label, key, placeholder }) => (
                   <div key={key}>
-                    <label className="block text-[10px] font-mono text-[#554240] uppercase tracking-wider mb-1.5">{label}</label>
+                    <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">{label}</label>
                     <input
                       value={form[key]}
                       onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
@@ -173,10 +176,10 @@ function ProfileModal({ profile, onClose, onLogout }) {
                 ))}
 
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setEditing(false)} className="flex-1 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors">
+                  <button onClick={() => setEditing(false)} className="flex-1 px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-mono hover:bg-surface-container-low transition-colors text-on-surface">
                     Cancel
                   </button>
-                  <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2.5 bg-[#4a0404] text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 disabled:opacity-60 transition-opacity">
+                  <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-2.5 bg-primary-container text-white rounded-lg text-sm font-mono font-bold hover:opacity-90 disabled:opacity-60 transition-opacity">
                     {saving ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
@@ -185,7 +188,7 @@ function ProfileModal({ profile, onClose, onLogout }) {
           </div>
 
           {toast && (
-            <div className={`mx-6 mb-4 px-4 py-2.5 rounded-lg text-sm font-mono flex items-center gap-2 ${toast.err ? 'bg-[#ffdad6] text-[#93000a]' : 'bg-[#b8ecbe] text-[#1a3d25]'}`}>
+            <div className={`mx-6 mb-4 px-4 py-2.5 rounded-lg text-sm font-mono flex items-center gap-2 ${toast.err ? 'bg-error-container text-on-error-container' : 'bg-[#b8ecbe] dark:bg-[#264d30] text-[#1a3d25] dark:text-[#b8ecbe]'}`}>
               <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                 {toast.err ? 'error' : 'check_circle'}
               </span>
@@ -355,17 +358,17 @@ export default function TechnicianDashboard() {
   }
 
   return (
-    <main className={`flex-1 min-h-screen bg-[#f9f9ff] ${isMobile ? 'pb-[60px]' : ''}`}>
+    <main className={`flex-1 min-h-screen bg-background ${isMobile ? 'pb-[60px]' : ''}`}>
 
       {/* ── Top App Bar ───────────────────────────────────────────────────── */}
-      <header className={`flex justify-between items-center h-16 bg-[#f9f9ff] border-b border-[#dcc0bd] sticky top-0 z-40 gap-3 ${isMobile ? 'px-4' : 'px-6'}`}>
+      <header className={`flex justify-between items-center h-16 bg-background border-b border-outline-variant sticky top-0 z-40 gap-3 ${isMobile ? 'px-4' : 'px-6'}`}>
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <div className="relative flex-1 max-w-full">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#554240] text-[20px]">search</span>
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className={`bg-[#f0f3ff] border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ffb4aa] transition-all w-full ${isMobile ? '' : 'max-w-[256px]'}`}
+              className={`bg-surface-container-low border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#ffb4aa] transition-all w-full text-on-surface ${isMobile ? '' : 'max-w-[256px]'}`}
               placeholder="Search jobs..."
             />
           </div>
@@ -375,7 +378,7 @@ export default function TechnicianDashboard() {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2 text-[#554240] hover:bg-[#dce2f3] rounded-full transition-colors"
+            className="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors"
             title="Refresh"
           >
             <span className={`material-symbols-outlined ${refreshing ? 'animate-spin' : ''}`}>refresh</span>
@@ -388,7 +391,7 @@ export default function TechnicianDashboard() {
           </button>
           <button
             onClick={() => navigate('/technician/notifications')}
-            className="p-2 text-[#554240] hover:bg-[#dce2f3] rounded-full transition-colors"
+            className="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors"
           >
             <span className="material-symbols-outlined">notifications</span>
           </button>
@@ -433,15 +436,15 @@ export default function TechnicianDashboard() {
             { label: 'Done Today',  value: loading ? '—' : completedToday,  icon: 'task_alt',        hoverBg: 'group-hover:bg-[#b8ecbe]', hoverColor: 'group-hover:text-[#3e6d47]' },
           ].map(s => (
             <div key={s.label}
-              className={`bg-white border border-[#dcc0bd] rounded-xl flex items-center hover:bg-[#f0f3ff] transition-colors group cursor-pointer ${isMobile ? 'p-4 gap-3' : 'p-6 gap-5'}`}
+              className={`bg-surface-container-lowest border border-outline-variant rounded-xl flex items-center hover:bg-surface-container-low transition-colors group cursor-pointer ${isMobile ? 'p-4 gap-3' : 'p-6 gap-5'}`}
               onClick={() => navigate('/technician/my-jobs')}
             >
-              <div className={`rounded-full bg-[#dce2f3] flex items-center justify-center text-[#554240] transition-colors flex-shrink-0 ${s.hoverBg} ${s.hoverColor} ${isMobile ? 'w-11 h-11' : 'w-14 h-14'}`}>
+              <div className={`rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors flex-shrink-0 ${s.hoverBg} ${s.hoverColor} ${isMobile ? 'w-11 h-11' : 'w-14 h-14'}`}>
                 <span className={`material-symbols-outlined ${isMobile ? 'text-[20px]' : 'text-[28px]'}`}>{s.icon}</span>
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-mono text-[#554240] opacity-60 truncate">{s.label}</p>
-                <h3 className={`font-bold text-[#151c27] ${isMobile ? 'text-xl' : 'text-2xl'}`}>{s.value}</h3>
+                <p className="text-xs font-mono text-on-surface-variant opacity-60 truncate">{s.label}</p>
+                <h3 className={`font-bold text-on-surface ${isMobile ? 'text-xl' : 'text-2xl'}`}>{s.value}</h3>
               </div>
             </div>
           ))}
@@ -449,22 +452,22 @@ export default function TechnicianDashboard() {
 
         {/* Main Workspace */}
         <section className="space-y-4">
-          <div className={`flex items-center justify-between border-b border-[#dcc0bd] pb-4 ${isMobile ? 'flex-col items-stretch gap-3' : ''}`}>
+          <div className={`flex items-center justify-between border-b border-outline-variant pb-4 ${isMobile ? 'flex-col items-stretch gap-3' : ''}`}>
             <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-[#210000]">handyman</span>
-              <h3 className="text-lg font-semibold text-[#151c27] uppercase tracking-tight">Active Jobs</h3>
+              <span className="material-symbols-outlined text-[#210000] dark:text-[#ffb4aa]">handyman</span>
+              <h3 className="text-lg font-semibold text-on-surface uppercase tracking-tight">Active Jobs</h3>
             </div>
             <div className={`flex gap-2 ${isMobile ? 'w-full' : ''}`}>
               <button
                 onClick={() => navigate('/technician/my-jobs')}
-                className={`text-xs font-mono px-4 py-1.5 rounded bg-[#dce2f3] text-[#554240] hover:bg-[#cfd7ed] transition-colors ${isMobile ? 'flex-1' : ''}`}
+                className={`text-xs font-mono px-4 py-1.5 rounded bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors ${isMobile ? 'flex-1' : ''}`}
               >
                 View All
               </button>
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className={`text-xs font-mono px-4 py-1.5 rounded border border-[#dcc0bd] text-[#554240] hover:bg-[#e7eefe] transition-colors flex items-center justify-center gap-1.5 ${isMobile ? 'flex-1' : ''}`}
+                className={`text-xs font-mono px-4 py-1.5 rounded border border-outline-variant text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center justify-center gap-1.5 ${isMobile ? 'flex-1' : ''}`}
               >
                 <span className={`material-symbols-outlined text-[16px] ${refreshing ? 'animate-spin' : ''}`}>refresh</span>
                 Refresh
@@ -478,21 +481,21 @@ export default function TechnicianDashboard() {
             {loading ? (
               <div className="col-span-12 lg:col-span-8 space-y-3">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="h-[88px] bg-white border border-[#dcc0bd] rounded-2xl animate-pulse" />
+                  <div key={i} className="h-[88px] bg-surface-container-lowest border border-outline-variant rounded-2xl animate-pulse" />
                 ))}
               </div>
             ) : filteredJobs.length === 0 ? (
-              <div className={`col-span-12 lg:col-span-8 bg-white border border-[#dcc0bd] rounded-2xl flex flex-col items-center justify-center text-center ${isMobile ? 'p-6' : 'p-12'}`}>
+              <div className={`col-span-12 lg:col-span-8 bg-surface-container-lowest border border-outline-variant rounded-2xl flex flex-col items-center justify-center text-center ${isMobile ? 'p-6' : 'p-12'}`}>
                 <div className="relative mb-6">
-                  <div className={`rounded-full bg-[#e7eefe] flex items-center justify-center ${isMobile ? 'w-24 h-24' : 'w-32 h-32'}`}>
-                    <span className={`material-symbols-outlined text-[#d3daea] ${isMobile ? 'text-[48px]' : 'text-[64px]'}`}>check_circle</span>
+                  <div className={`rounded-full bg-surface-container flex items-center justify-center ${isMobile ? 'w-24 h-24' : 'w-32 h-32'}`}>
+                    <span className={`material-symbols-outlined text-surface-dim ${isMobile ? 'text-[48px]' : 'text-[64px]'}`}>check_circle</span>
                   </div>
-                  <div className={`absolute -bottom-2 -right-2 bg-[#b8ecbe] rounded-full flex items-center justify-center border-4 border-white ${isMobile ? 'w-8 h-8' : 'w-10 h-10'}`}>
-                    <span className="material-symbols-outlined text-[#396844] text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>done_all</span>
+                  <div className={`absolute -bottom-2 -right-2 bg-[#b8ecbe] dark:bg-[#264d30] rounded-full flex items-center justify-center border-4 border-surface-container-lowest ${isMobile ? 'w-8 h-8' : 'w-10 h-10'}`}>
+                    <span className="material-symbols-outlined text-[#396844] dark:text-[#a0d3a6] text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>done_all</span>
                   </div>
                 </div>
-                <h4 className="text-xl font-bold text-[#151c27] mb-2">All caught up!</h4>
-                <p className="text-[#554240] text-base max-w-md mx-auto">
+                <h4 className="text-xl font-bold text-on-surface mb-2">All caught up!</h4>
+                <p className="text-on-surface-variant text-base max-w-md mx-auto">
                   {search ? 'No jobs match your search.' : 'No active jobs assigned to you right now. New jobs will appear here automatically.'}
                 </p>
                 <button
@@ -507,24 +510,24 @@ export default function TechnicianDashboard() {
               <div className="col-span-12 lg:col-span-8 space-y-4">
                 {filteredJobs.map(job => (
                   <div key={job.id}
-                    className={`bg-white border border-[#dcc0bd] rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-md transition-shadow ${isMobile ? 'p-4' : 'p-6'}`}
+                    className={`bg-surface-container-lowest border border-outline-variant rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-md transition-shadow ${isMobile ? 'p-4' : 'p-6'}`}
                   >
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#e7eefe] flex items-center justify-center flex-shrink-0">
-                        <span className="material-symbols-outlined text-[#554240]">build</span>
+                      <div className="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-outlined text-on-surface-variant">build</span>
                       </div>
                       <div className="min-w-0">
-                        <span className="text-xs font-mono text-[#554240]">#{String(job.id).slice(0, 8)}</span>
-                        <h4 className="text-base font-bold text-[#151c27]">{job.title}</h4>
-                        <p className="text-xs text-[#554240] mt-0.5 flex items-center gap-1">
+                        <span className="text-xs font-mono text-on-surface-variant">#{String(job.id).slice(0, 8)}</span>
+                        <h4 className="text-base font-bold text-on-surface">{job.title}</h4>
+                        <p className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px]">location_on</span>
                           {job.location}
                         </p>
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${PRIORITY_STYLE[job.priority] || 'bg-[#dce2f3] text-[#554240]'}`}>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${PRIORITY_STYLE[job.priority] || 'bg-surface-container text-on-surface-variant'}`}>
                             {job.priority}
                           </span>
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${STATUS_STYLE[job.status] || 'bg-[#dce2f3] text-[#554240]'}`}>
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${STATUS_STYLE[job.status] || 'bg-surface-container text-on-surface-variant'}`}>
                             {job.status}
                           </span>
                         </div>
@@ -534,7 +537,7 @@ export default function TechnicianDashboard() {
                       {job.status === 'Approved' && (
                         <button
                           onClick={() => startJob(job)}
-                          className={`px-4 py-2 bg-[#dce2f3] text-[#151c27] rounded-lg text-xs font-mono font-bold hover:bg-[#cfd7ed] transition-colors ${isMobile ? 'flex-1' : ''}`}
+                          className={`px-4 py-2 bg-surface-container text-on-surface rounded-lg text-xs font-mono font-bold hover:bg-surface-container-high transition-colors ${isMobile ? 'flex-1' : ''}`}
                         >
                           Start Job
                         </button>
@@ -549,7 +552,7 @@ export default function TechnicianDashboard() {
                       )}
                       <button
                         onClick={() => navigate('/technician/my-jobs')}
-                        className={`px-4 py-2 border border-[#dcc0bd] text-[#554240] rounded-lg text-xs font-mono hover:bg-[#f0f3ff] transition-colors ${isMobile ? 'flex-1' : ''}`}
+                        className={`px-4 py-2 border border-outline-variant text-on-surface-variant rounded-lg text-xs font-mono hover:bg-surface-container-low transition-colors ${isMobile ? 'flex-1' : ''}`}
                       >
                         Details
                       </button>
@@ -561,17 +564,17 @@ export default function TechnicianDashboard() {
 
             {/* Quick Links Panel */}
             <div className="col-span-12 lg:col-span-4 space-y-6">
-              <div className={`bg-[#f0f3ff] border border-[#dcc0bd] rounded-2xl h-full ${isMobile ? 'p-4' : 'p-6'}`}>
-                <h5 className="text-lg font-semibold text-[#151c27] mb-6">Quick Links</h5>
+              <div className={`bg-surface-container-low border border-outline-variant rounded-2xl h-full ${isMobile ? 'p-4' : 'p-6'}`}>
+                <h5 className="text-lg font-semibold text-on-surface mb-6">Quick Links</h5>
                 <div className="space-y-3">
                   {QUICK_LINKS.map(link => (
                     <button key={link.label} onClick={() => navigate(link.href)}
-                      className="w-full flex items-center justify-between p-4 bg-white rounded-xl border border-[#dcc0bd] hover:border-[#210000] transition-colors group">
+                      className="w-full flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl border border-outline-variant hover:border-[#210000] dark:hover:border-[#ffb4aa] transition-colors group">
                       <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-[#554240] group-hover:text-[#210000] transition-colors">{link.icon}</span>
-                        <span className="text-sm text-[#151c27]">{link.label}</span>
+                        <span className="material-symbols-outlined text-on-surface-variant group-hover:text-[#210000] dark:group-hover:text-[#ffb4aa] transition-colors">{link.icon}</span>
+                        <span className="text-sm text-on-surface">{link.label}</span>
                       </div>
-                      <span className="material-symbols-outlined text-[#554240]">chevron_right</span>
+                      <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
                     </button>
                   ))}
                 </div>
@@ -579,23 +582,23 @@ export default function TechnicianDashboard() {
                 {/* Profile quick access */}
                 <button
                   onClick={() => setProfileOpen(true)}
-                  className="mt-3 w-full flex items-center justify-between p-4 bg-white rounded-xl border border-[#dcc0bd] hover:border-[#210000] transition-colors group"
+                  className="mt-3 w-full flex items-center justify-between p-4 bg-surface-container-lowest rounded-xl border border-outline-variant hover:border-[#210000] dark:hover:border-[#ffb4aa] transition-colors group"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-[#554240] group-hover:text-[#210000] transition-colors">account_circle</span>
-                    <span className="text-sm text-[#151c27]">My Profile</span>
+                    <span className="material-symbols-outlined text-on-surface-variant group-hover:text-[#210000] dark:group-hover:text-[#ffb4aa] transition-colors">account_circle</span>
+                    <span className="text-sm text-on-surface">My Profile</span>
                   </div>
-                  <span className="material-symbols-outlined text-[#554240]">chevron_right</span>
+                  <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
                 </button>
 
-                <div className="mt-6 p-4 bg-[#ffdad5] rounded-xl">
-                  <p className="text-[#410001] text-xs font-mono font-bold mb-1">System Status</p>
+                <div className="mt-6 p-4 bg-[#ffdad5] dark:bg-[#5c2a26] rounded-xl">
+                  <p className="text-[#410001] dark:text-[#ffdad5] text-xs font-mono font-bold mb-1">System Status</p>
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#396844] opacity-75" />
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-[#396844]" />
                     </span>
-                    <span className="text-[#396844] text-xs font-bold">ALL SYSTEMS OPERATIONAL</span>
+                    <span className="text-[#396844] dark:text-[#a0d3a6] text-xs font-bold">ALL SYSTEMS OPERATIONAL</span>
                   </div>
                 </div>
               </div>
@@ -617,7 +620,7 @@ export default function TechnicianDashboard() {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed left-1/2 -translate-x-1/2 z-[60] bg-[#151c27] text-white px-6 py-3 rounded-full text-sm font-mono shadow-xl flex items-center gap-2 whitespace-nowrap ${isMobile ? 'bottom-[76px]' : 'bottom-6'}`}>
+        <div className={`fixed left-1/2 -translate-x-1/2 z-[60] bg-inverse-surface text-inverse-on-surface px-6 py-3 rounded-full text-sm font-mono shadow-xl flex items-center gap-2 whitespace-nowrap ${isMobile ? 'bottom-[76px]' : 'bottom-6'}`}>
           <span className="material-symbols-outlined text-[#b8ecbe] text-base">check_circle</span>
           {toast}
         </div>

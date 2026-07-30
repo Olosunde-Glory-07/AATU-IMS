@@ -6,7 +6,7 @@ import { LayoutDashboard, ClipboardList, History, Bell, User, LogOut, Menu, X } 
 const navItems = [
   { to: '/student/dashboard',     label: 'Dashboard',    icon: LayoutDashboard },
   { to: '/student/my-requests',   label: 'My Requests',  icon: ClipboardList },
-  { to: '/student/history',       label: 'My History',   icon: History },
+  { to: '/student/my-history',       label: 'My History',   icon: History },
   { to: '/student/notifications', label: 'Notifications', icon: Bell },
 ]
 

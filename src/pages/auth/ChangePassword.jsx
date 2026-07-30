@@ -54,41 +54,41 @@ export default function ChangePassword() {
 
   const inp = {
     width: '100%', padding: '12px 14px',
-    border: '1px solid #dcc0bd', borderRadius: 10,
-    fontSize: 15, color: '#151c27',
-    background: '#fff', outline: 'none',
+    border: '1px solid var(--color-outline-variant)', borderRadius: 10,
+    fontSize: 15, color: 'var(--color-on-surface)',
+    background: 'var(--color-surface-container-lowest)', outline: 'none',
     boxSizing: 'border-box',
     fontFamily: "'Hanken Grotesk', sans-serif",
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: "'Hanken Grotesk', sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: 'var(--color-surface-container-low)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: "'Hanken Grotesk', sans-serif" }}>
       <div style={{ width: '100%', maxWidth: 420 }}>
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 14, background: '#4a0404', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <span className="material-symbols-outlined" style={{ color: '#fff', fontSize: 28, fontVariationSettings: "'FILL' 1" }}>lock_reset</span>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: 'var(--color-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <span className="material-symbols-outlined" style={{ color: 'var(--color-on-primary-container)', fontSize: 28, fontVariationSettings: "'FILL' 1" }}>lock_reset</span>
           </div>
-          <h1 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 700, color: '#151c27' }}>
+          <h1 style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 700, color: 'var(--color-on-surface)' }}>
             Set your new password
           </h1>
-          <p style={{ margin: 0, fontSize: 14, color: '#554240', lineHeight: 1.6 }}>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--color-on-surface-variant)', lineHeight: 1.6 }}>
             Welcome, <strong>{profile?.full_name?.split(' ')[0] ?? 'there'}</strong>. 
             Your account is ready — please set a secure password to continue.
           </p>
         </div>
 
         {/* Card */}
-        <div style={{ background: '#fff', border: '1px solid #dcc0bd', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+        <div style={{ background: 'var(--color-surface-container-lowest)', border: '1px solid var(--color-outline-variant)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
 
           {/* Role banner */}
-          <div style={{ background: '#4a0404', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="material-symbols-outlined" style={{ color: '#ffb4aa', fontSize: 20, fontVariationSettings: "'FILL' 1" }}>
+          <div style={{ background: 'var(--color-primary-container)', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span className="material-symbols-outlined" style={{ color: 'var(--color-primary-fixed-dim)', fontSize: 20, fontVariationSettings: "'FILL' 1" }}>
               {profile?.role === 'technician' ? 'engineering' : 'badge'}
             </span>
             <div>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#fff', textTransform: 'capitalize' }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--color-on-primary-container)', textTransform: 'capitalize' }}>
                 {profile?.role ?? 'User'} Account
               </p>
               <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: "'JetBrains Mono', monospace" }}>
@@ -100,14 +100,14 @@ export default function ChangePassword() {
           <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {error && (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 14px', background: '#ffdad6', borderRadius: 8, fontSize: 13, color: '#93000a' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 14px', background: 'var(--color-error-container)', borderRadius: 8, fontSize: 13, color: 'var(--color-on-error-container)' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16, flexShrink: 0, marginTop: 1, fontVariationSettings: "'FILL' 1" }}>error</span>
                 {error}
               </div>
             )}
 
             <div>
-              <label style={{ display: 'block', fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: '#554240', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-on-surface-variant)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
                 New Password *
               </label>
               <input
@@ -121,7 +121,7 @@ export default function ChangePassword() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: '#554240', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-on-surface-variant)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
                 Confirm Password *
               </label>
               <input
@@ -149,9 +149,9 @@ export default function ChangePassword() {
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: 8, padding: '10px 14px', background: '#f0f3ff', border: '1px solid #dcc0bd', borderRadius: 8 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#554240', flexShrink: 0, marginTop: 1 }}>info</span>
-              <p style={{ margin: 0, fontSize: 12, color: '#554240', lineHeight: 1.5 }}>
+            <div style={{ display: 'flex', gap: 8, padding: '10px 14px', background: 'var(--color-surface-container-low)', border: '1px solid var(--color-outline-variant)', borderRadius: 8 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--color-on-surface-variant)', flexShrink: 0, marginTop: 1 }}>info</span>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--color-on-surface-variant)', lineHeight: 1.5 }}>
                 Choose a strong password you haven't used before. You won't be asked to change it again unless requested by the admin.
               </p>
             </div>
@@ -162,8 +162,8 @@ export default function ChangePassword() {
               style={{
                 marginTop: 4,
                 padding: '13px 0',
-                background: (!loading && password.length >= 8 && password === confirm) ? '#4a0404' : '#dcc0bd',
-                color: '#fff', border: 'none', borderRadius: 10,
+                background: (!loading && password.length >= 8 && password === confirm) ? 'var(--color-primary-container)' : 'var(--color-outline-variant)',
+                color: 'var(--color-on-primary-container)', border: 'none', borderRadius: 10,
                 fontSize: 14, fontFamily: "'JetBrains Mono', monospace",
                 fontWeight: 700,
                 cursor: (!loading && password.length >= 8 && password === confirm) ? 'pointer' : 'not-allowed',
@@ -189,4 +189,4 @@ export default function ChangePassword() {
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
-}
+} 

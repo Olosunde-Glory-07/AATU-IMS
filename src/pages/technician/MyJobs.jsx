@@ -6,24 +6,24 @@ import { uploadHodApprovalProof } from '../../lib/JobOrderPdf'
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                '#210000',
-  primaryContainer:       '#4a0404',
-  primaryFixedDim:        '#ffb4aa',
-  secondary:              '#396844',
-  secondaryContainer:     '#b8ecbe',
-  onSecondaryContainer:   '#3e6d47',
-  errorContainer:         '#ffdad6',
-  onErrorContainer:       '#93000a',
-  error:                  '#ba1a1a',
-  surface:                '#f9f9ff',
-  surfaceContainer:       '#e7eefe',
-  surfaceContainerLow:    '#f0f3ff',
-  surfaceContainerHigh:   '#e2e8f8',
-  surfaceContainerHighest:'#dce2f3',
-  onSurface:              '#151c27',
-  onSurfaceVariant:       '#554240',
-  outlineVariant:         '#dcc0bd',
-  outline:                '#89726f',
+  primary:                'var(--color-primary)',
+  primaryContainer:       'var(--color-primary-container)',
+  primaryFixedDim:        'var(--color-primary-fixed-dim)',
+  secondary:              'var(--color-secondary)',
+  secondaryContainer:     'var(--color-secondary-container)',
+  onSecondaryContainer:   'var(--color-on-secondary-container)',
+  errorContainer:         'var(--color-error-container)',
+  onErrorContainer:       'var(--color-on-error-container)',
+  error:                  'var(--color-error)',
+  surface:                'var(--color-surface)',
+  surfaceContainer:       'var(--color-surface-container)',
+  surfaceContainerLow:    'var(--color-surface-container-low)',
+  surfaceContainerHigh:   'var(--color-surface-container-high)',
+  surfaceContainerHighest:'var(--color-surface-container-highest)',
+  onSurface:              'var(--color-on-surface)',
+  onSurfaceVariant:       'var(--color-on-surface-variant)',
+  outlineVariant:         'var(--color-outline-variant)',
+  outline:                'var(--color-outline)',
   white:                  '#ffffff',
 }
 const MONO = "'JetBrains Mono', monospace"
@@ -182,7 +182,7 @@ function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout, firstN
 // ─── Mobile Bottom Nav ────────────────────────────────────────────────────────
 function MobileBottomNav({ currentPath, onNavigate }) {
   return (
-    <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 60, background: C.white, borderTop: `1px solid ${C.outlineVariant}`, display: 'flex', height: 62 }}>
+    <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 60, background: 'var(--color-surface-container-lowest)', borderTop: `1px solid ${C.outlineVariant}`, display: 'flex', height: 62 }}>
       {NAV_ITEMS.map((item) => {
         const isActive = currentPath.startsWith(item.path)
         return (
@@ -219,7 +219,7 @@ function TopBar({ search, setSearch, onMenu, isMobile, onRefresh, refreshing }) 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ icon, iconBg, iconColor, label, value, loading }) {
   return (
-    <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: 18 }}>
+    <div style={{ background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: 18 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ width: 36, height: 36, borderRadius: 8, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Icon name={icon} size={19} style={{ color: iconColor }} />
@@ -242,7 +242,7 @@ function JobCard({ job, onOpen }) {
     : C.surfaceContainerHigh
 
   return (
-    <div onClick={() => onOpen(job)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderLeft: `4px solid ${leftAccent}`, borderRadius: 12, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', boxShadow: hov ? '0 4px 14px rgba(0,0,0,0.07)' : 'none', transition: 'box-shadow 0.18s' }}>
+    <div onClick={() => onOpen(job)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{ background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`, borderLeft: `4px solid ${leftAccent}`, borderRadius: 12, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', boxShadow: hov ? '0 4px 14px rgba(0,0,0,0.07)' : 'none', transition: 'box-shadow 0.18s' }}>
       <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: C.surfaceContainerHigh, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <Icon name={CATEGORY_ICONS[job.category] || 'build'} size={22} style={{ color: C.primary }} />
       </div>
@@ -293,7 +293,7 @@ function UploadProofModal({ job, onClose, onConfirm }) {
   return (
     <>
       <div onClick={!submitting ? onClose : undefined} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.30)', zIndex: 200 }} />
-      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(480px,95vw)', background: C.white, borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.20)', zIndex: 201, fontFamily: SANS, overflow: 'hidden' }}>
+      <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'min(480px,95vw)', background: 'var(--color-surface-container-lowest)', borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.20)', zIndex: 201, fontFamily: SANS, overflow: 'hidden' }}>
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.onSurface }}>Upload Signed Approval</h3>
@@ -319,7 +319,7 @@ function UploadProofModal({ job, onClose, onConfirm }) {
             <label style={{ display: 'block', fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
               Head of Department's Name *
             </label>
-            <input value={hodName} onChange={(e) => setHodName(e.target.value)} placeholder="e.g. Dr. Adeyemi Okafor" style={{ width: '100%', padding: '10px 12px', border: `1px solid ${C.outlineVariant}`, borderRadius: 10, fontSize: 14, fontFamily: SANS, color: C.onSurface, background: C.white, outline: 'none', boxSizing: 'border-box' }} />
+            <input value={hodName} onChange={(e) => setHodName(e.target.value)} placeholder="e.g. Dr. Adeyemi Okafor" style={{ width: '100%', padding: '10px 12px', border: `1px solid ${C.outlineVariant}`, borderRadius: 10, fontSize: 14, fontFamily: SANS, color: C.onSurface, background: 'var(--color-surface-container-lowest)', outline: 'none', boxSizing: 'border-box' }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
@@ -364,7 +364,7 @@ function DetailDrawer({ job, onClose, onDownloadPdf, onStartJob, onUploadProof, 
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.22)', zIndex: 100 }} />
-      <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(440px,100vw)', background: C.white, zIndex: 101, boxShadow: '-6px 0 32px rgba(0,0,0,0.12)', display: 'flex', flexDirection: 'column', fontFamily: SANS, overflowY: 'auto' }}>
+      <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 'min(440px,100vw)', background: 'var(--color-surface-container-lowest)', zIndex: 101, boxShadow: '-6px 0 32px rgba(0,0,0,0.12)', display: 'flex', flexDirection: 'column', fontFamily: SANS, overflowY: 'auto' }}>
         {/* Header */}
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -419,7 +419,7 @@ function DetailDrawer({ job, onClose, onDownloadPdf, onStartJob, onUploadProof, 
           {/* Download PDF */}
           <div>
             <p style={{ margin: '0 0 8px', fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Job Order Document</p>
-            <button onClick={() => onDownloadPdf(job)} disabled={!job.pdfUrl} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: `1px solid ${C.outlineVariant}`, background: C.white, cursor: job.pdfUrl ? 'pointer' : 'not-allowed', textAlign: 'left', width: '100%', opacity: job.pdfUrl ? 1 : 0.5 }}>
+            <button onClick={() => onDownloadPdf(job)} disabled={!job.pdfUrl} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: `1px solid ${C.outlineVariant}`, background: 'var(--color-surface-container-lowest)', cursor: job.pdfUrl ? 'pointer' : 'not-allowed', textAlign: 'left', width: '100%', opacity: job.pdfUrl ? 1 : 0.5 }}>
               <Icon name="picture_as_pdf" size={20} style={{ color: C.error }} />
               <span style={{ flex: 1, fontSize: 13, color: C.onSurface, fontWeight: 600 }}>Download Job Order PDF</span>
               <Icon name="download" size={16} style={{ color: C.onSurfaceVariant }} />
@@ -431,10 +431,10 @@ function DetailDrawer({ job, onClose, onDownloadPdf, onStartJob, onUploadProof, 
             <p style={{ margin: '0 0 8px', fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Head of Department Approval</p>
             {isApproved ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: '#DCFCE7' }}>
-                <Icon name="verified" size={20} style={{ color: '#166534' }} />
+                <Icon name="verified" size={20} style={{ color: 'var(--color-on-secondary-container)' }} />
                 <div>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#166534' }}>Approved by {job.hodName}</p>
-                  <p style={{ margin: 0, fontSize: 11, color: '#166534', fontFamily: MONO }}>{job.hodSignedAtFormatted}</p>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--color-on-secondary-container)' }}>Approved by {job.hodName}</p>
+                  <p style={{ margin: 0, fontSize: 11, color: 'var(--color-on-secondary-container)', fontFamily: MONO }}>{job.hodSignedAtFormatted}</p>
                 </div>
               </div>
             ) : (
@@ -719,7 +719,7 @@ export default function MyJobs() {
   const STAT_CARDS = [
     { icon: 'pending_actions', label: 'Awaiting Approval', value: jobs.filter((j) => j.status === 'Pending Approval').length, iconBg: '#FEF3C755', iconColor: '#92400E' },
     { icon: 'verified',        label: 'Approved',          value: jobs.filter((j) => j.status === 'Approved').length,         iconBg: '#EEF2FF',   iconColor: '#3730A3' },
-    { icon: 'engineering',     label: 'In Progress',       value: jobs.filter((j) => j.status === 'In Progress').length,      iconBg: `${C.secondaryContainer}55`, iconColor: C.secondary },
+    { icon: 'engineering',     label: 'In Progress',       value: jobs.filter((j) => j.status === 'In Progress').length,      iconBg: `color-mix(in srgb, var(--color-secondary-container) 33%, transparent)`, iconColor: C.secondary },
     { icon: 'check_circle',    label: 'Completed',         value: jobs.filter((j) => j.status === 'Completed').length,        iconBg: C.secondaryContainer, iconColor: C.onSecondaryContainer },
   ]
 
@@ -764,11 +764,11 @@ export default function MyJobs() {
           {loading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[1, 2, 3].map((i) => (
-                <div key={i} style={{ height: 76, background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                <div key={i} style={{ height: 76, background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`, borderRadius: 12, animation: 'pulse 1.5s ease-in-out infinite' }} />
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div style={{ padding: '56px 24px', textAlign: 'center', background: C.white, borderRadius: 14, border: `1px solid ${C.outlineVariant}` }}>
+            <div style={{ padding: '56px 24px', textAlign: 'center', background: 'var(--color-surface-container-lowest)', borderRadius: 14, border: `1px solid ${C.outlineVariant}` }}>
               <Icon name="engineering" size={44} style={{ color: C.outlineVariant, display: 'block', margin: '0 auto 12px' }} />
               <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.onSurface }}>
                 {jobs.length === 0 ? 'No jobs assigned yet' : 'No jobs match your filters'}

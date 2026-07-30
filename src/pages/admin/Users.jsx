@@ -695,7 +695,7 @@ export default function Users() {
               <div className="flex gap-2 p-3 bg-surface-container-low border border-outline-variant rounded-lg">
                 <span className="material-symbols-outlined text-on-surface-variant text-[16px] flex-shrink-0 mt-0.5">info</span>
                 <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                  When the user logs in for the first time, Supabase will send a <strong>6-digit OTP</strong> to their email to confirm it. After verification they will be required to <strong>change their password</strong> before accessing the app.
+                  When the user logs in for the first time, AATU IMS will send a <strong>6-digit OTP</strong> to their email to confirm it. After verification they will be required to <strong>change their password</strong> before accessing the app.
                 </p>
               </div>
 

@@ -4,25 +4,25 @@ import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  onPrimaryContainer:     "#d26a5f",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  tertiaryFixedDim:       "#ffb77d",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  surfaceContainerLowest: "#ffffff",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-primary)",
+  primaryContainer:       "var(--color-primary-container)",
+  onPrimaryContainer:     "var(--color-on-primary-container)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  tertiaryFixedDim:       "var(--color-tertiary-fixed-dim)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-surface)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  surfaceContainerLowest: "var(--color-surface-container-lowest)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
 const MONO = "'JetBrains Mono', monospace";
@@ -47,7 +47,7 @@ const PRIORITY_CFG = {
 
 const STATUS_CFG = {
   "Pending Approval":           { bg: "#FEF3C7", text: "#92400E",  dot: "#f59e0b"  },
-  "Pending Admin Verification": { bg: "#ffdcc3", text: "#6e3900",  dot: "#ffb77d"  },
+  "Pending Admin Verification": { bg: "var(--color-tertiary-fixed)", text: "var(--color-on-tertiary-fixed-variant)",  dot: "var(--color-tertiary-fixed-dim)"  },
   "Approved":                   { bg: "#EEF2FF", text: "#3730A3",  dot: "#6366f1"  },
   "Rejected":                   { bg: "#ffdad6", text: "#93000a",  dot: "#ba1a1a"  },
   "In Progress":                { bg: C.secondaryContainer, text: C.secondary, dot: C.secondary },
@@ -189,7 +189,7 @@ function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout }) {
 
 function MobileBottomNav({ currentPath, onNavigate }) {
   return (
-    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60, background: C.white, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 62 }}>
+    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60, background: 'var(--color-surface-container-lowest)', borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 62 }}>
       {NAV_ITEMS.slice(0, 5).map((item) => {
         const isActive = currentPath.startsWith(item.path);
         return (
@@ -226,7 +226,7 @@ function TopBar({ search, setSearch, onMenu, isMobile }) {
 
 function StatCard({ icon, iconBg, iconColor, label, value, valueColor, cardStyle, loading, filled, highlight }) {
   return (
-    <div style={{ background: C.surfaceContainerLowest, border: highlight ? `2px solid #ffb77d` : `1px solid ${C.outlineVariant}`, borderRadius: 14, padding: "18px 18px", display: "flex", alignItems: "center", gap: 14, ...(cardStyle || {}) }}>
+    <div style={{ background: C.surfaceContainerLowest, border: highlight ? `2px solid var(--color-tertiary-fixed-dim)` : `1px solid ${C.outlineVariant}`, borderRadius: 14, padding: "18px 18px", display: "flex", alignItems: "center", gap: 14, ...(cardStyle || {}) }}>
       <div style={{ width: 42, height: 42, borderRadius: "50%", flexShrink: 0, background: iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Icon name={icon} size={22} filled={filled} style={{ color: iconColor }} />
       </div>
@@ -340,7 +340,7 @@ function VerifyProofModal({ order, onClose, onVerified, showToast }) {
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.40)", zIndex: 200 }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(560px,95vw)", background: C.white, borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.22)", zIndex: 201, fontFamily: SANS, overflow: "hidden", maxHeight: "90vh", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(560px,95vw)", background: 'var(--color-surface-container-lowest)', borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.22)", zIndex: 201, fontFamily: SANS, overflow: "hidden", maxHeight: "90vh", display: "flex", flexDirection: "column" }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.primaryContainer, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -406,7 +406,7 @@ function VerifyProofModal({ order, onClose, onVerified, showToast }) {
                 onChange={e => setRejectionReason(e.target.value)}
                 placeholder="e.g. Signature is not clear, wrong document submitted, HOD name doesn't match department records..."
                 rows={3}
-                style={{ width: "100%", padding: "10px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, fontSize: 13, fontFamily: SANS, color: C.onSurface, background: C.white, outline: "none", resize: "vertical", boxSizing: "border-box" }}
+                style={{ width: "100%", padding: "10px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, fontSize: 13, fontFamily: SANS, color: C.onSurface, background: 'var(--color-surface-container-lowest)', outline: "none", resize: "vertical", boxSizing: "border-box" }}
               />
             </div>
           )}
@@ -426,7 +426,7 @@ function VerifyProofModal({ order, onClose, onVerified, showToast }) {
               <button
                 onClick={handleApprove}
                 disabled={loading}
-                style={{ flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px 0", background: "#396844", color: C.white, border: "none", borderRadius: 8, cursor: loading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 12, fontFamily: MONO, opacity: loading ? 0.6 : 1 }}
+                style={{ flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px 0", background: C.secondary, color: C.white, border: "none", borderRadius: 8, cursor: loading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: 12, fontFamily: MONO, opacity: loading ? 0.6 : 1 }}
               >
                 {loading ? <Icon name="hourglass_top" size={15} style={{ color: C.white }} /> : <Icon name="verified" size={15} style={{ color: C.white }} />}
                 {loading ? "Approving…" : "Approve & Allow Work to Begin"}
@@ -461,7 +461,7 @@ function DetailDrawer({ order, onClose, onUpdateProgress, onMarkComplete, onVeri
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.22)", zIndex: 100 }} />
-      <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: "min(440px,100vw)", background: C.white, zIndex: 101, boxShadow: "-6px 0 32px rgba(0,0,0,0.13)", display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto" }}>
+      <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: "min(440px,100vw)", background: 'var(--color-surface-container-lowest)', zIndex: 101, boxShadow: "-6px 0 32px rgba(0,0,0,0.13)", display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto" }}>
 
         {/* Header */}
         <div style={{ padding: "22px 24px 18px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow }}>
@@ -491,12 +491,12 @@ function DetailDrawer({ order, onClose, onUpdateProgress, onMarkComplete, onVeri
 
           {/* Verification alert */}
           {needsVerification && (
-            <div style={{ padding: "14px 16px", background: "#ffdcc3", border: "2px solid #ffb77d", borderRadius: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ padding: "14px 16px", background: "var(--color-tertiary-fixed)", border: "2px solid var(--color-tertiary-fixed-dim)", borderRadius: 10, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Icon name="fact_check" size={20} style={{ color: "#6e3900" }} />
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#6e3900" }}>HOD Proof Submitted — Action Required</p>
+                <Icon name="fact_check" size={20} style={{ color: "var(--color-on-tertiary-fixed-variant)" }} />
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--color-on-tertiary-fixed-variant)" }}>HOD Proof Submitted — Action Required</p>
               </div>
-              <p style={{ margin: 0, fontSize: 12, color: "#6e3900", lineHeight: 1.5 }}>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--color-on-tertiary-fixed-variant)", lineHeight: 1.5 }}>
                 Technician {order.assigneeName} has uploaded a signed HOD document for this job. Please review the photo and verify or reject it.
               </p>
               <button
@@ -518,13 +518,13 @@ function DetailDrawer({ order, onClose, onUpdateProgress, onMarkComplete, onVeri
           {/* HOD Approval */}
           <div>
             <div style={{ fontSize: 11, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", marginBottom: 8, textTransform: "uppercase" }}>HOD Approval</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 8, background: order.hodSignedAt && !needsVerification ? "#DCFCE7" : needsVerification ? "#ffdcc3" : "#FEF3C7" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 8, background: order.hodSignedAt && !needsVerification ? "#DCFCE7" : needsVerification ? "var(--color-tertiary-fixed)" : "#FEF3C7" }}>
               <Icon
                 name={order.hodSignedAt && !needsVerification ? "verified" : needsVerification ? "hourglass_top" : "pending"}
                 size={16}
-                style={{ color: order.hodSignedAt && !needsVerification ? "#166534" : needsVerification ? "#6e3900" : "#92400E" }}
+                style={{ color: order.hodSignedAt && !needsVerification ? "#166534" : needsVerification ? "var(--color-on-tertiary-fixed-variant)" : "#92400E" }}
               />
-              <span style={{ fontSize: 12, fontWeight: 600, color: order.hodSignedAt && !needsVerification ? "#166534" : needsVerification ? "#6e3900" : "#92400E" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: order.hodSignedAt && !needsVerification ? "#166534" : needsVerification ? "var(--color-on-tertiary-fixed-variant)" : "#92400E" }}>
                 {order.hodSignedAt && !needsVerification
                   ? `Verified — Signed by ${order.hodName}`
                   : needsVerification
@@ -546,7 +546,7 @@ function DetailDrawer({ order, onClose, onUpdateProgress, onMarkComplete, onVeri
           {order.pdfUrl && (
             <div>
               <div style={{ fontSize: 11, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", marginBottom: 8, textTransform: "uppercase" }}>Job Order Document</div>
-              <button onClick={() => window.open(order.pdfUrl, "_blank", "noopener,noreferrer")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.outlineVariant}`, background: C.white, cursor: "pointer", textAlign: "left", width: "100%" }}>
+              <button onClick={() => window.open(order.pdfUrl, "_blank", "noopener,noreferrer")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.outlineVariant}`, background: 'var(--color-surface-container-lowest)', cursor: "pointer", textAlign: "left", width: "100%" }}>
                 <Icon name="picture_as_pdf" size={20} style={{ color: C.error }} />
                 <span style={{ flex: 1, fontSize: 13, color: C.onSurface, fontWeight: 600 }}>View Job Order PDF</span>
                 <Icon name="open_in_new" size={16} style={{ color: C.onSurfaceVariant }} />
@@ -616,7 +616,7 @@ function TableRow({ order, onSelect }) {
   const needsVerification = order.status === "Pending Admin Verification";
   return (
     <tr onClick={() => onSelect(order)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ borderTop: `1px solid ${C.outlineVariant}33`, background: needsVerification ? "#ffdcc355" : hov ? C.surfaceContainerLow : "transparent", cursor: "pointer", transition: "background 0.12s", opacity: order.status === "Completed" ? 0.75 : 1 }}>
+      style={{ borderTop: `1px solid color-mix(in srgb, var(--color-outline-variant) 20%, transparent)`, background: needsVerification ? "color-mix(in srgb, var(--color-tertiary-fixed) 33%, transparent)" : hov ? C.surfaceContainerLow : "transparent", cursor: "pointer", transition: "background 0.12s", opacity: order.status === "Completed" ? 0.75 : 1 }}>
       <td style={{ padding: "14px 20px", fontSize: 12, fontFamily: MONO, color: C.onPrimaryContainer, whiteSpace: "nowrap" }}>#{order.id.slice(0, 8)}</td>
       <td style={{ padding: "14px 20px", minWidth: 200 }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: C.onSurface }}>{order.title}</div>
@@ -626,7 +626,7 @@ function TableRow({ order, onSelect }) {
       <td style={{ padding: "14px 20px", whiteSpace: "nowrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <StatusChip status={order.status} />
-          {needsVerification && <Icon name="priority_high" size={14} style={{ color: "#6e3900" }} />}
+          {needsVerification && <Icon name="priority_high" size={14} style={{ color: "var(--color-on-tertiary-fixed-variant)" }} />}
         </div>
       </td>
       <td style={{ padding: "14px 20px", minWidth: 110 }}>
@@ -644,7 +644,7 @@ function TableRow({ order, onSelect }) {
       <td style={{ padding: "14px 20px", fontSize: 13, color: C.onSurfaceVariant, whiteSpace: "nowrap" }}>{order.createdAt}</td>
       <td style={{ padding: "14px 20px", textAlign: "right" }}>
         {needsVerification
-          ? <span style={{ fontSize: 10, fontFamily: MONO, fontWeight: 700, color: "#6e3900", background: "#ffdcc3", padding: "3px 8px", borderRadius: 4 }}>VERIFY</span>
+          ? <span style={{ fontSize: 10, fontFamily: MONO, fontWeight: 700, color: "var(--color-on-tertiary-fixed-variant)", background: "var(--color-tertiary-fixed)", padding: "3px 8px", borderRadius: 4 }}>VERIFY</span>
           : order.status === "Completed"
             ? <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, color: C.secondary }}><Icon name="check_circle" size={16} filled /><span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 700 }}>Done</span></div>
             : <Icon name="chevron_right" size={20} style={{ color: C.onSurfaceVariant }} />}
@@ -656,7 +656,7 @@ function TableRow({ order, onSelect }) {
 function MobileOrderCard({ order, onSelect }) {
   const needsVerification = order.status === "Pending Admin Verification";
   return (
-    <div onClick={() => onSelect(order)} style={{ background: needsVerification ? "#ffdcc355" : C.white, border: needsVerification ? "2px solid #ffb77d" : `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: "14px 16px", opacity: order.status === "Completed" ? 0.8 : 1 }}>
+    <div onClick={() => onSelect(order)} style={{ background: needsVerification ? "color-mix(in srgb, var(--color-tertiary-fixed) 33%, transparent)" : "var(--color-surface-container-lowest)", border: needsVerification ? "2px solid var(--color-tertiary-fixed-dim)" : `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: "14px 16px", opacity: order.status === "Completed" ? 0.8 : 1 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 10, fontFamily: MONO, color: C.onPrimaryContainer }}>#{order.id.slice(0, 8)}</p>
@@ -677,9 +677,9 @@ function MobileOrderCard({ order, onSelect }) {
         <StatusChip status={order.status} />
       </div>
       {needsVerification && (
-        <div style={{ marginTop: 10, padding: "6px 10px", background: "#ffdcc3", borderRadius: 6, display: "flex", alignItems: "center", gap: 6 }}>
-          <Icon name="fact_check" size={14} style={{ color: "#6e3900" }} />
-          <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 700, color: "#6e3900" }}>Tap to verify HOD proof</span>
+        <div style={{ marginTop: 10, padding: "6px 10px", background: "var(--color-tertiary-fixed)", borderRadius: 6, display: "flex", alignItems: "center", gap: 6 }}>
+          <Icon name="fact_check" size={14} style={{ color: "var(--color-on-tertiary-fixed-variant)" }} />
+          <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 700, color: "var(--color-on-tertiary-fixed-variant)" }}>Tap to verify HOD proof</span>
         </div>
       )}
     </div>
@@ -869,10 +869,10 @@ export default function AdminJobOrdersPage() {
   const pendingVerificationCount = orders.filter(o => o.status === "Pending Admin Verification").length;
 
   const STAT_CARDS = [
-    { icon: "fact_check",      label: "Needs Verification", value: pendingVerificationCount,                                                                   iconBg: "#ffdcc355", iconColor: "#6e3900", highlight: pendingVerificationCount > 0 },
+    { icon: "fact_check",      label: "Needs Verification", value: pendingVerificationCount,                                                                   iconBg: "color-mix(in srgb, var(--color-tertiary-fixed) 33%, transparent)", iconColor: "var(--color-on-tertiary-fixed-variant)", highlight: pendingVerificationCount > 0 },
     { icon: "bolt",            label: "In Progress",        value: orders.filter(o => o.status === "In Progress").length,                                      iconBg: C.secondaryContainer, iconColor: C.secondary, filled: true },
     { icon: "check_circle",    label: "Completed",          value: orders.filter(o => o.status === "Completed").length,                                        iconBg: C.surfaceContainerLow, iconColor: C.onSurfaceVariant },
-    { icon: "warning",         label: "Critical",           value: orders.filter(o => o.priority === "Emergency" && o.status !== "Completed").length,           iconBg: C.errorContainer, iconColor: C.onErrorContainer, valueColor: C.error, filled: true, cardStyle: { background: `linear-gradient(135deg, ${C.errorContainer}55 0%, transparent 100%)` } },
+    { icon: "warning",         label: "Critical",           value: orders.filter(o => o.priority === "Emergency" && o.status !== "Completed").length,           iconBg: C.errorContainer, iconColor: C.onErrorContainer, valueColor: C.error, filled: true, cardStyle: { background: `linear-gradient(135deg, color-mix(in srgb, var(--color-error-container) 33%, transparent) 0%, transparent 100%)` } },
   ];
 
   return (
@@ -896,9 +896,9 @@ export default function AdminJobOrdersPage() {
               <p style={{ margin: 0, fontSize: 14, color: C.onSurfaceVariant }}>Facility maintenance dispatch — auto-created when a technician is assigned.</p>
             </div>
             {pendingVerificationCount > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "#ffdcc3", border: "1px solid #ffb77d", borderRadius: 8 }}>
-                <Icon name="priority_high" size={16} style={{ color: "#6e3900" }} />
-                <span style={{ fontSize: 12, fontWeight: 700, fontFamily: MONO, color: "#6e3900" }}>{pendingVerificationCount} HOD proof{pendingVerificationCount > 1 ? "s" : ""} awaiting your review</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", background: "var(--color-tertiary-fixed)", border: "1px solid var(--color-tertiary-fixed-dim)", borderRadius: 8 }}>
+                <Icon name="priority_high" size={16} style={{ color: "var(--color-on-tertiary-fixed-variant)" }} />
+                <span style={{ fontSize: 12, fontWeight: 700, fontFamily: MONO, color: "var(--color-on-tertiary-fixed-variant)" }}>{pendingVerificationCount} HOD proof{pendingVerificationCount > 1 ? "s" : ""} awaiting your review</span>
               </div>
             )}
           </div>
@@ -915,7 +915,7 @@ export default function AdminJobOrdersPage() {
                   <button key={t} onClick={() => { setTab(t); setPage(1); }} style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11, fontFamily: MONO, border: "none", cursor: "pointer", whiteSpace: "nowrap", background: tab === t ? C.surfaceContainerHigh : "transparent", color: tab === t ? C.onSurface : C.onSurfaceVariant, fontWeight: tab === t ? 700 : 400, position: "relative" }}>
                     {t}
                     {t === "Pending Admin Verification" && pendingVerificationCount > 0 && (
-                      <span style={{ position: "absolute", top: -4, right: -4, width: 16, height: 16, borderRadius: "50%", background: "#6e3900", color: C.white, fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{pendingVerificationCount}</span>
+                      <span style={{ position: "absolute", top: -4, right: -4, width: 16, height: 16, borderRadius: "50%", background: "var(--color-on-tertiary-fixed-variant)", color: C.white, fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{pendingVerificationCount}</span>
                     )}
                   </button>
                 ))}
@@ -949,7 +949,7 @@ export default function AdminJobOrdersPage() {
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: SANS }}>
                   <thead>
-                    <tr style={{ background: `${C.surfaceContainerLow}60` }}>
+                    <tr style={{ background: `color-mix(in srgb, var(--color-surface-container-low) 38%, transparent)` }}>
                       {["Order ID", "Task Description", "Priority", "Status", "Progress", "Assigned To", "Created", ""].map((h, i) => (
                         <th key={i} style={{ padding: "11px 20px", textAlign: i === 7 ? "right" : "left", fontSize: 10, fontWeight: 500, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap", opacity: 0.7 }}>{h}</th>
                       ))}
@@ -980,7 +980,7 @@ export default function AdminJobOrdersPage() {
           </div>
 
           <div style={{ marginTop: 18, display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 14px", background: C.primaryContainer, borderRadius: 10, color: C.white }}>
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#ffb4aa", animation: "pulse 1.5s ease-in-out infinite" }} />
+            <div style={{ width: 7, height: 7, borderRadius: "50%", background: 'var(--color-primary-fixed-dim)', animation: "pulse 1.5s ease-in-out infinite" }} />
             <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 700, letterSpacing: "0.06em" }}>Live — auto-updates in real time</span>
           </div>
         </main>

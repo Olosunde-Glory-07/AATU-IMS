@@ -26,6 +26,9 @@ const TYPE_ICONS = {
   'Structural':       'domain',
 }
 
+// Semantic status/condition chip colors — intentionally kept as literal light
+// hex chips in both themes (no dark-mode equivalent token set exists yet for
+// these specific badge shades), matching the convention used elsewhere.
 const STATUS_STYLES = {
   Active:          { pill: 'bg-[#DCFCE7] text-[#166534]', dot: 'bg-[#166534]' },
   Maintenance:     { pill: 'bg-[#FEE2E2] text-[#991B1B]', dot: 'bg-[#991B1B] animate-pulse' },
@@ -58,7 +61,7 @@ function useIsMobile() {
   return mobile
 }
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
+// ─── Sidebar (pinned brand color — does not change with dark mode) ──────────
 function Sidebar({ open, onClose }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -131,14 +134,14 @@ function BottomNav() {
   const quickNav = NAV_ITEMS.slice(0, 5)
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[90] bg-white border-t border-[#dcc0bd] flex h-[60px]">
+    <nav className="fixed bottom-0 left-0 right-0 z-[90] bg-surface-container-lowest border-t border-outline-variant flex h-[60px]">
       {quickNav.map((item) => {
         const isActive = location.pathname === item.path
         return (
           <button
             key={item.label}
             onClick={() => navigate(item.path)}
-            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-mono tracking-wide ${isActive ? 'text-[#4a0404]' : 'text-[#554240]'}`}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[9px] font-mono tracking-wide ${isActive ? 'text-primary-container' : 'text-on-surface-variant'}`}
           >
             <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>{item.icon}</span>
             {item.label}
@@ -157,7 +160,6 @@ export default function Assets() {
 
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  // Starts empty — populate from Supabase. No test data.
   const [assets, setAssets] = useState([])
 
   const [search, setSearch]         = useState('')
@@ -179,7 +181,7 @@ export default function Assets() {
         el.rel = 'stylesheet'
         el.href = i === 0
           ? 'https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap'
-          : "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+          : "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
         document.head.appendChild(el)
       }
     })
@@ -259,48 +261,47 @@ export default function Assets() {
     showToast('Exported assets as CSV.')
   }
 
-  const inp = 'w-full px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4a0404]/20 bg-white'
+  const inp = 'w-full px-4 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-container/20 bg-surface-container-lowest text-on-surface'
   const sel = `${inp} cursor-pointer`
 
   return (
-    <div className="flex min-h-screen bg-[#f9f9ff]" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
+    <div className="flex min-h-screen bg-background" style={{ fontFamily: "'Hanken Grotesk', sans-serif" }}>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
       <main className={`flex-1 min-h-screen ${isMobile ? '' : 'ml-[260px]'} ${isMobile ? 'pb-[60px]' : ''}`}>
 
-        {/* Top App Bar */}
-        <header className={`sticky top-0 z-40 h-16 bg-[#f9f9ff]/90 backdrop-blur border-b border-[#dcc0bd] flex items-center justify-between gap-3 ${isMobile ? 'px-4' : 'px-8'}`}>
+        <header className={`sticky top-0 z-40 h-16 bg-background/90 backdrop-blur border-b border-outline-variant flex items-center justify-between gap-3 ${isMobile ? 'px-4' : 'px-8'}`}>
           <div className="flex items-center gap-3 flex-1 min-w-0">
             {isMobile && (
-              <button onClick={() => setDrawerOpen(true)} className="text-[#151c27] flex-shrink-0">
+              <button onClick={() => setDrawerOpen(true)} className="text-on-surface flex-shrink-0">
                 <Menu size={24} />
               </button>
             )}
             <div className="relative w-full max-w-md">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#554240] text-[18px]">search</span>
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
               <input
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1) }}
-                className="w-full bg-[#f0f3ff] border-none rounded-full pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4a0404]/20 placeholder-[#554240]/60"
+                className="w-full bg-surface-container-low border-none rounded-full pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-container/20 placeholder-on-surface-variant/60 text-on-surface"
                 placeholder="Search infrastructure records…"
               />
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button onClick={() => navigate('/admin/notifications')} className="p-2 text-[#554240] hover:text-[#210000] transition-colors relative">
+            <button onClick={() => navigate('/admin/notifications')} className="p-2 text-on-surface-variant hover:text-on-surface transition-colors relative">
               <span className="material-symbols-outlined">notifications</span>
-              <span className="absolute top-2 right-2 w-2 h-2 bg-[#ba1a1a] rounded-full" />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full" />
             </button>
             {!isMobile && (
               <>
-                <button className="p-2 text-[#554240] hover:text-[#210000] transition-colors">
+                <button className="p-2 text-on-surface-variant hover:text-on-surface transition-colors">
                   <span className="material-symbols-outlined">settings</span>
                 </button>
-                <div className="h-8 w-px bg-[#dcc0bd]" />
+                <div className="h-8 w-px bg-outline-variant" />
               </>
             )}
             {!isMobile && (
-              <button className="bg-[#4a0404] text-white px-4 py-2 rounded-lg text-xs font-mono hover:opacity-90 transition-opacity">
+              <button className="bg-primary-container text-white px-4 py-2 rounded-lg text-xs font-mono hover:opacity-90 transition-opacity">
                 Report Issue
               </button>
             )}
@@ -309,103 +310,98 @@ export default function Assets() {
 
         <div className={`${isMobile ? 'p-4' : 'p-8'} max-w-[1600px] mx-auto`}>
 
-          {/* Page Header */}
           <div className={`flex ${isMobile ? 'flex-col gap-4' : 'justify-between items-end'} mb-8`}>
             <div>
-              <h2 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-[#210000] mb-1`}>Assets &amp; Infrastructure</h2>
-              <p className="text-[#554240] text-sm">Comprehensive registry of university physical resources and equipment lifecycle.</p>
+              <h2 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-on-surface mb-1`}>Assets &amp; Infrastructure</h2>
+              <p className="text-on-surface-variant text-sm">Comprehensive registry of university physical resources and equipment lifecycle.</p>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={exportCSV}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-[#dcc0bd] text-[#151c27] rounded-lg text-xs font-mono hover:bg-[#e7eefe] transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-surface-container-lowest border border-outline-variant text-on-surface rounded-lg text-xs font-mono hover:bg-surface-container transition-colors"
               >
                 <Download size={14} /> Export CSV
               </button>
               <button
                 onClick={() => setShowNew(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#4a0404] text-white rounded-lg text-xs font-mono hover:opacity-90 transition-opacity"
+                className="flex items-center gap-2 px-4 py-2 bg-primary-container text-white rounded-lg text-xs font-mono hover:opacity-90 transition-opacity"
               >
                 <Plus size={14} /> Register New Asset
               </button>
             </div>
           </div>
 
-          {/* Bento Stats */}
           <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-1 md:grid-cols-4 gap-6'} mb-8`}>
             {[
-              { icon: 'inventory', iconBg: 'bg-[#b8ecbe]/30', badge: null, label: 'Total Assets', value: totalAssets.toLocaleString() },
-              { icon: 'build', iconBg: 'bg-[#ffdad5]/30', badge: criticalMaint > 0 ? `Critical: ${criticalMaint}` : null, badgeColor: 'text-[#7e2b23]', label: 'Under Maintenance', value: underMaintenance },
-              { icon: 'location_on', iconBg: 'bg-[#ffdcc3]/30', badge: null, label: 'Active Locations', value: `${uniqueLocations} Campus Sites` },
-              { icon: 'check_circle', iconBg: 'bg-[#b8ecbe]/30', badge: null, label: 'Compliance Rating', value: `${complianceRate}%` },
+              { icon: 'inventory', iconBg: 'bg-[#b8ecbe]/30 dark:bg-[#264d30]/40', badge: null, label: 'Total Assets', value: totalAssets.toLocaleString() },
+              { icon: 'build', iconBg: 'bg-error-container/30', badge: criticalMaint > 0 ? `Critical: ${criticalMaint}` : null, badgeColor: 'text-error', label: 'Under Maintenance', value: underMaintenance },
+              { icon: 'location_on', iconBg: 'bg-[#ffdcc3]/30 dark:bg-[#5c3a1a]/40', badge: null, label: 'Active Locations', value: `${uniqueLocations} Campus Sites` },
+              { icon: 'check_circle', iconBg: 'bg-[#b8ecbe]/30 dark:bg-[#264d30]/40', badge: null, label: 'Compliance Rating', value: `${complianceRate}%` },
             ].map(s => (
-              <div key={s.label} className={`bg-white ${isMobile ? 'p-4' : 'p-6'} rounded-xl border border-[#dcc0bd]`}>
+              <div key={s.label} className={`bg-surface-container-lowest ${isMobile ? 'p-4' : 'p-6'} rounded-xl border border-outline-variant`}>
                 <div className="flex justify-between items-start mb-4">
                   <div className={`p-2 ${s.iconBg} rounded-lg`}>
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
+                    <span className="material-symbols-outlined text-on-surface" style={{ fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
                   </div>
                   {s.badge && <span className={`text-xs font-mono ${s.badgeColor}`}>{s.badge}</span>}
                 </div>
-                <p className="text-[#554240] text-xs font-mono opacity-60 uppercase tracking-wide">{s.label}</p>
-                <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-[#210000] mt-1`}>{s.value}</h3>
+                <p className="text-on-surface-variant text-xs font-mono opacity-60 uppercase tracking-wide">{s.label}</p>
+                <h3 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-on-surface mt-1`}>{s.value}</h3>
               </div>
             ))}
           </div>
 
-          {/* Main Table Card */}
-          <div className="bg-white rounded-xl border border-[#dcc0bd] overflow-hidden mb-8">
+          <div className="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden mb-8">
 
-            {/* Toolbar */}
-            <div className="p-4 border-b border-[#dcc0bd] bg-white flex flex-wrap gap-3 items-center justify-between">
+            <div className="p-4 border-b border-outline-variant bg-surface-container-lowest flex flex-wrap gap-3 items-center justify-between">
               <div className="flex flex-wrap gap-3">
                 <select value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1) }}
-                  className="bg-[#f9f9ff] border border-[#dcc0bd] rounded-lg px-4 py-2 text-sm focus:outline-none cursor-pointer">
+                  className="bg-background border border-outline-variant rounded-lg px-4 py-2 text-sm focus:outline-none cursor-pointer text-on-surface">
                   {TYPE_OPTIONS.map(o => <option key={o}>{o}</option>)}
                 </select>
                 <select value={statFilter} onChange={e => { setStatFilter(e.target.value); setPage(1) }}
-                  className="bg-[#f9f9ff] border border-[#dcc0bd] rounded-lg px-4 py-2 text-sm focus:outline-none cursor-pointer">
+                  className="bg-background border border-outline-variant rounded-lg px-4 py-2 text-sm focus:outline-none cursor-pointer text-on-surface">
                   {STATUS_OPTIONS.map(o => <option key={o}>{o}</option>)}
                 </select>
                 <select value={facFilter} onChange={e => { setFacFilter(e.target.value); setPage(1) }}
-                  className="bg-[#f9f9ff] border border-[#dcc0bd] rounded-lg px-4 py-2 text-sm focus:outline-none cursor-pointer">
+                  className="bg-background border border-outline-variant rounded-lg px-4 py-2 text-sm focus:outline-none cursor-pointer text-on-surface">
                   {FACULTY_OPTIONS.map(o => <option key={o}>{o}</option>)}
                 </select>
                 {(typeFilter !== 'All Asset Types' || statFilter !== 'Any Status' || facFilter !== 'All Faculties' || search) && (
                   <button
                     onClick={() => { setTypeFilter('All Asset Types'); setStatFilter('Any Status'); setFacFilter('All Faculties'); setSearch(''); setPage(1) }}
-                    className="px-3 py-2 text-xs font-mono text-[#ba1a1a] border border-[#ffdad6] bg-[#ffdad6]/30 rounded-lg hover:bg-[#ffdad6] transition-colors flex items-center gap-1"
+                    className="px-3 py-2 text-xs font-mono text-error border border-error-container bg-error-container/30 rounded-lg hover:bg-error-container transition-colors flex items-center gap-1"
                   >
                     <X size={12} /> Clear filters
                   </button>
                 )}
               </div>
-              <span className="text-xs font-mono text-[#554240]/60">
+              <span className="text-xs font-mono text-on-surface-variant/60">
                 Showing {pageItems.length} of {filtered.length} items
               </span>
             </div>
 
-            {/* Table (desktop) / Cards (mobile) */}
             {isMobile ? (
-              <div className="divide-y divide-[#dcc0bd]">
+              <div className="divide-y divide-outline-variant">
                 {pageItems.length === 0 ? (
                   <div className="px-6 py-16 text-center">
-                    <span className="material-symbols-outlined text-4xl text-[#dcc0bd] block mb-2">inventory_2</span>
-                    <p className="text-sm text-[#554240]">
+                    <span className="material-symbols-outlined text-4xl text-outline-variant block mb-2">inventory_2</span>
+                    <p className="text-sm text-on-surface-variant">
                       {assets.length === 0 ? 'No assets registered yet.' : 'No assets match your filters.'}
                     </p>
                   </div>
                 ) : pageItems.map(a => {
                   const ss = STATUS_STYLES[a.status] ?? STATUS_STYLES.Active
                   return (
-                    <div key={a.id} onClick={() => setSelected(a)} className="p-4 active:bg-[#f0f3ff]">
+                    <div key={a.id} onClick={() => setSelected(a)} className="p-4 active:bg-surface-container-low">
                       <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-[#e7eefe] flex items-center justify-center text-[#554240] flex-shrink-0">
+                        <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-on-surface-variant flex-shrink-0">
                           <span className="material-symbols-outlined text-[20px]">{TYPE_ICONS[a.type] ?? 'category'}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-[#210000]">{a.name}</p>
-                          <p className="text-xs font-mono text-[#554240]">ID: {a.id}</p>
-                          <p className="text-xs text-[#554240] mt-1">{a.location}</p>
+                          <p className="text-sm font-semibold text-on-surface">{a.name}</p>
+                          <p className="text-xs font-mono text-on-surface-variant">ID: {a.id}</p>
+                          <p className="text-xs text-on-surface-variant mt-1">{a.location}</p>
                           <div className="flex items-center gap-2 mt-2">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${ss.pill}`}>
                               <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${ss.dot}`} />{a.status}
@@ -421,23 +417,23 @@ export default function Assets() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-[#f0f3ff] border-b border-[#dcc0bd]">
+                    <tr className="bg-surface-container-low border-b border-outline-variant">
                       {['ASSET NAME / ID', 'LOCATION', 'TYPE', 'STATUS', 'ACTION'].map(h => (
-                        <th key={h} className={`px-6 py-4 text-xs font-mono text-[#554240]/60 font-medium ${h === 'ACTION' ? 'text-right' : ''}`}>{h}</th>
+                        <th key={h} className={`px-6 py-4 text-xs font-mono text-on-surface-variant/60 font-medium ${h === 'ACTION' ? 'text-right' : ''}`}>{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#dcc0bd]">
+                  <tbody className="divide-y divide-outline-variant">
                     {pageItems.length === 0 && (
                       <tr>
                         <td colSpan={5} className="px-6 py-16 text-center">
-                          <span className="material-symbols-outlined text-4xl text-[#dcc0bd] block mb-2">inventory_2</span>
-                          <p className="text-sm text-[#554240]">
+                          <span className="material-symbols-outlined text-4xl text-outline-variant block mb-2">inventory_2</span>
+                          <p className="text-sm text-on-surface-variant">
                             {assets.length === 0 ? 'No assets registered yet. Click "Register New Asset" to add one.' : 'No assets match your filters.'}
                           </p>
                           {assets.length > 0 && (
                             <button onClick={() => { setTypeFilter('All Asset Types'); setStatFilter('Any Status'); setFacFilter('All Faculties'); setSearch('') }}
-                              className="mt-3 text-xs font-mono text-[#4a0404] underline">Clear filters</button>
+                              className="mt-3 text-xs font-mono text-primary-container underline">Clear filters</button>
                           )}
                         </td>
                       </tr>
@@ -445,21 +441,21 @@ export default function Assets() {
                     {pageItems.map(a => {
                       const ss = STATUS_STYLES[a.status] ?? STATUS_STYLES.Active
                       return (
-                        <tr key={a.id} onClick={() => setSelected(a)} className="hover:bg-[#f0f3ff] transition-colors group cursor-pointer">
+                        <tr key={a.id} onClick={() => setSelected(a)} className="hover:bg-surface-container-low transition-colors group cursor-pointer">
                           <td className="px-6 py-5">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-[#e7eefe] flex items-center justify-center text-[#554240] flex-shrink-0">
+                              <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-on-surface-variant flex-shrink-0">
                                 <span className="material-symbols-outlined text-[20px]">{TYPE_ICONS[a.type] ?? 'category'}</span>
                               </div>
                               <div>
-                                <p className="text-sm font-semibold text-[#210000] group-hover:text-[#4a0404] transition-colors">{a.name}</p>
-                                <p className="text-xs font-mono text-[#554240]">ID: {a.id}</p>
+                                <p className="text-sm font-semibold text-on-surface group-hover:text-primary-container transition-colors">{a.name}</p>
+                                <p className="text-xs font-mono text-on-surface-variant">ID: {a.id}</p>
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-5 text-sm text-[#554240]">{a.location}</td>
+                          <td className="px-6 py-5 text-sm text-on-surface-variant">{a.location}</td>
                           <td className="px-6 py-5">
-                            <span className="px-2 py-1 bg-[#dce2f3]/50 rounded-md text-[11px] font-bold text-[#554240] uppercase tracking-wider">{a.type}</span>
+                            <span className="px-2 py-1 bg-surface-container-high/50 rounded-md text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">{a.type}</span>
                           </td>
                           <td className="px-6 py-5">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${ss.pill}`}>
@@ -468,11 +464,11 @@ export default function Assets() {
                             </span>
                           </td>
                           <td className="px-6 py-5 text-right" onClick={e => e.stopPropagation()}>
-                            <button onClick={() => setSelected(a)} className="text-xs font-mono text-[#d26a5f] font-bold hover:underline mr-3">View Details</button>
-                            <button onClick={() => setEditing({ ...a })} className="p-1.5 text-[#554240] hover:text-[#210000] hover:bg-[#e7eefe] rounded-full transition-colors">
+                            <button onClick={() => setSelected(a)} className="text-xs font-mono text-primary-container font-bold hover:underline mr-3">View Details</button>
+                            <button onClick={() => setEditing({ ...a })} className="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-full transition-colors">
                               <span className="material-symbols-outlined text-[16px]">edit</span>
                             </button>
-                            <button onClick={() => deleteAsset(a.id)} className="p-1.5 text-[#554240] hover:text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors ml-1">
+                            <button onClick={() => deleteAsset(a.id)} className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error-container rounded-full transition-colors ml-1">
                               <span className="material-symbols-outlined text-[16px]">delete</span>
                             </button>
                           </td>
@@ -484,26 +480,25 @@ export default function Assets() {
               </div>
             )}
 
-            {/* Pagination */}
             {filtered.length > 0 && (
-              <div className="px-6 py-4 border-t border-[#dcc0bd] bg-white flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs font-mono text-[#554240]">Page {safePage} of {totalPages} · {filtered.length} total results</p>
+              <div className="px-6 py-4 border-t border-outline-variant bg-surface-container-lowest flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs font-mono text-on-surface-variant">Page {safePage} of {totalPages} · {filtered.length} total results</p>
                 <div className="flex gap-2">
                   <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={safePage === 1}
-                    className="p-2 border border-[#dcc0bd] rounded-lg hover:bg-[#e7eefe] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    className="p-2 border border-outline-variant rounded-lg hover:bg-surface-container disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-on-surface">
                     <ChevronLeft size={16} />
                   </button>
                   {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1).map((p, idx, arr) => (
                     <span key={p} className="flex items-center gap-2">
-                      {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-[#554240]">…</span>}
+                      {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-on-surface-variant">…</span>}
                       <button onClick={() => setPage(p)}
-                        className={`w-8 h-8 rounded-lg text-xs font-mono transition-colors ${p === safePage ? 'bg-[#4a0404] text-white' : 'border border-[#dcc0bd] hover:bg-[#e7eefe]'}`}>
+                        className={`w-8 h-8 rounded-lg text-xs font-mono transition-colors ${p === safePage ? 'bg-primary-container text-white' : 'border border-outline-variant hover:bg-surface-container text-on-surface'}`}>
                         {p}
                       </button>
                     </span>
                   ))}
                   <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
-                    className="p-2 border border-[#dcc0bd] rounded-lg hover:bg-[#e7eefe] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    className="p-2 border border-outline-variant rounded-lg hover:bg-surface-container disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-on-surface">
                     <ChevronRight size={16} />
                   </button>
                 </div>
@@ -511,7 +506,6 @@ export default function Assets() {
             )}
           </div>
 
-          {/* Bottom Cards */}
           <div className={`grid ${isMobile ? 'grid-cols-1 gap-4' : 'grid-cols-1 md:grid-cols-2 gap-8'}`}>
             <div className="bg-[#4a0404] rounded-xl p-6 md:p-8 text-white relative overflow-hidden group">
               <div className="relative z-10">
@@ -529,19 +523,19 @@ export default function Assets() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-[#dcc0bd] p-6 md:p-8">
-              <h4 className="text-lg font-semibold text-[#210000] mb-6">Asset Distribution by Faculty</h4>
+            <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 md:p-8">
+              <h4 className="text-lg font-semibold text-on-surface mb-6">Asset Distribution by Faculty</h4>
               {facultyDist.length === 0 ? (
-                <p className="text-sm text-[#554240]">No assets registered yet to show distribution.</p>
+                <p className="text-sm text-on-surface-variant">No assets registered yet to show distribution.</p>
               ) : (
                 <div className="space-y-4">
                   {facultyDist.map(({ faculty, count, pct }) => (
                     <div key={faculty} className="flex items-center gap-4">
-                      <span className="text-xs font-mono text-[#554240] w-36 truncate">{faculty}</span>
-                      <div className="flex-1 h-3 bg-[#e7eefe] rounded-full overflow-hidden">
+                      <span className="text-xs font-mono text-on-surface-variant w-36 truncate">{faculty}</span>
+                      <div className="flex-1 h-3 bg-surface-container rounded-full overflow-hidden">
                         <div className="h-full bg-[#d26a5f] rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
                       </div>
-                      <span className="text-xs font-mono font-bold text-[#210000] w-8 text-right">{count}</span>
+                      <span className="text-xs font-mono font-bold text-on-surface w-8 text-right">{count}</span>
                     </div>
                   ))}
                 </div>
@@ -553,22 +547,21 @@ export default function Assets() {
 
       {isMobile && <BottomNav />}
 
-      {/* Detail Side Drawer */}
       {selected && (
         <>
           <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setSelected(null)} />
-          <aside className={`fixed top-0 right-0 h-full ${isMobile ? 'w-full' : 'w-[420px]'} bg-white shadow-2xl z-50 flex flex-col overflow-y-auto`}>
-            <div className="flex items-start justify-between p-6 border-b border-[#dcc0bd] sticky top-0 bg-white z-10">
+          <aside className={`fixed top-0 right-0 h-full ${isMobile ? 'w-full' : 'w-[420px]'} bg-surface-container-lowest shadow-2xl z-50 flex flex-col overflow-y-auto`}>
+            <div className="flex items-start justify-between p-6 border-b border-outline-variant sticky top-0 bg-surface-container-lowest z-10">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-[#e7eefe] flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[#554240]" style={{ fontSize: 24 }}>{TYPE_ICONS[selected.type] ?? 'category'}</span>
+                <div className="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center">
+                  <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: 24 }}>{TYPE_ICONS[selected.type] ?? 'category'}</span>
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-[#210000] leading-snug">{selected.name}</h2>
-                  <p className="text-xs font-mono text-[#554240]">ID: {selected.id}</p>
+                  <h2 className="text-base font-bold text-on-surface leading-snug">{selected.name}</h2>
+                  <p className="text-xs font-mono text-on-surface-variant">ID: {selected.id}</p>
                 </div>
               </div>
-              <button onClick={() => setSelected(null)} className="p-2 hover:bg-[#f0f3ff] rounded-full transition-colors"><X size={18} /></button>
+              <button onClick={() => setSelected(null)} className="p-2 hover:bg-surface-container-low rounded-full transition-colors text-on-surface-variant"><X size={18} /></button>
             </div>
 
             <div className="px-6 pt-5 flex gap-2 flex-wrap">
@@ -583,25 +576,25 @@ export default function Assets() {
             <div className="px-6 pt-5 grid grid-cols-2 gap-4">
               {[['TYPE', selected.type], ['FACULTY', selected.faculty], ['LOCATION', selected.location], ['LAST SERVICE', selected.lastService], ['NEXT SERVICE', selected.nextService]].map(([label, value]) => (
                 <div key={label} className={label === 'LOCATION' ? 'col-span-2' : ''}>
-                  <p className="text-[10px] font-mono text-[#554240]/60 uppercase tracking-wider mb-1">{label}</p>
-                  <p className="text-sm font-medium text-[#151c27]">{value}</p>
+                  <p className="text-[10px] font-mono text-on-surface-variant/60 uppercase tracking-wider mb-1">{label}</p>
+                  <p className="text-sm font-medium text-on-surface">{value}</p>
                 </div>
               ))}
             </div>
 
             {selected.notes && (
               <div className="px-6 pt-4">
-                <p className="text-[10px] font-mono text-[#554240]/60 uppercase tracking-wider mb-1">NOTES</p>
-                <p className="text-sm text-[#554240] leading-relaxed bg-[#f0f3ff] rounded-lg p-3">{selected.notes}</p>
+                <p className="text-[10px] font-mono text-on-surface-variant/60 uppercase tracking-wider mb-1">NOTES</p>
+                <p className="text-sm text-on-surface-variant leading-relaxed bg-surface-container-low rounded-lg p-3">{selected.notes}</p>
               </div>
             )}
 
             <div className="px-6 pt-6">
-              <p className="text-[10px] font-mono text-[#554240]/60 uppercase tracking-wider mb-3">UPDATE STATUS</p>
+              <p className="text-[10px] font-mono text-on-surface-variant/60 uppercase tracking-wider mb-3">UPDATE STATUS</p>
               <div className="grid grid-cols-2 gap-2">
                 {['Active', 'Maintenance', 'Assigned', 'Decommissioned'].map(s => (
                   <button key={s} onClick={() => updateAsset(selected.id, { status: s })}
-                    className={`py-2 px-3 rounded-lg text-xs font-bold font-mono transition-all ${selected.status === s ? 'bg-[#4a0404] text-white' : 'border border-[#dcc0bd] hover:bg-[#f0f3ff] text-[#554240]'}`}>
+                    className={`py-2 px-3 rounded-lg text-xs font-bold font-mono transition-all ${selected.status === s ? 'bg-primary-container text-white' : 'border border-outline-variant hover:bg-surface-container-low text-on-surface-variant'}`}>
                     {s}
                   </button>
                 ))}
@@ -610,13 +603,13 @@ export default function Assets() {
 
             <div className="flex-1" />
 
-            <div className="p-6 border-t border-[#dcc0bd] flex gap-3 sticky bottom-0 bg-white">
+            <div className="p-6 border-t border-outline-variant flex gap-3 sticky bottom-0 bg-surface-container-lowest">
               <button onClick={() => { setEditing({ ...selected }); setSelected(null) }}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors">
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-mono hover:bg-surface-container-low transition-colors text-on-surface">
                 <span className="material-symbols-outlined text-[16px]">edit</span> Edit Asset
               </button>
               <button onClick={() => deleteAsset(selected.id)}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#ffdad6] text-[#93000a] rounded-lg text-sm font-mono hover:opacity-90 transition-opacity font-bold">
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-error-container text-on-error-container rounded-lg text-sm font-mono hover:opacity-90 transition-opacity font-bold">
                 <span className="material-symbols-outlined text-[16px]">delete</span> Delete
               </button>
             </div>
@@ -624,33 +617,32 @@ export default function Assets() {
         </>
       )}
 
-      {/* Register New Asset Modal */}
       {showNew && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowNew(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-6 border-b border-[#dcc0bd] sticky top-0 bg-white z-10">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-6 border-b border-outline-variant sticky top-0 bg-surface-container-lowest z-10">
               <div>
-                <h2 className="text-xl font-bold text-[#210000]">Register New Asset</h2>
-                <p className="text-xs text-[#554240] mt-0.5">Add a new item to the infrastructure registry.</p>
+                <h2 className="text-xl font-bold text-on-surface">Register New Asset</h2>
+                <p className="text-xs text-on-surface-variant mt-0.5">Add a new item to the infrastructure registry.</p>
               </div>
-              <button onClick={() => setShowNew(false)} className="p-2 hover:bg-[#f0f3ff] rounded-full transition-colors"><X size={18} /></button>
+              <button onClick={() => setShowNew(false)} className="p-2 hover:bg-surface-container-low rounded-full transition-colors text-on-surface-variant"><X size={18} /></button>
             </div>
             <form onSubmit={registerAsset} className="p-6 space-y-4">
               {[{ label: 'ASSET NAME', field: 'name', placeholder: 'e.g. HVAC Unit — Block D' }, { label: 'LOCATION', field: 'location', placeholder: 'e.g. Faculty of Science, North Wing' }].map(({ label, field, placeholder }) => (
                 <div key={field}>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">{label}</label>
+                  <label className="block text-xs font-mono text-on-surface-variant mb-1.5">{label}</label>
                   <input type="text" required value={form[field]} onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))} placeholder={placeholder} className={inp} />
                 </div>
               ))}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">ASSET TYPE</label>
+                  <label className="block text-xs font-mono text-on-surface-variant mb-1.5">ASSET TYPE</label>
                   <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))} className={sel}>
                     {Object.keys(TYPE_ICONS).map(t => <option key={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">FACULTY</label>
+                  <label className="block text-xs font-mono text-on-surface-variant mb-1.5">FACULTY</label>
                   <select value={form.faculty} onChange={e => setForm(f => ({ ...f, faculty: e.target.value }))} className={sel}>
                     {FACULTY_OPTIONS.filter(f => f !== 'All Faculties').map(o => <option key={o}>{o}</option>)}
                   </select>
@@ -658,58 +650,57 @@ export default function Assets() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">STATUS</label>
+                  <label className="block text-xs font-mono text-on-surface-variant mb-1.5">STATUS</label>
                   <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} className={sel}>
                     {['Active', 'Maintenance', 'Assigned'].map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">CONDITION</label>
+                  <label className="block text-xs font-mono text-on-surface-variant mb-1.5">CONDITION</label>
                   <select value={form.condition} onChange={e => setForm(f => ({ ...f, condition: e.target.value }))} className={sel}>
                     {['Excellent', 'Good', 'Fair', 'Poor'].map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-mono text-[#554240] mb-1.5">NOTES (optional)</label>
+                <label className="block text-xs font-mono text-on-surface-variant mb-1.5">NOTES (optional)</label>
                 <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} placeholder="Any additional notes…" className={`${inp} resize-none`} />
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowNew(false)} className="flex-1 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors">Cancel</button>
-                <button type="submit" className="flex-1 px-4 py-2.5 bg-[#4a0404] text-white rounded-lg text-sm font-mono hover:opacity-90 transition-opacity font-bold">Register Asset</button>
+                <button type="button" onClick={() => setShowNew(false)} className="flex-1 px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-mono hover:bg-surface-container-low transition-colors text-on-surface">Cancel</button>
+                <button type="submit" className="flex-1 px-4 py-2.5 bg-primary-container text-white rounded-lg text-sm font-mono hover:opacity-90 transition-opacity font-bold">Register Asset</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Edit Asset Modal */}
       {editing && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-6 border-b border-[#dcc0bd] sticky top-0 bg-white z-10">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-6 border-b border-outline-variant sticky top-0 bg-surface-container-lowest z-10">
               <div>
-                <h2 className="text-xl font-bold text-[#210000]">Edit Asset</h2>
-                <p className="text-xs font-mono text-[#554240] mt-0.5">ID: {editing.id}</p>
+                <h2 className="text-xl font-bold text-on-surface">Edit Asset</h2>
+                <p className="text-xs font-mono text-on-surface-variant mt-0.5">ID: {editing.id}</p>
               </div>
-              <button onClick={() => setEditing(null)} className="p-2 hover:bg-[#f0f3ff] rounded-full transition-colors"><X size={18} /></button>
+              <button onClick={() => setEditing(null)} className="p-2 hover:bg-surface-container-low rounded-full transition-colors text-on-surface-variant"><X size={18} /></button>
             </div>
             <form onSubmit={saveEdit} className="p-6 space-y-4">
               {[{ label: 'ASSET NAME', field: 'name' }, { label: 'LOCATION', field: 'location' }].map(({ label, field }) => (
                 <div key={field}>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">{label}</label>
+                  <label className="block text-xs font-mono text-on-surface-variant mb-1.5">{label}</label>
                   <input type="text" required value={editing[field]} onChange={e => setEditing(n => ({ ...n, [field]: e.target.value }))} className={inp} />
                 </div>
               ))}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">ASSET TYPE</label>
+                  <label className="block text-xs font-mono text-on-surface-variant mb-1.5">ASSET TYPE</label>
                   <select value={editing.type} onChange={e => setEditing(n => ({ ...n, type: e.target.value }))} className={sel}>
                     {Object.keys(TYPE_ICONS).map(t => <option key={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">FACULTY</label>
+                  <label className="block text-xs font-mono text-on-surface-variant mb-1.5">FACULTY</label>
                   <select value={editing.faculty} onChange={e => setEditing(n => ({ ...n, faculty: e.target.value }))} className={sel}>
                     {FACULTY_OPTIONS.filter(f => f !== 'All Faculties').map(o => <option key={o}>{o}</option>)}
                   </select>
@@ -717,34 +708,33 @@ export default function Assets() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">STATUS</label>
+                  <label className="block text-xs font-mono text-on-surface-variant mb-1.5">STATUS</label>
                   <select value={editing.status} onChange={e => setEditing(n => ({ ...n, status: e.target.value }))} className={sel}>
                     {['Active', 'Maintenance', 'Assigned', 'Decommissioned'].map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-mono text-[#554240] mb-1.5">CONDITION</label>
+                  <label className="block text-xs font-mono text-on-surface-variant mb-1.5">CONDITION</label>
                   <select value={editing.condition} onChange={e => setEditing(n => ({ ...n, condition: e.target.value }))} className={sel}>
                     {['Excellent', 'Good', 'Fair', 'Poor'].map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-mono text-[#554240] mb-1.5">NOTES</label>
+                <label className="block text-xs font-mono text-on-surface-variant mb-1.5">NOTES</label>
                 <textarea value={editing.notes ?? ''} onChange={e => setEditing(n => ({ ...n, notes: e.target.value }))} rows={3} className={`${inp} resize-none`} />
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setEditing(null)} className="flex-1 px-4 py-2.5 border border-[#dcc0bd] rounded-lg text-sm font-mono hover:bg-[#f0f3ff] transition-colors">Cancel</button>
-                <button type="submit" className="flex-1 px-4 py-2.5 bg-[#4a0404] text-white rounded-lg text-sm font-mono hover:opacity-90 transition-opacity font-bold">Save Changes</button>
+                <button type="button" onClick={() => setEditing(null)} className="flex-1 px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-mono hover:bg-surface-container-low transition-colors text-on-surface">Cancel</button>
+                <button type="submit" className="flex-1 px-4 py-2.5 bg-primary-container text-white rounded-lg text-sm font-mono hover:opacity-90 transition-opacity font-bold">Save Changes</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Toast */}
       {toast && (
-        <div className={`fixed ${isMobile ? 'bottom-[76px]' : 'bottom-6'} left-1/2 -translate-x-1/2 z-[60] bg-[#151c27] text-white px-6 py-3 rounded-full text-sm font-mono shadow-xl flex items-center gap-2 whitespace-nowrap`}>
+        <div className={`fixed ${isMobile ? 'bottom-[76px]' : 'bottom-6'} left-1/2 -translate-x-1/2 z-[60] bg-inverse-surface text-inverse-on-surface px-6 py-3 rounded-full text-sm font-mono shadow-xl flex items-center gap-2 whitespace-nowrap`}>
           <span className="material-symbols-outlined text-[#b8ecbe] text-base">check_circle</span>
           {toast}
         </div>
