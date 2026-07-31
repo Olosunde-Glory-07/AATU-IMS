@@ -268,23 +268,16 @@ function Sidebar({ currentPath, onNavigate, onLogout, firstName, initials, onPro
       </nav>
 
       {/* Profile footer — now clickable */}
-      <div style={{ padding: "14px 16px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-        <button onClick={onProfileOpen} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "8px 10px", background: "rgba(255,255,255,0.07)", border: "none", cursor: "pointer", borderRadius: 8, transition: "background 0.15s" }}
-          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.13)"}
-          onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.07)"}
-        >
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.primaryFixedDim, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: C.primary, fontSize: 13, flexShrink: 0 }}>
-            {initials}
-          </div>
-          <div style={{ flex: 1, textAlign: "left" }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.white }}>{firstName}</p>
-            <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.5)", fontFamily: MONO, textTransform: "uppercase", letterSpacing: "0.08em" }}>Student · View Profile</p>
-          </div>
-          <Icon name="chevron_right" size={16} style={{ color: "rgba(255,255,255,0.4)" }} />
+      <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+        <button
+          onClick={() => navigate("/student/profile")}
+          style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 8px", background: "transparent", color: "rgba(255,255,255,0.65)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
+          <Icon name="account_circle" size={20} /> User Profile
         </button>
-        <button onClick={onLogout} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "transparent", color: "rgba(255,255,255,0.5)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO, borderRadius: 6 }}>
-          <Icon name="logout" size={18} style={{ color: "rgba(255,255,255,0.5)" }} />
-          Logout
+        <button
+          onClick={() => supabase.auth.signOut().then(() => navigate("/login"))}
+          style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 8px", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
+          <Icon name="logout" size={20} /> Logout
         </button>
       </div>
     </aside>
@@ -316,16 +309,15 @@ function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout, firstN
           })}
         </nav>
         <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-          <button onClick={() => { onProfileOpen(); onClose(); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 10px", background: "rgba(255,255,255,0.07)", border: "none", cursor: "pointer", borderRadius: 8, marginBottom: 8 }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: C.primaryFixedDim, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: C.primary, fontSize: 12, flexShrink: 0 }}>
-              {initials}
-            </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.white }}>{firstName}</span>
-            <Icon name="chevron_right" size={14} style={{ color: "rgba(255,255,255,0.4)", marginLeft: "auto" }} />
+          <button
+            onClick={() => navigate("/student/profile")}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 8px", background: "transparent", color: "rgba(255,255,255,0.65)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
+            <Icon name="account_circle" size={20} /> User Profile
           </button>
-          <button onClick={onLogout} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 10px", background: "transparent", color: "rgba(255,255,255,0.5)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
-            <Icon name="logout" size={18} style={{ color: "rgba(255,255,255,0.5)" }} />
-            Logout
+          <button
+            onClick={() => supabase.auth.signOut().then(() => navigate("/login"))}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 8px", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
+            <Icon name="logout" size={20} /> Logout
           </button>
         </div>
       </aside>

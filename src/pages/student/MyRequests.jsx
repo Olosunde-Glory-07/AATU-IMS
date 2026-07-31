@@ -5,27 +5,27 @@ import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  primaryFixedDim:        "#ffb4aa",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  tertiaryFixed:          "#ffdcc3",
-  onTertiaryFixed:        "#2f1500",
-  onTertiaryFixedVariant: "#6e3900",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  surfaceContainerHighest:"#dce2f3",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-primary)",
+  primaryContainer:       "var(--color-primary-container)",
+  primaryFixedDim:        "var(--color-primary-fixed-dim)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  tertiaryFixed:          "var(--color-tertiary-fixed)",
+  onTertiaryFixed:        "var(--color-on-tertiary-fixed)",
+  onTertiaryFixedVariant: "var(--color-on-tertiary-fixed-variant)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-surface)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  surfaceContainerHighest:"var(--color-surface-container-highest)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
 const MONO = "'JetBrains Mono', monospace";
@@ -246,7 +246,7 @@ function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout, firstN
 // ─── Mobile Bottom Nav ────────────────────────────────────────────────────────
 function MobileBottomNav({ currentPath, onNavigate }) {
   return (
-    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60, background: C.white, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 62 }}>
+    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60, background: 'var(--color-surface-container-lowest)', borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 62 }}>
       {NAV_ITEMS.map((item) => {
         const isActive = currentPath.startsWith(item.path);
         return (
@@ -375,13 +375,13 @@ function SubmitModal({ onClose, onSubmit }) {
     }
   }
 
-  const inp = { width: "100%", padding: "10px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 10, fontSize: 14, fontFamily: SANS, color: C.onSurface, background: C.white, outline: "none", boxSizing: "border-box" };
+  const inp = { width: "100%", padding: "10px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 10, fontSize: 14, fontFamily: SANS, color: C.onSurface, background: 'var(--color-surface-container-lowest)', outline: "none", boxSizing: "border-box" };
   const lbl = { display: "block", fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 5 };
 
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 200 }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(520px,95vw)", background: C.white, borderRadius: 20, boxShadow: "0 24px 64px rgba(0,0,0,0.22)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(520px,95vw)", background: 'var(--color-surface-container-lowest)', borderRadius: 20, boxShadow: "0 24px 64px rgba(0,0,0,0.22)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
         <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.onSurface }}>New Facility Request</h3>
@@ -448,7 +448,7 @@ function AddNoteModal({ onClose, onSave }) {
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.30)", zIndex: 200 }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(440px,95vw)", background: C.white, borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.18)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(440px,95vw)", background: 'var(--color-surface-container-lowest)', borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.18)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
         <div style={{ padding: "18px 24px 14px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.onSurface }}>Add a Note</h3>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 6, color: C.onSurfaceVariant, display: "flex" }}>
@@ -481,7 +481,7 @@ function DeleteModal({ req, onClose, onConfirm }) {
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.30)", zIndex: 200 }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(400px,95vw)", background: C.white, borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.18)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(400px,95vw)", background: 'var(--color-surface-container-lowest)', borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.18)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
         <div style={{ padding: 24 }}>
           <div style={{ width: 48, height: 48, borderRadius: "50%", background: C.errorContainer, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
             <Icon name="delete" size={22} style={{ color: C.error }} />
@@ -511,7 +511,7 @@ function RequestCard({ req, isActive, onClick }) {
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        background: C.white, borderRadius: 14, padding: "18px 20px",
+        background: 'var(--color-surface-container-lowest)', borderRadius: 14, padding: "18px 20px",
         cursor: "pointer", position: "relative", overflow: "hidden",
         border: isActive ? `2px solid ${C.primaryContainer}` : `1px solid ${C.outlineVariant}`,
         boxShadow: (isActive || hov) ? "0 4px 14px rgba(0,0,0,0.08)" : "none",
@@ -552,7 +552,7 @@ function RequestCard({ req, isActive, onClick }) {
 // ─── Request Detail Panel ─────────────────────────────────────────────────────
 function DetailPanel({ req, onDelete, onAddNote, isMobile, onClose }) {
   if (!req) return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40, background: C.white, borderRadius: 14, border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40, background: 'var(--color-surface-container-lowest)', borderRadius: 14, border: `1px solid ${C.outlineVariant}`, color: C.onSurfaceVariant }}>
       <Icon name="touch_app" size={44} style={{ color: C.outlineVariant, display: "block", marginBottom: 12 }} />
       <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.onSurface }}>Select a request</p>
       <p style={{ margin: "6px 0 0", fontSize: 13, textAlign: "center" }}>Click any request on the left to see its full details and progress here.</p>
@@ -564,10 +564,10 @@ function DetailPanel({ req, onDelete, onAddNote, isMobile, onClose }) {
   const canDelete = req.status === "Pending";
 
   const wrapper = isMobile ? {
-    position: "fixed", inset: 0, background: C.white, zIndex: 90,
+    position: "fixed", inset: 0, background: 'var(--color-surface-container-lowest)', zIndex: 90,
     display: "flex", flexDirection: "column", overflowY: "auto",
   } : {
-    flex: 1, background: C.white, borderRadius: 14, border: `1px solid ${C.outlineVariant}`,
+    flex: 1, background: 'var(--color-surface-container-lowest)', borderRadius: 14, border: `1px solid ${C.outlineVariant}`,
     display: "flex", flexDirection: "column", overflowY: "auto", minWidth: 0,
   };
 
@@ -660,7 +660,7 @@ function DetailPanel({ req, onDelete, onAddNote, isMobile, onClose }) {
                   <div style={{ width: 24, height: 24, borderRadius: "50%", flexShrink: 0, zIndex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: dotBg, border: `2px solid ${dotBorder}`, boxShadow: isActive ? "0 0 0 4px #fef3c7" : "none" }}>
                     {isDone && <Icon name="check" size={13} style={{ color: C.white }} />}
                     {isNote && <Icon name="notes" size={12} style={{ color: C.white }} />}
-                    {isActive && <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.white }} />}
+                    {isActive && <div style={{ width: 8, height: 8, borderRadius: "50%", background: 'var(--color-surface-container-lowest)' }} />}
                   </div>
                   <div style={{ flex: 1, paddingTop: 2 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
@@ -860,9 +860,9 @@ export default function MyRequests() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {loading ? (
-                [1,2,3].map((i) => <div key={i} style={{ height: 100, background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, animation: "pulse 1.5s ease-in-out infinite" }} />)
+                [1,2,3].map((i) => <div key={i} style={{ height: 100, background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`, borderRadius: 14, animation: "pulse 1.5s ease-in-out infinite" }} />)
               ) : filtered.length === 0 ? (
-                <div style={{ padding: "48px 24px", textAlign: "center", background: C.white, borderRadius: 14, border: `1px solid ${C.outlineVariant}` }}>
+                <div style={{ padding: "48px 24px", textAlign: "center", background: 'var(--color-surface-container-lowest)', borderRadius: 14, border: `1px solid ${C.outlineVariant}` }}>
                   <Icon name="inbox" size={44} style={{ color: C.outlineVariant, display: "block", margin: "0 auto 12px" }} />
                   <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.onSurface }}>No requests found</p>
                   <p style={{ margin: "6px 0 12px", fontSize: 13, color: C.onSurfaceVariant }}>

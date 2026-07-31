@@ -3,34 +3,37 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  onPrimaryContainer:     "#d26a5f",
-  primaryFixed:           "#ffdad5",
-  primaryFixedDim:        "#ffb4aa",
-  onPrimaryFixed:         "#410001",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  secondaryFixed:         "#bbefc1",
-  tertiaryFixed:          "#ffdcc3",
-  onTertiaryFixedVariant: "#6e3900",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  surfaceContainerHighest:"#dce2f3",
-  surfaceContainerLowest: "#ffffff",
-  surfaceDim:             "#d3daea",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-on-surface)",
+  primaryContainer:       "var(--color-primary-container)",
+  onPrimaryContainer:     "var(--color-on-primary-container)",
+  primaryFixed:           "var(--color-primary-fixed)",
+  primaryFixedDim:        "var(--color-primary-fixed-dim)",
+  onPrimaryFixed:         "var(--color-on-primary-fixed)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  secondaryFixed:         "var(--color-secondary-fixed)",
+  tertiaryFixed:          "var(--color-tertiary-fixed)",
+  onTertiaryFixedVariant: "var(--color-on-tertiary-fixed-variant)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-background)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  surfaceContainerHighest:"var(--color-surface-container-highest)",
+  surfaceContainerLowest: "var(--color-surface-container-lowest)",
+  surfaceDim:             "var(--color-surface-dim)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
+// Sidebar stays a fixed brand color in both themes.
+const SIDEBAR_BG = "#4a0404";
+
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
@@ -43,6 +46,7 @@ const NAV_ITEMS = [
 ];
 
 // ─── Notification type config (styling only — not records) ───────────────────
+// These already reference C.* tokens, so they automatically follow dark mode.
 const TYPE_CFG = {
   Emergency:   { iconBg: C.errorContainer,      iconColor: C.error,               icon: "priority_high", dotColor: C.error     },
   Completed:   { iconBg: "#DCFCE7",             iconColor: "#166534",             icon: "check_circle",  dotColor: C.secondary },
@@ -94,7 +98,7 @@ function Sidebar({ open, onClose }) {
 
   const content = (
     <aside style={{
-      width: 260, background: C.primaryContainer, color: C.white,
+      width: 260, background: SIDEBAR_BG, color: C.white,
       display: "flex", flexDirection: "column", height: "100%",
       overflowY: "auto", borderRight: `1px solid ${C.outlineVariant}`,
       fontFamily: SANS,
@@ -126,7 +130,7 @@ function Sidebar({ open, onClose }) {
                 background: isActive ? "rgba(255,255,255,0.10)" : "transparent",
                 color: isActive ? C.white : "rgba(255,255,255,0.7)",
                 fontWeight: isActive ? 700 : 400,
-                borderLeft: isActive ? `4px solid ${C.primaryFixedDim}` : "4px solid transparent",
+                borderLeft: isActive ? "4px solid #ffb4aa" : "4px solid transparent",
                 border: "none", cursor: "pointer", textAlign: "left",
                 fontSize: 12, letterSpacing: "0.04em", fontFamily: MONO,
                 transition: "background 0.15s",
@@ -194,7 +198,7 @@ function BottomNav() {
   return (
     <nav style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90,
-      background: C.white, borderTop: `1px solid ${C.outlineVariant}`,
+      background: C.surfaceContainerLowest, borderTop: `1px solid ${C.outlineVariant}`,
       display: "flex", height: 60,
     }}>
       {NAV_ITEMS.map((item) => {
@@ -228,7 +232,7 @@ function TopBar({ onMenuClick, search, setSearch }) {
       height: 64, display: "flex", alignItems: "center",
       justifyContent: "space-between", padding: isMobile ? "0 16px" : "0 32px",
       position: "sticky", top: 0, zIndex: 40,
-      background: "rgba(249,249,255,0.94)", backdropFilter: "blur(12px)",
+      background: "color-mix(in srgb, var(--color-background) 94%, transparent)", backdropFilter: "blur(12px)",
       borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 12,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
@@ -316,7 +320,7 @@ function OverviewPanel({ notifications, isMobile }) {
     <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: 16, flexWrap: "wrap" }}>
       {/* Metrics card */}
       <div style={{
-        background: C.white, border: `1px solid ${C.outlineVariant}`,
+        background: C.surfaceContainerLowest, border: `1px solid ${C.outlineVariant}`,
         borderRadius: 14, padding: 24, flex: isMobile ? "1 1 100%" : "initial",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
@@ -345,7 +349,7 @@ function OverviewPanel({ notifications, isMobile }) {
       {/* Monitoring status card — desktop only, decorative */}
       {!isMobile && (
         <div style={{
-          background: C.primaryContainer, borderRadius: 14,
+          background: "#4a0404", borderRadius: 14,
           padding: 24, position: "relative", overflow: "hidden",
           minHeight: 180, display: "flex", flexDirection: "column", justifyContent: "space-between",
         }}>
@@ -363,7 +367,7 @@ function OverviewPanel({ notifications, isMobile }) {
                 Active Monitoring
               </span>
             </div>
-            <h4 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: C.white }}>
+            <h4 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#ffffff" }}>
               Departmental Dashboard Visualizer
             </h4>
             <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.70)", lineHeight: 1.5 }}>
@@ -396,7 +400,7 @@ function NotifItem({ notif, onMarkRead, searchTerm, isMobile }) {
         borderBottom: `1px solid ${C.outlineVariant}`,
         display: "flex", gap: isMobile ? 12 : 16,
         background: highlighted
-          ? `${C.surfaceContainer}60`
+          ? "color-mix(in srgb, var(--color-surface-container) 60%, transparent)"
           : hov ? C.surfaceContainerLow : "transparent",
         transition: "background 0.15s",
         cursor: "pointer",
@@ -472,7 +476,7 @@ function NotifItem({ notif, onMarkRead, searchTerm, isMobile }) {
 function MaintenanceBanner({ onReviewSchedule, isMobile }) {
   return (
     <section style={{
-      background: C.primaryContainer, borderRadius: 14,
+      background: "#4a0404", borderRadius: 14,
       padding: isMobile ? "24px 20px" : "36px 40px", position: "relative", overflow: "hidden",
       display: "flex", alignItems: "center", gap: isMobile ? 24 : 40, flexWrap: "wrap",
     }}>
@@ -487,15 +491,15 @@ function MaintenanceBanner({ onReviewSchedule, isMobile }) {
       )}
 
       <div style={{ flex: 1, minWidth: 220, position: "relative", zIndex: 1 }}>
-        <h3 style={{ margin: "0 0 10px", fontSize: isMobile ? 18 : 22, fontWeight: 700, color: C.white }}>
+        <h3 style={{ margin: "0 0 10px", fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "#ffffff" }}>
           Automated Maintenance Schedule
         </h3>
         <p style={{ margin: "0 0 24px", fontSize: isMobile ? 13 : 14, color: "rgba(255,255,255,0.80)", lineHeight: 1.65, maxWidth: 540 }}>
           Our predictive maintenance engine analyses asset health data and adds scheduled tasks to your queue to help prevent infrastructure degradation. New tasks will appear here once generated.
         </p>
         <button onClick={onReviewSchedule} style={{
-          padding: "11px 24px", background: C.white,
-          color: C.primaryContainer, border: "none", borderRadius: 8,
+          padding: "11px 24px", background: "#ffffff",
+          color: "#4a0404", border: "none", borderRadius: 8,
           cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: SANS,
           transition: "opacity 0.15s",
         }}
@@ -542,7 +546,6 @@ export default function StaffNotificationsPage() {
   const [activeTab, setActiveTab] = useState("All Alerts");
   const [toast, setToast]         = useState(null);
 
-  // Starts empty — populate from Supabase. No test data.
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
@@ -553,7 +556,7 @@ export default function StaffNotificationsPage() {
         el.rel = "stylesheet";
         el.href = i === 0
           ? "https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-          : "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200";
+          : "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block";
         document.head.appendChild(el);
       }
     });
@@ -616,7 +619,7 @@ export default function StaffNotificationsPage() {
                 style={{
                   padding: "9px 18px",
                   border: `1px solid ${C.outlineVariant}`,
-                  borderRadius: 8, background: C.white,
+                  borderRadius: 8, background: C.surfaceContainerLowest,
                   color: C.onSurface, cursor: unreadCount === 0 ? "default" : "pointer",
                   fontSize: 12, fontFamily: MONO, fontWeight: 700,
                   display: "flex", alignItems: "center", gap: 6,
@@ -756,7 +759,7 @@ export default function StaffNotificationsPage() {
       {toast && (
         <div style={{
           position: "fixed", bottom: isMobile ? 76 : 24, left: "50%", transform: "translateX(-50%)",
-          background: C.onSurface, color: C.white, padding: "12px 24px",
+          background: "var(--color-inverse-surface)", color: "var(--color-inverse-on-surface)", padding: "12px 24px",
           borderRadius: 30, fontSize: 13, fontFamily: MONO, zIndex: 300,
           boxShadow: "0 8px 24px rgba(0,0,0,0.2)", whiteSpace: "nowrap",
         }}>
