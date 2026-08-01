@@ -23,17 +23,6 @@ export default function StaffLayout() {
   return (
     <div className="flex min-h-screen bg-background">
 
-      {/* Mobile topbar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-[#396844] text-white flex items-center justify-between px-4 z-40">
-        <div className="flex items-center gap-2 font-bold text-base">
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance</span>
-          AATU
-        </div>
-        <button onClick={() => setSidebarOpen(true)} aria-label="Open menu">
-          <Menu size={24} />
-        </button>
-      </div>
-
       {/* Overlay */}
       {sidebarOpen && (
         <div

@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Menu } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -37,8 +38,9 @@ export default function DepartmentalHistory() {
   const isMobile     = useIsMobile()
 
   // Starts empty — populate from Supabase. No test data.
-  const [logs, setLogs]         = useState([])
+  const [logs, setLogs] = useState([])
   const [activity, setActivity] = useState([]) // recent activity feed, derived from real logs ideally
+  const [loading, setLoading] = useState(true)
   const [search, setSearch]     = useState('')
   const [typeFilter, setType]   = useState('All Types')
   const [range, setRange]       = useState('Last 24h')

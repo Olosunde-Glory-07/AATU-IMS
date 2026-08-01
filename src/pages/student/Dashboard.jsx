@@ -5,30 +5,35 @@ import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  primaryFixedDim:        "#ffb4aa",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  tertiaryFixed:          "#ffdcc3",
-  onTertiaryFixed:        "#2f1500",
-  onTertiaryFixedVariant: "#6e3900",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  surfaceContainerHighest:"#dce2f3",
-  surfaceDim:             "#d3daea",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-on-surface)",
+  primaryContainer:       "var(--color-primary-container)",
+  primaryFixedDim:        "var(--color-primary-fixed-dim)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  tertiaryFixed:          "var(--color-tertiary-fixed)",
+  onTertiaryFixed:        "var(--color-on-tertiary-fixed)",
+  onTertiaryFixedVariant: "var(--color-on-tertiary-fixed-variant)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-background)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  surfaceContainerHighest:"var(--color-surface-container-highest)",
+  surfaceDim:             "var(--color-surface-dim)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
+// Card surfaces — flips to a dark surface in dark mode.
+const CARD = "var(--color-surface-container-lowest)";
+// Sidebar stays a fixed brand color in both themes.
+const SIDEBAR_BG = "#4a0404";
+
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
@@ -39,6 +44,8 @@ const NAV_ITEMS = [
   { icon: "notifications", label: "Notifications", path: "/student/notifications" },
 ];
 
+// Semantic status/priority chip colors — intentionally kept as literal light
+// hex chips in both themes (no dark-mode equivalent token set exists yet).
 const STATUS_CFG = {
   Completed:    { bg: "#DCFCE7", text: "#166534",  dot: "#396844" },
   "In Progress":{ bg: "#EEF2FF", text: "#4338ca",  dot: "#6366f1" },
@@ -106,140 +113,14 @@ function Icon({ name, size = 22, filled = false, style = {} }) {
   );
 }
 
-// ─── Profile Modal ────────────────────────────────────────────────────────────
-function ProfileModal({ profile, onClose, onLogout }) {
-  const [editing, setEditing] = useState(false);
-  const [saving,  setSaving]  = useState(false);
-  const [toast,   setToast]   = useState(null);
-  const [form,    setForm]    = useState({
-    full_name:    profile?.full_name    ?? "",
-    department:   profile?.department   ?? "",
-    matric_number:profile?.matric_number?? "",
-    phone:        profile?.phone        ?? "",
-  });
-
-  function showToast(msg, err = false) {
-    setToast({ msg, err });
-    setTimeout(() => setToast(null), 2500);
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        full_name:     form.full_name.trim(),
-        department:    form.department.trim(),
-        matric_number: form.matric_number.trim(),
-      })
-      .eq("id", profile.id);
-    setSaving(false);
-    if (error) { showToast("Failed to save changes.", true); return; }
-    showToast("Profile updated!");
-    setEditing(false);
-  }
-
-  const initials = (profile?.full_name ?? "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
-  const inp = { width: "100%", padding: "9px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, fontSize: 14, fontFamily: SANS, color: C.onSurface, background: C.white, outline: "none", boxSizing: "border-box" };
-  const lbl = { display: "block", fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 5 };
-
-  return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.40)", zIndex: 300, backdropFilter: "blur(4px)" }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(400px, 95vw)", background: C.white, borderRadius: 20, boxShadow: "0 24px 64px rgba(0,0,0,0.22)", zIndex: 301, fontFamily: SANS, overflow: "hidden" }} onClick={e => e.stopPropagation()}>
-
-        {/* Header */}
-        <div style={{ background: C.primaryContainer, padding: "24px 24px 20px", position: "relative" }}>
-          <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", padding: 6, borderRadius: "50%", display: "flex", color: C.white }}>
-            <Icon name="close" size={18} style={{ color: C.white }} />
-          </button>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 60, height: 60, borderRadius: "50%", background: "rgba(255,255,255,0.20)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 22, color: C.white, flexShrink: 0 }}>
-              {initials}
-            </div>
-            <div>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.white, lineHeight: 1.2 }}>{profile?.full_name ?? "—"}</h2>
-              <p style={{ margin: "4px 0 0", fontSize: 11, fontFamily: MONO, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Student</p>
-              {profile?.matric_number && (
-                <p style={{ margin: "2px 0 0", fontSize: 11, fontFamily: MONO, color: "rgba(255,255,255,0.55)" }}>{profile.matric_number}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Body */}
-        <div style={{ padding: 24 }}>
-          {!editing ? (
-            <>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
-                {[
-                  { label: "DEPARTMENT",    value: profile?.department    || "—", icon: "domain"        },
-                  { label: "MATRIC NUMBER", value: profile?.matric_number || "—", icon: "badge"         },
-                  { label: "ROLE",          value: profile?.role          || "—", icon: "school"        },
-                ].map(({ label, value, icon }) => (
-                  <div key={label} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 34, height: 34, borderRadius: 8, background: C.surfaceContainerLow, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <Icon name={icon} size={17} style={{ color: C.onSurfaceVariant }} />
-                    </div>
-                    <div>
-                      <p style={{ margin: 0, fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase" }}>{label}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: 14, fontWeight: 500, color: C.onSurface }}>{value}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setEditing(true)} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 0", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO, color: C.onSurface }}>
-                  <Icon name="edit" size={15} style={{ color: C.onSurface }} /> Edit Profile
-                </button>
-                <button onClick={onLogout} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 0", background: C.errorContainer, color: C.onErrorContainer, border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700 }}>
-                  <Icon name="logout" size={15} style={{ color: C.onErrorContainer }} /> Logout
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
-                {[
-                  { label: "Full Name",     key: "full_name",     placeholder: "Your full name"      },
-                  { label: "Department",    key: "department",    placeholder: "e.g. Computer Science"},
-                  { label: "Matric Number", key: "matric_number", placeholder: "e.g. CSC/2021/001"   },
-                ].map(({ label, key, placeholder }) => (
-                  <div key={key}>
-                    <label style={lbl}>{label}</label>
-                    <input value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} placeholder={placeholder} style={inp} />
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setEditing(false)} style={{ flex: 1, padding: "10px 0", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO, color: C.onSurface }}>
-                  Cancel
-                </button>
-                <button onClick={handleSave} disabled={saving} style={{ flex: 1, padding: "10px 0", background: C.primaryContainer, color: C.white, border: "none", borderRadius: 8, cursor: saving ? "not-allowed" : "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, opacity: saving ? 0.7 : 1 }}>
-                  {saving ? "Saving…" : "Save Changes"}
-                </button>
-              </div>
-            </>
-          )}
-
-          {toast && (
-            <div style={{ marginTop: 14, padding: "9px 12px", borderRadius: 8, background: toast.err ? C.errorContainer : C.secondaryContainer, color: toast.err ? C.onErrorContainer : C.onSecondaryContainer, fontSize: 12, fontFamily: MONO, display: "flex", alignItems: "center", gap: 6 }}>
-              <Icon name={toast.err ? "error" : "check_circle"} size={15} filled style={{ color: toast.err ? C.onErrorContainer : C.onSecondaryContainer }} />
-              {toast.msg}
-            </div>
-          )}
-        </div>
-      </div>
-    </>
-  );
-}
-
 // ─── Desktop Sidebar ──────────────────────────────────────────────────────────
-function Sidebar({ currentPath, onNavigate, onLogout, firstName, initials, onProfileOpen }) {
+// FIX: footer buttons now correctly use the onNavigate / onLogout props
+// (previously called an undefined `navigate` and `supabase.auth.signOut()`
+// directly, which would throw a ReferenceError). "User Profile" now routes
+// to the shared Profile page at /student/profile instead of a local modal.
+function Sidebar({ currentPath, onNavigate, onLogout, firstName, initials }) {
   return (
-    <aside style={{ width: 260, background: C.primaryContainer, color: C.white, display: "flex", flexDirection: "column", height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 50, overflowY: "auto", fontFamily: SANS }}>
+    <aside style={{ width: 260, background: SIDEBAR_BG, color: C.white, display: "flex", flexDirection: "column", height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 50, overflowY: "auto", fontFamily: SANS }}>
       <div style={{ padding: "24px 24px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 38, height: 38, borderRadius: 6, background: "rgba(255,255,255,0.14)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -256,7 +137,7 @@ function Sidebar({ currentPath, onNavigate, onLogout, firstName, initials, onPro
         {NAV_ITEMS.map((item) => {
           const isActive = currentPath.startsWith(item.path);
           return (
-            <button key={item.label} onClick={() => onNavigate(item.path)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", background: isActive ? "rgba(255,255,255,0.12)" : "transparent", color: isActive ? C.white : "rgba(255,255,255,0.70)", fontWeight: isActive ? 700 : 400, borderLeft: isActive ? `4px solid ${C.primaryFixedDim}` : "4px solid transparent", border: "none", cursor: "pointer", textAlign: "left", fontSize: 12, letterSpacing: "0.04em", fontFamily: MONO, transition: "background 0.15s" }}
+            <button key={item.label} onClick={() => onNavigate(item.path)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", background: isActive ? "rgba(255,255,255,0.12)" : "transparent", color: isActive ? C.white : "rgba(255,255,255,0.70)", fontWeight: isActive ? 700 : 400, borderLeft: isActive ? "4px solid #ffb4aa" : "4px solid transparent", border: "none", cursor: "pointer", textAlign: "left", fontSize: 12, letterSpacing: "0.04em", fontFamily: MONO, transition: "background 0.15s" }}
               onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
               onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
             >
@@ -267,17 +148,24 @@ function Sidebar({ currentPath, onNavigate, onLogout, firstName, initials, onPro
         })}
       </nav>
 
-      {/* Profile footer — now clickable */}
-      <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-        <button
-          onClick={() => navigate("/student/profile")}
-          style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 8px", background: "transparent", color: "rgba(255,255,255,0.65)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
-          <Icon name="account_circle" size={20} /> User Profile
+      {/* Profile footer — routes to shared /student/profile */}
+      <div style={{ padding: "14px 16px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+        <button onClick={() => onNavigate("/student/profile")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "8px 10px", background: "rgba(255,255,255,0.07)", border: "none", cursor: "pointer", borderRadius: 8, transition: "background 0.15s" }}
+          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.13)"}
+          onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.07)"}
+        >
+          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#ffb4aa", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "#4a0404", fontSize: 13, flexShrink: 0 }}>
+            {initials}
+          </div>
+          <div style={{ flex: 1, textAlign: "left" }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.white }}>{firstName}</p>
+            <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.5)", fontFamily: MONO, textTransform: "uppercase", letterSpacing: "0.08em" }}>Student · View Profile</p>
+          </div>
+          <Icon name="chevron_right" size={16} style={{ color: "rgba(255,255,255,0.4)" }} />
         </button>
-        <button
-          onClick={() => supabase.auth.signOut().then(() => navigate("/login"))}
-          style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 8px", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
-          <Icon name="logout" size={20} /> Logout
+        <button onClick={onLogout} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "transparent", color: "rgba(255,255,255,0.5)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO, borderRadius: 6 }}>
+          <Icon name="logout" size={18} style={{ color: "rgba(255,255,255,0.5)" }} />
+          Logout
         </button>
       </div>
     </aside>
@@ -285,12 +173,12 @@ function Sidebar({ currentPath, onNavigate, onLogout, firstName, initials, onPro
 }
 
 // ─── Mobile Drawer ────────────────────────────────────────────────────────────
-function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout, firstName, initials, onProfileOpen }) {
+function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout, firstName, initials }) {
   if (!open) return null;
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.40)", zIndex: 70 }} />
-      <aside style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 260, background: C.primaryContainer, zIndex: 71, display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto" }}>
+      <aside style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 260, background: SIDEBAR_BG, zIndex: 71, display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto" }}>
         <div style={{ padding: "20px 20px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontWeight: 700, fontSize: 17, color: C.white }}>AATU Student</div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "rgba(255,255,255,0.7)", display: "flex" }}>
@@ -301,7 +189,7 @@ function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout, firstN
           {NAV_ITEMS.map((item) => {
             const isActive = currentPath.startsWith(item.path);
             return (
-              <button key={item.label} onClick={() => { onNavigate(item.path); onClose(); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: isActive ? "rgba(255,255,255,0.12)" : "transparent", color: isActive ? C.white : "rgba(255,255,255,0.70)", fontWeight: isActive ? 700 : 400, borderLeft: isActive ? `4px solid ${C.primaryFixedDim}` : "4px solid transparent", border: "none", cursor: "pointer", textAlign: "left", fontSize: 12, letterSpacing: "0.04em", fontFamily: MONO }}>
+              <button key={item.label} onClick={() => { onNavigate(item.path); onClose(); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: isActive ? "rgba(255,255,255,0.12)" : "transparent", color: isActive ? C.white : "rgba(255,255,255,0.70)", fontWeight: isActive ? 700 : 400, borderLeft: isActive ? "4px solid #ffb4aa" : "4px solid transparent", border: "none", cursor: "pointer", textAlign: "left", fontSize: 12, letterSpacing: "0.04em", fontFamily: MONO }}>
                 <Icon name={item.icon} size={20} filled={isActive} style={{ color: isActive ? C.white : "rgba(255,255,255,0.70)" }} />
                 {item.label}
               </button>
@@ -309,15 +197,16 @@ function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout, firstN
           })}
         </nav>
         <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-          <button
-            onClick={() => navigate("/student/profile")}
-            style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 8px", background: "transparent", color: "rgba(255,255,255,0.65)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
-            <Icon name="account_circle" size={20} /> User Profile
+          <button onClick={() => { onNavigate("/student/profile"); onClose(); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 10px", background: "rgba(255,255,255,0.07)", border: "none", cursor: "pointer", borderRadius: 8, marginBottom: 8 }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#ffb4aa", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: "#4a0404", fontSize: 12, flexShrink: 0 }}>
+              {initials}
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.white }}>{firstName}</span>
+            <Icon name="chevron_right" size={14} style={{ color: "rgba(255,255,255,0.4)", marginLeft: "auto" }} />
           </button>
-          <button
-            onClick={() => supabase.auth.signOut().then(() => navigate("/login"))}
-            style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 8px", background: "transparent", color: "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
-            <Icon name="logout" size={20} /> Logout
+          <button onClick={onLogout} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 10px", background: "transparent", color: "rgba(255,255,255,0.5)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
+            <Icon name="logout" size={18} style={{ color: "rgba(255,255,255,0.5)" }} />
+            Logout
           </button>
         </div>
       </aside>
@@ -328,7 +217,7 @@ function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout, firstN
 // ─── Mobile Bottom Nav ────────────────────────────────────────────────────────
 function MobileBottomNav({ currentPath, onNavigate }) {
   return (
-    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60, background: C.white, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 62 }}>
+    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60, background: CARD, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 62 }}>
       {NAV_ITEMS.map((item) => {
         const isActive = currentPath.startsWith(item.path);
         return (
@@ -343,9 +232,9 @@ function MobileBottomNav({ currentPath, onNavigate }) {
 }
 
 // ─── Top Bar ──────────────────────────────────────────────────────────────────
-function TopBar({ search, setSearch, onNew, onMenu, isMobile, onNotifications, onProfileOpen, initials }) {
+function TopBar({ search, setSearch, onNew, onMenu, isMobile, onNotifications, onProfileNavigate, initials }) {
   return (
-    <header style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px 0 20px", position: "sticky", top: 0, zIndex: 40, background: "rgba(249,249,255,0.94)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 10 }}>
+    <header style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px 0 20px", position: "sticky", top: 0, zIndex: 40, background: "color-mix(in srgb, var(--color-background) 94%, transparent)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 10 }}>
       {isMobile && (
         <button onClick={onMenu} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: C.onSurface, display: "flex", flexShrink: 0 }}>
           <Icon name="menu" size={24} />
@@ -370,8 +259,8 @@ function TopBar({ search, setSearch, onNew, onMenu, isMobile, onNotifications, o
           {isMobile ? "Report" : "Report Issue"}
         </button>
 
-        {/* Profile avatar — top bar */}
-        <button onClick={onProfileOpen} title="My Profile" style={{ width: 36, height: 36, borderRadius: "50%", background: C.primaryContainer, color: C.white, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "opacity 0.15s" }}
+        {/* Profile avatar — top bar. Routes to shared /student/profile page */}
+        <button onClick={onProfileNavigate} title="My Profile" style={{ width: 36, height: 36, borderRadius: "50%", background: C.primaryContainer, color: C.white, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "opacity 0.15s" }}
           onMouseEnter={(e) => e.currentTarget.style.opacity = "0.85"}
           onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
         >
@@ -404,13 +293,13 @@ function SubmitModal({ onClose, onSubmitted, userId }) {
     } finally { setSubmitting(false); }
   }
 
-  const inp = { width: "100%", padding: "10px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 10, fontSize: 14, fontFamily: SANS, color: C.onSurface, background: C.white, outline: "none", boxSizing: "border-box" };
+  const inp = { width: "100%", padding: "10px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 10, fontSize: 14, fontFamily: SANS, color: C.onSurface, background: CARD, outline: "none", boxSizing: "border-box" };
   const lbl = { display: "block", fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 5 };
 
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 200 }} />
-      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(520px, 95vw)", background: C.white, borderRadius: 20, boxShadow: "0 24px 64px rgba(0,0,0,0.22)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(520px, 95vw)", background: CARD, borderRadius: 20, boxShadow: "0 24px 64px rgba(0,0,0,0.22)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
         <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Submit a Facility Request</h3>
@@ -455,7 +344,7 @@ function RequestDrawer({ req, onClose, onCancel }) {
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.22)", zIndex: 100 }} />
-      <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: "min(420px, 100vw)", background: C.white, zIndex: 101, boxShadow: "-6px 0 32px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto" }}>
+      <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: "min(420px, 100vw)", background: CARD, zIndex: 101, boxShadow: "-6px 0 32px rgba(0,0,0,0.12)", display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto" }}>
         <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div style={{ flex: 1 }}>
@@ -528,7 +417,7 @@ function RequestDrawer({ req, onClose, onCancel }) {
 function Toast({ msg, isError }) {
   if (!msg) return null;
   return (
-    <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: isError ? C.error : C.onSurface, color: C.white, padding: "10px 20px", borderRadius: 99, fontSize: 13, fontFamily: SANS, fontWeight: 600, zIndex: 300, whiteSpace: "nowrap", boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
+    <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: isError ? C.error : "var(--color-inverse-surface)", color: isError ? "#ffffff" : "var(--color-inverse-on-surface)", padding: "10px 20px", borderRadius: 99, fontSize: 13, fontFamily: SANS, fontWeight: 600, zIndex: 300, whiteSpace: "nowrap", boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
       {msg}
     </div>
   );
@@ -536,7 +425,7 @@ function Toast({ msg, isError }) {
 
 function StatCard({ icon, iconBg, iconColor, label, badge, value, loading }) {
   return (
-    <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, padding: 20, display: "flex", flexDirection: "column", gap: 14, transition: "box-shadow 0.2s" }}
+    <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, padding: 20, display: "flex", flexDirection: "column", gap: 14, transition: "box-shadow 0.2s" }}
       onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.07)"}
       onMouseLeave={(e) => e.currentTarget.style.boxShadow = "none"}
     >
@@ -565,7 +454,6 @@ export default function StudentDashboard() {
   const [drawerOpen,  setDrawerOpen]  = useState(false);
   const [showNew,     setShowNew]     = useState(false);
   const [selected,    setSelected]    = useState(null);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [toast,       setToast]       = useState(null);
   const [toastError,  setToastError]  = useState(false);
   const [loading,     setLoading]     = useState(true);
@@ -648,12 +536,39 @@ export default function StudentDashboard() {
     <div style={{ background: C.surface, minHeight: "100vh", fontFamily: SANS, color: C.onSurface }}>
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}} *{box-sizing:border-box}`}</style>
 
-      {!isMobile && <Sidebar currentPath={location.pathname} onNavigate={go} onLogout={handleLogout} firstName={firstName} initials={initials} onProfileOpen={() => setProfileOpen(true)} />}
+      {!isMobile && (
+        <Sidebar
+          currentPath={location.pathname}
+          onNavigate={go}
+          onLogout={handleLogout}
+          firstName={firstName}
+          initials={initials}
+        />
+      )}
 
-      {isMobile && <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} currentPath={location.pathname} onNavigate={go} onLogout={handleLogout} firstName={firstName} initials={initials} onProfileOpen={() => setProfileOpen(true)} />}
+      {isMobile && (
+        <MobileDrawer
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          currentPath={location.pathname}
+          onNavigate={go}
+          onLogout={handleLogout}
+          firstName={firstName}
+          initials={initials}
+        />
+      )}
 
       <div style={{ marginLeft: isMobile ? 0 : 260, display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-        <TopBar search={search} setSearch={setSearch} onNew={() => setShowNew(true)} onMenu={() => setDrawerOpen(true)} isMobile={isMobile} onNotifications={() => go("/student/notifications")} onProfileOpen={() => setProfileOpen(true)} initials={initials} />
+        <TopBar
+          search={search}
+          setSearch={setSearch}
+          onNew={() => setShowNew(true)}
+          onMenu={() => setDrawerOpen(true)}
+          isMobile={isMobile}
+          onNotifications={() => go("/student/notifications")}
+          onProfileNavigate={() => go("/student/profile")}
+          initials={initials}
+        />
 
         <main style={{ flex: 1, padding: isMobile ? "20px 14px 80px" : "32px", maxWidth: 1600, width: "100%", alignSelf: "center" }}>
 
@@ -676,7 +591,7 @@ export default function StudentDashboard() {
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 380px", gap: isMobile ? 20 : 28 }}>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
+              <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
                 <div style={{ padding: "18px 24px", borderBottom: `1px solid ${C.outlineVariant}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>My Recent Requests</h3>
                   <button onClick={() => go("/student/my-requests")} style={{ background: "none", border: "none", cursor: "pointer", color: C.primaryContainer, fontWeight: 700, fontSize: 12, fontFamily: MONO }}>View All →</button>
@@ -726,18 +641,18 @@ export default function StudentDashboard() {
                 )}
               </div>
 
-              <div style={{ borderRadius: 14, overflow: "hidden", position: "relative", background: `linear-gradient(135deg, ${C.primaryContainer} 0%, #7e2b23 100%)`, padding: "28px 32px", color: C.white }}>
+              <div style={{ borderRadius: 14, overflow: "hidden", position: "relative", background: `linear-gradient(135deg, #4a0404 0%, #7e2b23 100%)`, padding: "28px 32px", color: "#ffffff" }}>
                 {[140, 200, 260].map((s, i) => <div key={i} style={{ position: "absolute", right: -60 + i * 20, top: "50%", transform: "translateY(-50%)", width: s, height: s, borderRadius: "50%", border: "1px solid rgba(255,180,170,0.14)", pointerEvents: "none" }} />)}
                 <div style={{ position: "relative", zIndex: 1 }}>
                   <h3 style={{ margin: "0 0 8px", fontSize: isMobile ? 17 : 20, fontWeight: 700 }}>Need to report a campus issue?</h3>
                   <p style={{ margin: "0 0 18px", fontSize: isMobile ? 13 : 14, opacity: 0.85, lineHeight: 1.6, maxWidth: 480 }}>Facility issues are resolved faster when submitted promptly.</p>
-                  <button onClick={() => setShowNew(true)} style={{ padding: "10px 24px", background: C.white, color: C.primaryContainer, border: "none", borderRadius: 99, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: SANS }}>Submit a Request →</button>
+                  <button onClick={() => setShowNew(true)} style={{ padding: "10px 24px", background: "#ffffff", color: "#4a0404", border: "none", borderRadius: 99, cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: SANS }}>Submit a Request →</button>
                 </div>
               </div>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, padding: 24 }}>
+              <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, padding: 24 }}>
                 <h3 style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700 }}>Request Progress</h3>
                 <p style={{ margin: "0 0 20px", fontSize: 13, color: C.onSurfaceVariant }}>Live status of your latest active request</p>
 
@@ -782,7 +697,7 @@ export default function StudentDashboard() {
                 )}
               </div>
 
-              <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, padding: 20 }}>
+              <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, padding: 20 }}>
                 <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700 }}>Quick Actions</h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {[
@@ -790,7 +705,7 @@ export default function StudentDashboard() {
                     { icon: "list_alt",      label: "View All My Requests",  action: () => go("/student/my-requests")          },
                     { icon: "history",       label: "View Request History",  action: () => go("/student/my-history")           },
                     { icon: "notifications", label: "Check Notifications",   action: () => go("/student/notifications")        },
-                    { icon: "account_circle",label: "My Profile",            action: () => go("/pages/shared/profile")               },
+                    { icon: "account_circle",label: "My Profile",            action: () => go("/student/profile")              },
                   ].map((a) => (
                     <button key={a.label} onClick={a.action} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`, borderRadius: 8, cursor: "pointer", color: C.onSurface, fontSize: 13, fontFamily: SANS, textAlign: "left", transition: "background 0.12s" }}
                       onMouseEnter={(e) => e.currentTarget.style.background = C.surfaceContainerHigh}
@@ -810,9 +725,8 @@ export default function StudentDashboard() {
 
       {isMobile && <MobileBottomNav currentPath={location.pathname} onNavigate={go} />}
 
-      {showNew     && <SubmitModal onClose={() => setShowNew(false)} onSubmitted={handleSubmitted} userId={user?.id} />}
-      {selected    && <RequestDrawer req={selected} onClose={() => setSelected(null)} onCancel={handleCancel} />}
-      {profileOpen && <ProfileModal profile={profile} onClose={() => setProfileOpen(false)} onLogout={handleLogout} />}
+      {showNew  && <SubmitModal onClose={() => setShowNew(false)} onSubmitted={handleSubmitted} userId={user?.id} />}
+      {selected && <RequestDrawer req={selected} onClose={() => setSelected(null)} onCancel={handleCancel} />}
       <Toast msg={toast} isError={toastError} />
     </div>
   );

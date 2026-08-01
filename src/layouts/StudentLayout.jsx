@@ -6,7 +6,7 @@ import { LayoutDashboard, ClipboardList, History, Bell, User, LogOut, Menu, X } 
 const navItems = [
   { to: '/student/dashboard',     label: 'Dashboard',    icon: LayoutDashboard },
   { to: '/student/my-requests',   label: 'My Requests',  icon: ClipboardList },
-  { to: '/student/my-history',       label: 'My History',   icon: History },
+  { to: '/student/my-history',   label: 'My History',   icon: History },
   { to: '/student/notifications', label: 'Notifications', icon: Bell },
 ]
 
@@ -23,17 +23,6 @@ export default function StudentLayout() {
   return (
     <div className="flex min-h-screen bg-background">
 
-      {/* Mobile topbar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-[#1a3a5c] text-white flex items-center justify-between px-4 z-40">
-        <div className="flex items-center gap-2 font-bold text-base">
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance</span>
-          AATU
-        </div>
-        <button onClick={() => setSidebarOpen(true)} aria-label="Open menu">
-          <Menu size={24} />
-        </button>
-      </div>
-
       {/* Overlay */}
       {sidebarOpen && (
         <div
@@ -44,7 +33,7 @@ export default function StudentLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full w-[260px] bg-[#1a3a5c] text-white flex flex-col z-50 overflow-y-auto
+        className={`fixed left-0 top-0 h-full w-[260px] bg-primary-container text-white flex flex-col z-50 overflow-y-auto
         transform transition-transform duration-200 ease-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       >
@@ -73,7 +62,7 @@ export default function StudentLayout() {
             >
               {({ isActive }) => (
                 <>
-                  {isActive && <span className="absolute left-0 w-1 h-full bg-blue-300 rounded-r" />}
+                  {isActive && <span className="absolute left-0 w-1 h-full bg-primary-fixed-dim rounded-r" />}
                   <Icon size={18} />
                   {label}
                 </>
