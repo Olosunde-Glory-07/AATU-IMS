@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Menu } from 'lucide-react'
@@ -7,17 +7,33 @@ import { supabase } from '../../lib/supabase'
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const STATUS_BADGE = {
-  Completed: 'bg-secondary-container text-on-secondary-container',
-  Assigned:  'bg-[#EEF2FF] text-[#4338CA]',
-  Logged:    'bg-secondary-container text-on-secondary-container',
-  Emergency: 'bg-[#FEE2E2] text-error',
-  Success:   'bg-secondary-container text-on-secondary-container',
-  Medium:    'bg-[#FEF3C7] text-[#92400E]',
-  Pending:   'bg-surface-container-highest text-on-surface-variant',
+  Completed:    'bg-secondary-container text-on-secondary-container',
+  Assigned:     'bg-[#EEF2FF] text-[#4338CA]',
+  'In Progress':'bg-[#EEF2FF] text-[#4338CA]',
+  Logged:       'bg-secondary-container text-on-secondary-container',
+  Emergency:    'bg-[#FEE2E2] text-error',
+  Success:      'bg-secondary-container text-on-secondary-container',
+  Medium:       'bg-[#FEF3C7] text-[#92400E]',
+  Pending:      'bg-surface-container-highest text-on-surface-variant',
+  Cancelled:    'bg-surface-container-highest text-on-surface-variant',
 }
 
-const ACTION_TYPES = ['All Types', 'Approval', 'Dispatch', 'Inventory', 'System Error', 'Backup', 'Security', 'Maintenance']
 const RANGE_OPTIONS = ['Last 24h', '7 Days', '30 Days']
+
+// Role-based avatar coloring so students and staff are visually distinct
+const ROLE_AVATAR = {
+  student:    { bg: 'bg-[#dbe9fb]',            text: 'text-[#1a3a5c]' },
+  staff:      { bg: 'bg-secondary-container',   text: 'text-on-secondary-container' },
+  technician: { bg: 'bg-[#ffdcc3]',             text: 'text-[#6e3900]' },
+  admin:      { bg: 'bg-[#ffdad5]',             text: 'text-[#4a0404]' },
+}
+
+function rangeToDate(range) {
+  const now = new Date()
+  if (range === 'Last 24h') return new Date(now.getTime() - 24 * 60 * 60 * 1000)
+  if (range === '7 Days')   return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) // 30 Days
+}
 
 // ─── Responsive hook ──────────────────────────────────────────────────────────
 function useIsMobile() {
@@ -37,45 +53,130 @@ export default function DepartmentalHistory() {
   const navigate     = useNavigate()
   const isMobile     = useIsMobile()
 
-  // Starts empty — populate from Supabase. No test data.
-  const [logs, setLogs] = useState([])
-  const [activity, setActivity] = useState([]) // recent activity feed, derived from real logs ideally
-  const [loading, setLoading] = useState(true)
+  const [logs, setLogs]         = useState([])
+  const [activity, setActivity] = useState([])
+  const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
   const [typeFilter, setType]   = useState('All Types')
   const [range, setRange]       = useState('Last 24h')
   const [page, setPage]         = useState(1)
   const [toast, setToast]       = useState(null)
 
-  const department = profile?.department ?? 'Facility Ops'
+  const department = profile?.department ?? null
   const perPage = 6
-
-  // ── filtered ───────────────────────────────────────────────────────────────
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase()
-    return logs.filter(l =>
-      (typeFilter === 'All Types' || l.type === typeFilter) &&
-      (l.type.toLowerCase().includes(q) || l.actor.toLowerCase().includes(q) || l.detail.toLowerCase().includes(q))
-    )
-  }, [logs, search, typeFilter])
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage))
-  const safePage    = Math.min(page, totalPages)
-  const pageLogs    = filtered.slice((safePage - 1) * perPage, safePage * perPage)
-
-  // ── stats (live, no fabricated trend numbers) ──────────────────────────────
-  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  const totalToday  = logs.filter(l => l.time.startsWith(today)).length
-  const warnings    = logs.filter(l => l.status === 'Emergency' || l.status === 'Medium').length
-  const successRate = logs.length === 0 ? '0.0' : (((logs.length - warnings) / logs.length) * 100).toFixed(1)
 
   function showToast(msg) {
     setToast(msg)
     setTimeout(() => setToast(null), 2500)
   }
 
+  // ── Fetch department history — both student and staff submitted requests ──
+  const fetchHistory = useCallback(async () => {
+    if (!department) { setLoading(false); return }
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('requests')
+        .select(`
+          id, title, description, category, priority, status,
+          location, department, created_at, updated_at,
+          created_by, assigned_technician_id,
+          reporter:profiles!requests_created_by_fkey ( full_name, role ),
+          technician:profiles!requests_assigned_technician_id_fkey ( full_name )
+        `)
+        .eq('department', department)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Departmental history fetch error:', error)
+        showToast(`Failed to load history: ${error.message}`)
+        return
+      }
+
+      const mapped = (data ?? []).map(r => {
+        const actorName = r.reporter?.full_name ?? 'Unknown'
+        const actorRole = r.reporter?.role ?? 'user'
+        const initials  = actorName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+        const avatar    = ROLE_AVATAR[actorRole] ?? { bg: 'bg-surface-container-high', text: 'text-on-surface-variant' }
+
+        return {
+          id:         r.id,
+          rawDate:    r.created_at,
+          time:       new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          type:       r.category || 'Other',
+          actor:      `${actorName} (${actorRole === 'student' ? 'Student' : actorRole === 'staff' ? 'Staff' : actorRole})`,
+          status:     r.status,
+          detail:     r.description ? `${r.title} — ${r.description}` : r.title,
+          initials,
+          avatarBg:   avatar.bg,
+          avatarText: avatar.text,
+          flagged:    r.priority === 'Emergency',
+          technician: r.technician?.full_name ?? null,
+        }
+      })
+
+      setLogs(mapped)
+
+      // Recent activity feed — top 6 most recent entries
+      setActivity(mapped.slice(0, 6).map(m => ({
+        id:       m.id,
+        label:    m.type,
+        desc:     `${m.actor} — ${m.status}`,
+        time:     m.time,
+        icon:     m.flagged ? 'emergency' : m.status === 'Completed' ? 'check_circle' : 'assignment',
+        iconBg:   m.flagged ? 'bg-error/10' : m.status === 'Completed' ? 'bg-secondary/10' : 'bg-primary/10',
+        iconColor:m.flagged ? 'text-error' : m.status === 'Completed' ? 'text-secondary' : 'text-primary',
+        filled:   m.status === 'Completed',
+      })))
+    } catch (err) {
+      console.error('Unexpected departmental history error:', err)
+      showToast('Failed to load department history.')
+    } finally {
+      setLoading(false)
+    }
+  }, [department])
+
+  useEffect(() => { fetchHistory() }, [fetchHistory])
+
+  // ── Real-time: updates when new requests come in for this department ─────
+  useEffect(() => {
+    if (!department) return
+    const channel = supabase
+      .channel('staff-dept-history')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requests', filter: `department=eq.${department}` }, () => fetchHistory())
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [department, fetchHistory])
+
+  // Dynamic type filter options — built from whatever categories actually exist
+  const actionTypes = useMemo(() => {
+    const unique = Array.from(new Set(logs.map(l => l.type))).sort()
+    return ['All Types', ...unique]
+  }, [logs])
+
+  // ── filtered ───────────────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    const since = rangeToDate(range)
+    return logs.filter(l =>
+      (typeFilter === 'All Types' || l.type === typeFilter) &&
+      new Date(l.rawDate) >= since &&
+      (l.type.toLowerCase().includes(q) || l.actor.toLowerCase().includes(q) || l.detail.toLowerCase().includes(q))
+    )
+  }, [logs, search, typeFilter, range])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage))
+  const safePage    = Math.min(page, totalPages)
+  const pageLogs    = filtered.slice((safePage - 1) * perPage, safePage * perPage)
+
+  // ── stats (live, derived from real data) ───────────────────────────────────
+  const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const totalToday  = logs.filter(l => l.time.startsWith(today)).length
+  const warnings    = logs.filter(l => l.status === 'Emergency' || l.flagged).length
+  const successRate = logs.length === 0 ? '0.0' : (((logs.length - warnings) / logs.length) * 100).toFixed(1)
+
   function exportLog() {
-    const header = ['Timestamp', 'Action Type', 'Actor', 'Status', 'Details']
+    const header = ['Timestamp', 'Category', 'Actor', 'Status', 'Details']
     const rows   = filtered.map(l => [l.time, l.type, l.actor, l.status, l.detail])
     const csv    = [header, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n')
     const blob   = new Blob([csv], { type: 'text/csv' })
@@ -128,9 +229,15 @@ export default function DepartmentalHistory() {
       <div className={`flex flex-col gap-6 max-w-[1600px] w-full mx-auto flex-1 ${isMobile ? 'p-4' : 'p-8'}`}>
 
         <div className="mb-2">
-          <h1 className={`font-bold text-on-surface ${isMobile ? 'text-xl' : 'text-2xl'}`}>{department} — Activity Log</h1>
-          <p className="text-sm text-on-surface-variant mt-1">A complete record of actions and events within your department.</p>
+          <h1 className={`font-bold text-on-surface ${isMobile ? 'text-xl' : 'text-2xl'}`}>{department ?? 'Your Department'} — Activity Log</h1>
+          <p className="text-sm text-on-surface-variant mt-1">A complete record of maintenance requests filed by students and staff in your department.</p>
         </div>
+
+        {!department && (
+          <div className="bg-error-container/40 border border-error-container rounded-xl p-4 text-sm text-on-error-container">
+            Your profile doesn't have a department set, so no history can be shown. Contact an admin to update your department.
+          </div>
+        )}
 
         {/* ── Summary Bento ─────────────────────────────────────────────── */}
         <div className="grid grid-cols-12 gap-4 sm:gap-6">
@@ -142,7 +249,7 @@ export default function DepartmentalHistory() {
                 <span className="material-symbols-outlined text-primary bg-primary/10 p-2 rounded-full">history</span>
               </div>
               <p className="text-xs font-mono text-on-surface-variant opacity-60">Total Logs Today</p>
-              <h3 className="text-2xl font-bold text-on-surface">{totalToday}</h3>
+              <h3 className="text-2xl font-bold text-on-surface">{loading ? '—' : totalToday}</h3>
             </div>
             <div className={`bg-surface-container-lowest rounded-xl border border-outline-variant flex flex-col gap-2 ${isMobile ? 'p-4' : 'p-6'}`}>
               <div className="flex justify-between items-start">
@@ -150,14 +257,14 @@ export default function DepartmentalHistory() {
                 <span className="text-xs font-mono text-error font-bold">{warnings > 0 ? `${warnings} active` : 'None'}</span>
               </div>
               <p className="text-xs font-mono text-on-surface-variant opacity-60">Department Warnings</p>
-              <h3 className="text-2xl font-bold text-on-surface">{warnings}</h3>
+              <h3 className="text-2xl font-bold text-on-surface">{loading ? '—' : warnings}</h3>
             </div>
             <div className={`bg-surface-container-lowest rounded-xl border border-outline-variant flex flex-col gap-2 ${isMobile ? 'p-4' : 'p-6'}`}>
               <div className="flex justify-between items-start">
                 <span className="material-symbols-outlined text-secondary bg-secondary/10 p-2 rounded-full">check_circle</span>
               </div>
               <p className="text-xs font-mono text-on-surface-variant opacity-60">Action Success Rate</p>
-              <h3 className="text-2xl font-bold text-on-surface">{successRate}%</h3>
+              <h3 className="text-2xl font-bold text-on-surface">{loading ? '—' : `${successRate}%`}</h3>
             </div>
           </div>
 
@@ -169,7 +276,7 @@ export default function DepartmentalHistory() {
                 {RANGE_OPTIONS.map(r => (
                   <button
                     key={r}
-                    onClick={() => { setRange(r); showToast(`Showing logs from ${r.toLowerCase()}.`) }}
+                    onClick={() => { setRange(r); setPage(1); showToast(`Showing logs from ${r.toLowerCase()}.`) }}
                     className={`flex-1 py-2 rounded-lg text-xs font-mono transition-colors ${
                       range === r ? 'bg-primary-container text-white' : 'border border-outline-variant hover:bg-surface-container-low text-on-surface'
                     }`}
@@ -183,7 +290,7 @@ export default function DepartmentalHistory() {
                 onChange={e => { setType(e.target.value); setPage(1) }}
                 className="w-full flex items-center justify-between px-4 py-2 border border-outline-variant rounded-lg text-xs font-mono bg-surface-container-lowest focus:outline-none cursor-pointer"
               >
-                {ACTION_TYPES.map(t => <option key={t}>{t}</option>)}
+                {actionTypes.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
           </div>
@@ -198,7 +305,11 @@ export default function DepartmentalHistory() {
               <h3 className="text-lg font-semibold text-on-surface">Activity Timeline</h3>
             </div>
 
-            {activity.length === 0 ? (
+            {loading ? (
+              <div className="space-y-4">
+                {[1,2,3].map(i => <div key={i} className="h-16 bg-surface-container rounded-lg animate-pulse" />)}
+              </div>
+            ) : activity.length === 0 ? (
               <div className="text-center py-8">
                 <span className="material-symbols-outlined text-4xl text-outline-variant block mb-2">history_toggle_off</span>
                 <p className="text-sm text-on-surface-variant">No recent activity yet.</p>
@@ -238,6 +349,13 @@ export default function DepartmentalHistory() {
                     <span className="material-symbols-outlined text-[20px]">filter_list</span>
                   </button>
                   <button
+                    onClick={fetchHistory}
+                    className="p-2 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors"
+                    title="Refresh"
+                  >
+                    <span className={`material-symbols-outlined text-[20px] ${loading ? 'animate-spin' : ''}`}>refresh</span>
+                  </button>
+                  <button
                     onClick={exportLog}
                     className="p-2 border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors"
                     title="Export CSV"
@@ -247,7 +365,11 @@ export default function DepartmentalHistory() {
                 </div>
               </div>
 
-              {isMobile ? (
+              {loading ? (
+                <div className="p-6 space-y-3">
+                  {[1,2,3,4].map(i => <div key={i} className="h-14 bg-surface-container rounded-lg animate-pulse" />)}
+                </div>
+              ) : isMobile ? (
                 <div>
                   {pageLogs.length === 0 ? (
                     <div className="px-6 py-12 text-center text-sm text-on-surface-variant">
@@ -265,6 +387,7 @@ export default function DepartmentalHistory() {
                         <span>{l.type}</span>
                         <span>•</span>
                         <span>{l.time}</span>
+                        {l.technician && (<><span>•</span><span>Tech: {l.technician}</span></>)}
                       </div>
                     </div>
                   ))}
@@ -274,7 +397,7 @@ export default function DepartmentalHistory() {
                   <table className="w-full text-left">
                     <thead className="bg-surface-container-low">
                       <tr>
-                        {['Timestamp', 'Action Type', 'User / Actor', 'Status', 'Details'].map(h => (
+                        {['Timestamp', 'Category', 'User / Actor', 'Status', 'Details'].map(h => (
                           <th key={h} className="px-6 py-4 text-xs font-mono text-on-surface-variant/60">{h}</th>
                         ))}
                       </tr>
@@ -383,7 +506,7 @@ export default function DepartmentalHistory() {
 
       {/* ── Toast ─────────────────────────────────────────────────────────── */}
       {toast && (
-        <div className={`fixed left-1/2 -translate-x-1/2 z-[60] bg-on-surface text-white px-6 py-3 rounded-full text-sm font-mono shadow-xl flex items-center gap-2 whitespace-nowrap ${isMobile ? 'bottom-[76px]' : 'bottom-6'}`}>
+        <div className={`fixed left-1/2 -translate-x-1/2 z-[60] bg-inverse-surface text-inverse-on-surface px-6 py-3 rounded-full text-sm font-mono shadow-xl flex items-center gap-2 whitespace-nowrap ${isMobile ? 'bottom-[76px]' : 'bottom-6'}`}>
           <span className="material-symbols-outlined text-secondary-container text-base">check_circle</span>
           {toast}
         </div>
