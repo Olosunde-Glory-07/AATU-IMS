@@ -9,18 +9,39 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+// Environment variables
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get(
+  "SUPABASE_SERVICE_ROLE_KEY"
+);
+const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY");
+const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
+
+// Validate environment variables
+if (
+  !SUPABASE_URL ||
+  !SUPABASE_SERVICE_ROLE_KEY ||
+  !VAPID_PUBLIC_KEY ||
+  !VAPID_PRIVATE_KEY
+) {
+  throw new Error("Missing required environment variables.");
+}
+
+// Create Supabase client
 const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Configure Web Push
 webpush.setVapidDetails(
   "mailto:admin@aatuims.com",
-  Deno.env.get("VAPID_PUBLIC_KEY")!,
-  Deno.env.get("VAPID_PRIVATE_KEY")!
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY
 );
 
 serve(async (req) => {
+  // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: corsHeaders,
@@ -32,13 +53,30 @@ serve(async (req) => {
       userId,
       title,
       body,
-      icon,
-      url,
+      icon = "/logo.png",
+      url = "/",
     } = await req.json();
 
+    if (!userId || !title || !body) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "userId, title and body are required.",
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    // Get user's subscriptions
     const { data: subscriptions, error } = await supabase
       .from("push_subscriptions")
-      .select("subscription")
+      .select("endpoint, subscription")
       .eq("user_id", userId);
 
     if (error) {
@@ -49,7 +87,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
-          message: "User has no push subscription.",
+          message: "No push subscription found for this user.",
         }),
         {
           status: 404,
@@ -61,6 +99,8 @@ serve(async (req) => {
       );
     }
 
+    let successCount = 0;
+
     for (const item of subscriptions) {
       try {
         await webpush.sendNotification(
@@ -68,27 +108,43 @@ serve(async (req) => {
           JSON.stringify({
             title,
             body,
-            icon: icon || "/logo.png",
-            url: url || "/",
+            icon,
+            url,
           })
         );
-      } catch (err) {
+
+        successCount++;
+      } catch (err: any) {
         console.error("Notification failed:", err);
+
+        // Remove expired subscriptions
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          console.log("Deleting expired subscription...");
+
+          await supabase
+            .from("push_subscriptions")
+            .delete()
+            .eq("endpoint", item.endpoint);
+        }
       }
     }
 
     return new Response(
       JSON.stringify({
         success: true,
+        notificationsSent: successCount,
       }),
       {
+        status: 200,
         headers: {
           ...corsHeaders,
           "Content-Type": "application/json",
         },
       }
     );
-  } catch (err) {
+  } catch (err: any) {
+    console.error(err);
+
     return new Response(
       JSON.stringify({
         success: false,
