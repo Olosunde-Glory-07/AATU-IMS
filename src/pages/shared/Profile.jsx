@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { supabase } from '../../lib/supabase'
 import { Camera, Eye, EyeOff, X } from 'lucide-react'
+import { registerPushNotifications } from "../../lib/PushNotification";
 
 const ROLE_THEME = {
   admin:      { accent: '#4a0404', accentText: '#fff', light: '#ffdad5', label: 'Administrator' },
@@ -100,6 +101,8 @@ export default function Profile({ role: roleProp }) {
     setAvatarUrl(profile?.avatar_url ?? null)
     setFullName(profile?.full_name   ?? '')
     setPhone(profile?.phone          ?? '')
+
+    registerPushNotifications();
 
     // Merge saved prefs with defaults (in case new keys were added later)
     if (profile?.notification_prefs) {
