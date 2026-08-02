@@ -391,7 +391,7 @@ export default function AdminDashboard() {
       setRecentError(null);
       const { data: recent, error: recentErr } = await supabase
         .from("requests")
-        .select("id, title, location, department, status, priority, created_at, reporter_name")
+        .select("id, title, location, department, status, priority, created_at, created_by")
         .order("created_at", { ascending: false })
         .limit(5);
       if (recentErr) throw recentErr;
@@ -484,7 +484,7 @@ export default function AdminDashboard() {
 
   const filteredRequests = recentRequests.filter((r) => {
     const q = search.toLowerCase();
-    return !q || [r.title, r.location, r.department, r.status, r.priority, r.reporter_name]
+    return !q || [r.title, r.location, r.department, r.status, r.priority, r.created_by]
       .some((f) => f?.toLowerCase().includes(q));
   });
 
