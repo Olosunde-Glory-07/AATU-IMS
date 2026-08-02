@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -61,6 +63,21 @@ const REQUEST_TYPES = [
 ];
 
 const STATUS_KEYS = ["Completed", "Cancelled"];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function buildTimeline(r) {
+  const isCancelled = r.status === "Cancelled";
+  return [
+    { label: "Submission",    desc: "Request submitted and logged.",                                            time: formatDateTime(r.created_at), state: "done" },
+    { label: "Work Assigned", desc: r.assigned_technician_id ? "A technician was assigned." : "Not assigned before closure.", time: r.assigned_technician_id ? formatDateTime(r.updated_at) : "—", state: r.assigned_technician_id ? "done" : "pending" },
+    { label: isCancelled ? "Cancelled" : "Completed", desc: isCancelled ? "Request was cancelled." : "Resolved and verified.", time: formatDateTime(r.updated_at), state: "done" },
+  ];
+}
 
 // ─── Responsive hook ──────────────────────────────────────────────────────────
 function useIsMobile() {
@@ -559,6 +576,7 @@ export default function MyHistory() {
   const navigate  = useNavigate();
   const location  = useLocation();
   const isMobile  = useIsMobile();
+  const { user, profile } = useAuth();
 
   const [search,        setSearch]        = useState("");
   const [typeFilter,    setTypeFilter]    = useState("All Types");
@@ -571,47 +589,64 @@ export default function MyHistory() {
   const [visibleCount,  setVisibleCount]  = useState(6);
   const [loading,       setLoading]       = useState(true);
 
-  // ── Data state ─────────────────────────────────────────────────────────────
-  const [history,    setHistory]   = useState([]);
-  const [firstName,  setFirstName] = useState("Student");
+  const [history, setHistory] = useState([]);
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    async function fetchAll() {
-      setLoading(true);
-      try {
-        // TODO: Replace with real Supabase queries:
-        //
-        // const { data: profile } = await supabase
-        //   .from('profiles').select('full_name').eq('id', user.id).single();
-        // setFirstName(profile?.full_name?.split(' ')[0] ?? 'Student');
-        //
-        // const { data: reqs } = await supabase
-        //   .from('requests')
-        //   .select('id, title, description, category, status, created_at, emergency')
-        //   .eq('created_by', user.id)
-        //   .in('status', ['Completed', 'Cancelled'])
-        //   .order('created_at', { ascending: false });
-        //
-        // const formatted = (reqs ?? []).map(r => ({
-        //   ...r,
-        //   date: new Date(r.created_at).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'2-digit', minute:'2-digit' }),
-        //   month: new Date(r.created_at).toLocaleDateString('en-US', { month:'long', year:'numeric' }),
-        //   timeline: [], // populate from request_events table
-        // }));
-        // setHistory(formatted);
+  const firstName = profile?.full_name?.split(" ")[0] ?? "Student";
 
-        // ── Placeholder ─────────────────────────────────────────────────────
-        setFirstName("Student");
-        setHistory([]);
-      } catch (err) {
-        console.error("MyHistory fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
+  // ── Fetch this student's own completed/cancelled requests ─────────────────
+  const fetchHistory = useCallback(async () => {
+    if (!user?.id) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const { data: reqs, error } = await supabase
+        .from("requests")
+        .select("id, title, description, category, priority, status, assigned_technician_id, created_at, updated_at")
+        .eq("created_by", user.id)
+        .in("status", ["Completed", "Cancelled"])
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const formatted = (reqs ?? []).map((r) => {
+        const createdDate = new Date(r.created_at);
+        return {
+          id:          `#${r.id.slice(0, 8)}`,
+          rawId:       r.id,
+          title:       r.title,
+          description: r.description,
+          category:    r.category || "Other",
+          status:      r.status,
+          emergency:   r.priority === "Emergency",
+          date:        createdDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+          month:       createdDate.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+          timeline:    buildTimeline(r),
+        };
+      });
+
+      setHistory(formatted);
+    } catch (err) {
+      console.error("MyHistory fetch error:", err);
+    } finally {
+      setLoading(false);
     }
-    fetchAll();
-  }, []);
+  }, [user?.id]);
+
+  useEffect(() => { fetchHistory(); }, [fetchHistory]);
+
+  // ── Real-time: update if one of the student's own requests changes status ─
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel("student-history")
+      .on("postgres_changes", { event: "*", schema: "public", table: "requests", filter: `created_by=eq.${user.id}` }, () => fetchHistory())
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [user?.id, fetchHistory]);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    navigate("/login");
+  }
 
   const toggleStatus = (key) =>
     setStatusFilters((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -669,11 +704,11 @@ export default function MyHistory() {
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}} *{box-sizing:border-box}`}</style>
 
       {/* Sidebar */}
-      {!isMobile && <Sidebar currentPath={location.pathname} onNavigate={go} onLogout={() => navigate("/login")} firstName={firstName} />}
+      {!isMobile && <Sidebar currentPath={location.pathname} onNavigate={go} onLogout={handleLogout} firstName={firstName} />}
       {isMobile && (
         <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}
           currentPath={location.pathname} onNavigate={go}
-          onLogout={() => navigate("/login")} firstName={firstName} />
+          onLogout={handleLogout} firstName={firstName} />
       )}
 
       <div style={{ marginLeft: isMobile ? 0 : 260, display: "flex", flexDirection: "column", minHeight: "100vh" }}>

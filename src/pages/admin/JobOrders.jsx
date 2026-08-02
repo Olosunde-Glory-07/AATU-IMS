@@ -1,41 +1,30 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  onPrimaryContainer:     "#d26a5f",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  surfaceContainerLowest: "#ffffff",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-primary)",
+  primaryContainer:       "var(--color-primary-container)",
+  onPrimaryContainer:     "var(--color-on-primary-container)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-surface)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  surfaceContainerLowest: "var(--color-surface-container-lowest)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
-
-const NAV_ITEMS = [
-  { icon: "dashboard",     label: "Dashboard",     path: "/admin/dashboard"     },
-  { icon: "list_alt",      label: "Requests",      path: "/admin/requests"      },
-  { icon: "engineering",   label: "Job Orders",    path: "/admin/job-orders"    },
-  { icon: "inventory_2",   label: "Assets",        path: "/admin/assets"        },
-  { icon: "group",         label: "Users",         path: "/admin/users"         },
-  { icon: "domain",        label: "Departments",   path: "/admin/departments"   },
-  { icon: "notifications", label: "Notifications", path: "/admin/notifications" },
-];
 
 const PRIORITY_CFG = {
   Emergency: { bg: "#FEE2E2", text: "#991B1B" },
@@ -117,92 +106,11 @@ function ProgressBar({ pct, status }) {
   );
 }
 
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
-function Sidebar({ open, onClose }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isMobile = useIsMobile();
-
-  const content = (
-    <aside style={{ width: 260, background: C.primaryContainer, color: C.white, display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", fontFamily: SANS }}>
-      <div style={{ padding: "24px 24px 20px", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 6, background: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Icon name="account_balance" size={20} filled style={{ color: C.white }} />
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 17 }}>AATU</div>
-            <div style={{ fontSize: 10, letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)", textTransform: "uppercase" }}>Infrastructure Mgmt</div>
-          </div>
-        </div>
-        {isMobile && (
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.7)", padding: 4 }}>
-            <Icon name="close" size={22} />
-          </button>
-        )}
-      </div>
-      <nav style={{ flex: 1, padding: "4px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
-        {NAV_ITEMS.map((item) => {
-          const isActive = location.pathname === item.path || (item.path !== "/admin/dashboard" && location.pathname.startsWith(item.path));
-          return (
-            <button key={item.label} onClick={() => { navigate(item.path); if (isMobile) onClose(); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", background: isActive ? "rgba(255,255,255,0.12)" : "transparent", color: isActive ? C.white : "rgba(255,255,255,0.70)", fontWeight: isActive ? 700 : 400, borderLeft: isActive ? "4px solid #ffb4aa" : "4px solid transparent", border: "none", cursor: "pointer", textAlign: "left", fontSize: 12, letterSpacing: "0.04em", fontFamily: MONO, transition: "background 0.15s" }}
-              onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-              onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
-            >
-              <Icon name={item.icon} size={20} filled={isActive} style={{ color: isActive ? C.white : "rgba(255,255,255,0.70)" }} />
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
-      <div style={{ padding: "12px 8px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-        <button onClick={() => navigate("/login")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", background: "transparent", color: "rgba(255,255,255,0.40)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
-          <Icon name="logout" size={20} style={{ color: "rgba(255,255,255,0.40)" }} />
-          Logout
-        </button>
-      </div>
-    </aside>
-  );
-
-  if (!isMobile) return <div style={{ width: 260, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 50 }}>{content}</div>;
-  if (!open) return null;
-  return (
-    <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100 }} />
-      <div style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 260, zIndex: 101, boxShadow: "4px 0 20px rgba(0,0,0,0.2)" }}>{content}</div>
-    </>
-  );
-}
-
-// ─── Mobile Bottom Nav ────────────────────────────────────────────────────────
-function BottomNav() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  return (
-    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90, background: C.white, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 60 }}>
-      {NAV_ITEMS.slice(0, 5).map((item) => {
-        const isActive = location.pathname.startsWith(item.path);
-        return (
-          <button key={item.label} onClick={() => navigate(item.path)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, background: "none", border: "none", cursor: "pointer", color: isActive ? C.primaryContainer : C.onSurfaceVariant, fontSize: 9, fontFamily: MONO }}>
-            <Icon name={item.icon} size={22} filled={isActive} style={{ color: isActive ? C.primaryContainer : C.onSurfaceVariant }} />
-            {item.label}
-          </button>
-        );
-      })}
-    </nav>
-  );
-}
-
 // ─── Top Bar ──────────────────────────────────────────────────────────────────
-function TopBar({ onMenuClick, search, setSearch, isMobile }) {
+function TopBar({ search, setSearch, isMobile }) {
   return (
     <header style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "0 16px" : "0 32px", position: "sticky", top: 0, zIndex: 40, background: "rgba(249,249,255,0.92)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
-        {isMobile && (
-          <button onClick={onMenuClick} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurface, padding: 4, flexShrink: 0, display: "flex" }}>
-            <Icon name="menu" size={24} />
-          </button>
-        )}
         <div style={{ flex: 1, maxWidth: isMobile ? "100%" : 420, position: "relative" }}>
           <Icon name="search" size={18} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.onSurfaceVariant }} />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search job orders…" style={{ width: "100%", paddingLeft: 36, paddingRight: 16, paddingTop: 9, paddingBottom: 9, background: C.surfaceContainerLow, border: "none", borderRadius: 8, fontSize: 14, outline: "none", color: C.onSurface, fontFamily: SANS, boxSizing: "border-box" }} />
@@ -242,7 +150,7 @@ function TableRow({ order, onSelect }) {
   const [hov, setHov] = useState(false);
   return (
     <tr onClick={() => onSelect(order)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-      style={{ borderTop: `1px solid ${C.outlineVariant}33`, background: hov ? C.surfaceContainerLow : "transparent", cursor: "pointer", transition: "background 0.12s", opacity: order.status === "Completed" ? 0.75 : 1 }}>
+      style={{ borderTop: `1px solid color-mix(in srgb, var(--color-outline-variant) 20%, transparent)`, background: hov ? C.surfaceContainerLow : "transparent", cursor: "pointer", transition: "background 0.12s", opacity: order.status === "Completed" ? 0.75 : 1 }}>
       <td style={{ padding: "14px 20px", fontSize: 12, fontFamily: MONO, color: C.onPrimaryContainer, whiteSpace: "nowrap" }}>#{order.id.slice(0, 8)}</td>
       <td style={{ padding: "14px 20px", minWidth: 200 }}>
         <div style={{ fontWeight: 700, fontSize: 14, color: C.onSurface }}>{order.title}</div>
@@ -275,7 +183,7 @@ function TableRow({ order, onSelect }) {
 // ─── Mobile Card ──────────────────────────────────────────────────────────────
 function MobileOrderCard({ order, onSelect }) {
   return (
-    <div onClick={() => onSelect(order)} style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", opacity: order.status === "Completed" ? 0.82 : 1 }}>
+    <div onClick={() => onSelect(order)} style={{ background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: "14px 16px", cursor: "pointer", opacity: order.status === "Completed" ? 0.82 : 1 }}>
       {/* Top row */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10, gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -323,7 +231,7 @@ function DetailDrawer({ order, onClose, onUpdateProgress, onMarkComplete, isMobi
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.22)", zIndex: 100 }} />
-      <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: isMobile ? "100vw" : "min(440px,100vw)", background: C.white, zIndex: 101, boxShadow: "-6px 0 32px rgba(0,0,0,0.13)", display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto" }}>
+      <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: isMobile ? "100vw" : "min(440px,100vw)", background: 'var(--color-surface-container-lowest)', zIndex: 101, boxShadow: "-6px 0 32px rgba(0,0,0,0.13)", display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto" }}>
 
         {/* Mobile back button */}
         {isMobile && (
@@ -388,7 +296,7 @@ function DetailDrawer({ order, onClose, onUpdateProgress, onMarkComplete, isMobi
           {order.pdfUrl && (
             <div>
               <div style={{ fontSize: 11, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", marginBottom: 8, textTransform: "uppercase" }}>Job Order Document</div>
-              <button onClick={() => window.open(order.pdfUrl, "_blank", "noopener,noreferrer")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.outlineVariant}`, background: C.white, cursor: "pointer", textAlign: "left", width: "100%" }}>
+              <button onClick={() => window.open(order.pdfUrl, "_blank", "noopener,noreferrer")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.outlineVariant}`, background: 'var(--color-surface-container-lowest)', cursor: "pointer", textAlign: "left", width: "100%" }}>
                 <Icon name="picture_as_pdf" size={20} style={{ color: C.error }} />
                 <span style={{ flex: 1, fontSize: 13, color: C.onSurface, fontWeight: 600 }}>View Job Order PDF</span>
                 <Icon name="open_in_new" size={16} style={{ color: C.onSurfaceVariant }} />
@@ -461,7 +369,6 @@ function Toast({ msg }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdminJobOrdersPage() {
   const isMobile = useIsMobile();
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [search,     setSearch]     = useState("");
   const [activeTab,  setActiveTab]  = useState("All Orders");
   const [selected,   setSelected]   = useState(null);
@@ -552,131 +459,125 @@ export default function AdminJobOrdersPage() {
     { icon: "check_circle",    label: "Completed",        value: orders.filter((o) => o.status === "Completed").length,        iconBg: C.surfaceContainerLow,  iconColor: C.onSurfaceVariant },
     { icon: "warning",         label: "Critical",         value: orders.filter((o) => o.priority === "Emergency" && o.status !== "Completed").length,
       iconBg: C.errorContainer, iconColor: C.onErrorContainer, valueColor: C.error, filled: true,
-      cardStyle: { background: `linear-gradient(135deg, ${C.errorContainer}55 0%, transparent 100%)` } },
+      cardStyle: { background: `linear-gradient(135deg, color-mix(in srgb, var(--color-error-container) 33%, transparent) 0%, transparent 100%)` } },
   ];
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: C.surface, fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: C.surface, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
       <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}} *{box-sizing:border-box}`}</style>
 
-      <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <TopBar search={search} setSearch={setSearch} isMobile={isMobile} />
 
-      <main style={{ marginLeft: isMobile ? 0 : 260, flex: 1, display: "flex", flexDirection: "column", paddingBottom: isMobile ? 60 : 0, minWidth: 0 }}>
-        <TopBar onMenuClick={() => setDrawerOpen(true)} search={search} setSearch={setSearch} isMobile={isMobile} />
+      <div style={{ flex: 1, padding: isMobile ? "20px 14px 32px" : "32px", maxWidth: 1600, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
 
-        <div style={{ flex: 1, padding: isMobile ? "20px 14px 32px" : "32px", maxWidth: 1600, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
-
-          {/* Page Header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "flex-end", flexDirection: isMobile ? "column" : "row", gap: 16, marginBottom: isMobile ? 20 : 28 }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: C.onSurface }}>Job Orders</h2>
-              <p style={{ margin: "4px 0 0", fontSize: 14, color: C.onSurfaceVariant }}>Auto-created when a technician is assigned to a request.</p>
-            </div>
-          </div>
-
-          {/* Stat Cards */}
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: isMobile ? 10 : 16, marginBottom: isMobile ? 20 : 24 }}>
-            {STAT_CARDS.map((c) => <StatCard key={c.label} {...c} loading={loading} />)}
-          </div>
-
-          {/* Table Container */}
-          <div style={{ background: C.surfaceContainerLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
-
-            {/* Toolbar */}
-            <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.outlineVariant}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, background: C.surface, flexWrap: "wrap" }}>
-              {/* Tabs — scroll horizontally on mobile */}
-              <div style={{ display: "flex", gap: 4, overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 2, flexShrink: 0 }}>
-                {TABS.map((tab) => (
-                  <button key={tab} onClick={() => { setActiveTab(tab); setPage(1); }} style={{ padding: isMobile ? "6px 12px" : "7px 14px", borderRadius: 7, fontSize: 11, fontFamily: MONO, border: "none", cursor: "pointer", background: activeTab === tab ? C.surfaceContainerHigh : "transparent", color: activeTab === tab ? C.onSurface : C.onSurfaceVariant, fontWeight: activeTab === tab ? 700 : 400, whiteSpace: "nowrap", flexShrink: 0, transition: "background 0.12s" }}>
-                    {tab}
-                  </button>
-                ))}
-              </div>
-
-              {/* Desktop-only export */}
-              {!isMobile && (
-                <button onClick={() => {
-                  const header = ["ID","Title","Location","Department","Priority","Status","Progress","Assignee","Created"];
-                  const rows = filtered.map((o) => [o.id,o.title,o.location,o.department,o.priority,o.status,o.progress,o.assigneeName,o.createdAt]);
-                  const csv = [header,...rows].map((r) => r.map((v) => `"${v ?? ""}"`).join(",")).join("\n");
-                  const blob = new Blob([csv], { type: "text/csv" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a"); a.href = url; a.download = "job-orders.csv"; a.click();
-                  URL.revokeObjectURL(url); showToast("Exported as CSV.");
-                }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 7, background: C.white, cursor: "pointer", fontSize: 12, color: C.onSurfaceVariant, fontFamily: MONO }}>
-                  <Icon name="download" size={16} /> Export
-                </button>
-              )}
-            </div>
-
-            {/* Content */}
-            {loading ? (
-              <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 10 }}>
-                {[1,2,3].map((i) => <div key={i} style={{ height: 56, background: C.surfaceContainerLow, borderRadius: 8, animation: "pulse 1.5s ease-in-out infinite" }} />)}
-              </div>
-            ) : paged.length === 0 ? (
-              <div style={{ padding: isMobile ? 40 : 56, textAlign: "center", color: C.onSurfaceVariant }}>
-                <Icon name="engineering" size={40} style={{ color: C.outlineVariant, display: "block", margin: "0 auto 12px" }} />
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.onSurface }}>
-                  {orders.length === 0 ? "No job orders yet" : "No job orders match your filters"}
-                </p>
-                <p style={{ margin: "6px 0 0", fontSize: 13 }}>
-                  {orders.length === 0 ? "Assign a technician to a request to create one." : "Try adjusting your search or tab."}
-                </p>
-              </div>
-            ) : isMobile ? (
-              // ── Mobile: stacked cards ────────────────────────────────────────
-              <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-                {paged.map((o) => (
-                  <MobileOrderCard key={o.id} order={o} onSelect={(o) => setSelected(o)} />
-                ))}
-              </div>
-            ) : (
-              // ── Desktop: table ────────────────────────────────────────────────
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: SANS }}>
-                  <thead>
-                    <tr style={{ background: `${C.surfaceContainerLow}60` }}>
-                      {["Order ID","Task Description","Priority","Status","Progress","Assigned To","Created",""].map((h, i) => (
-                        <th key={i} style={{ padding: "11px 20px", textAlign: i === 7 ? "right" : "left", fontSize: 10, fontWeight: 500, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap", opacity: 0.7 }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paged.map((o) => <TableRow key={o.id} order={o} onSelect={(o) => setSelected(o)} />)}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderTop: `1px solid ${C.outlineVariant}`, flexWrap: "wrap", gap: 10 }}>
-                <span style={{ fontSize: 13, color: C.onSurfaceVariant }}>{paged.length} of {filtered.length}</span>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => setPage((p) => Math.max(1,p-1))} disabled={page===1} style={{ padding: "5px 10px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: "none", cursor: page===1?"default":"pointer", opacity: page===1?0.4:1, display: "flex" }}>
-                    <Icon name="chevron_left" size={18} />
-                  </button>
-                  {Array.from({ length: Math.min(totalPages, isMobile ? 3 : 5) }, (_, i) => i+1).map((p) => (
-                    <button key={p} onClick={() => setPage(p)} style={{ padding: "5px 11px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: page===p?C.primaryContainer:"none", color: page===p?C.white:C.onSurface, cursor: "pointer", fontSize: 13, fontWeight: page===p?700:400, fontFamily: MONO }}>{p}</button>
-                  ))}
-                  <button onClick={() => setPage((p) => Math.min(totalPages,p+1))} disabled={page===totalPages} style={{ padding: "5px 10px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: "none", cursor: page===totalPages?"default":"pointer", opacity: page===totalPages?0.4:1, display: "flex" }}>
-                    <Icon name="chevron_right" size={18} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Sync indicator */}
-          <div style={{ marginTop: 18, display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 14px", background: C.primaryContainer, borderRadius: 10, color: C.white }}>
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#ffb4aa", animation: "pulse 1.5s ease-in-out infinite" }} />
-            <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 700, letterSpacing: "0.06em" }}>Auto-synced with Requests</span>
+        {/* Page Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "flex-end", flexDirection: isMobile ? "column" : "row", gap: 16, marginBottom: isMobile ? 20 : 28 }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: C.onSurface }}>Job Orders</h2>
+            <p style={{ margin: "4px 0 0", fontSize: 14, color: C.onSurfaceVariant }}>Auto-created when a technician is assigned to a request.</p>
           </div>
         </div>
-      </main>
 
-      {isMobile && <BottomNav />}
+        {/* Stat Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: isMobile ? 10 : 16, marginBottom: isMobile ? 20 : 24 }}>
+          {STAT_CARDS.map((c) => <StatCard key={c.label} {...c} loading={loading} />)}
+        </div>
+
+        {/* Table Container */}
+        <div style={{ background: C.surfaceContainerLowest, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
+
+          {/* Toolbar */}
+          <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.outlineVariant}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, background: C.surface, flexWrap: "wrap" }}>
+            {/* Tabs — scroll horizontally on mobile */}
+            <div style={{ display: "flex", gap: 4, overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 2, flexShrink: 0 }}>
+              {TABS.map((tab) => (
+                <button key={tab} onClick={() => { setActiveTab(tab); setPage(1); }} style={{ padding: isMobile ? "6px 12px" : "7px 14px", borderRadius: 7, fontSize: 11, fontFamily: MONO, border: "none", cursor: "pointer", background: activeTab === tab ? C.surfaceContainerHigh : "transparent", color: activeTab === tab ? C.onSurface : C.onSurfaceVariant, fontWeight: activeTab === tab ? 700 : 400, whiteSpace: "nowrap", flexShrink: 0, transition: "background 0.12s" }}>
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Desktop-only export */}
+            {!isMobile && (
+              <button onClick={() => {
+                const header = ["ID","Title","Location","Department","Priority","Status","Progress","Assignee","Created"];
+                const rows = filtered.map((o) => [o.id,o.title,o.location,o.department,o.priority,o.status,o.progress,o.assigneeName,o.createdAt]);
+                const csv = [header,...rows].map((r) => r.map((v) => `"${v ?? ""}"`).join(",")).join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a"); a.href = url; a.download = "job-orders.csv"; a.click();
+                URL.revokeObjectURL(url); showToast("Exported as CSV.");
+              }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 7, background: 'var(--color-surface-container-lowest)', cursor: "pointer", fontSize: 12, color: C.onSurfaceVariant, fontFamily: MONO }}>
+                <Icon name="download" size={16} /> Export
+              </button>
+            )}
+          </div>
+
+          {/* Content */}
+          {loading ? (
+            <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 10 }}>
+              {[1,2,3].map((i) => <div key={i} style={{ height: 56, background: C.surfaceContainerLow, borderRadius: 8, animation: "pulse 1.5s ease-in-out infinite" }} />)}
+            </div>
+          ) : paged.length === 0 ? (
+            <div style={{ padding: isMobile ? 40 : 56, textAlign: "center", color: C.onSurfaceVariant }}>
+              <Icon name="engineering" size={40} style={{ color: C.outlineVariant, display: "block", margin: "0 auto 12px" }} />
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.onSurface }}>
+                {orders.length === 0 ? "No job orders yet" : "No job orders match your filters"}
+              </p>
+              <p style={{ margin: "6px 0 0", fontSize: 13 }}>
+                {orders.length === 0 ? "Assign a technician to a request to create one." : "Try adjusting your search or tab."}
+              </p>
+            </div>
+          ) : isMobile ? (
+            // ── Mobile: stacked cards ────────────────────────────────────────
+            <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+              {paged.map((o) => (
+                <MobileOrderCard key={o.id} order={o} onSelect={(o) => setSelected(o)} />
+              ))}
+            </div>
+          ) : (
+            // ── Desktop: table ────────────────────────────────────────────────
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: SANS }}>
+                <thead>
+                  <tr style={{ background: `color-mix(in srgb, var(--color-surface-container-low) 38%, transparent)` }}>
+                    {["Order ID","Task Description","Priority","Status","Progress","Assigned To","Created",""].map((h, i) => (
+                      <th key={i} style={{ padding: "11px 20px", textAlign: i === 7 ? "right" : "left", fontSize: 10, fontWeight: 500, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap", opacity: 0.7 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paged.map((o) => <TableRow key={o.id} order={o} onSelect={(o) => setSelected(o)} />)}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderTop: `1px solid ${C.outlineVariant}`, flexWrap: "wrap", gap: 10 }}>
+              <span style={{ fontSize: 13, color: C.onSurfaceVariant }}>{paged.length} of {filtered.length}</span>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => setPage((p) => Math.max(1,p-1))} disabled={page===1} style={{ padding: "5px 10px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: "none", cursor: page===1?"default":"pointer", opacity: page===1?0.4:1, display: "flex" }}>
+                  <Icon name="chevron_left" size={18} />
+                </button>
+                {Array.from({ length: Math.min(totalPages, isMobile ? 3 : 5) }, (_, i) => i+1).map((p) => (
+                  <button key={p} onClick={() => setPage(p)} style={{ padding: "5px 11px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: page===p?C.primaryContainer:"none", color: page===p?C.white:C.onSurface, cursor: "pointer", fontSize: 13, fontWeight: page===p?700:400, fontFamily: MONO }}>{p}</button>
+                ))}
+                <button onClick={() => setPage((p) => Math.min(totalPages,p+1))} disabled={page===totalPages} style={{ padding: "5px 10px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: "none", cursor: page===totalPages?"default":"pointer", opacity: page===totalPages?0.4:1, display: "flex" }}>
+                  <Icon name="chevron_right" size={18} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sync indicator */}
+        <div style={{ marginTop: 18, display: "inline-flex", alignItems: "center", gap: 8, padding: "7px 14px", background: C.primaryContainer, borderRadius: 10, color: C.white }}>
+          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#ffb4aa", animation: "pulse 1.5s ease-in-out infinite" }} />
+          <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 700, letterSpacing: "0.06em" }}>Auto-synced with Requests</span>
+        </div>
+      </div>
 
       {/* Detail Drawer — full screen on mobile */}
       {selected && (

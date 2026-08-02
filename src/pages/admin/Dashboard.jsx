@@ -376,9 +376,33 @@ export default function AdminDashboard() {
   const [monthlyData,    setMonthlyData]    = useState([]);
   const [categoryData,   setCategoryData]   = useState([]);
   const [recentRequests, setRecentRequests] = useState([]);
+  const [recentError,    setRecentError]    = useState(null);
 
+  // ── fetchDashboard: each section now has its own try/catch, so a
+  // failure in the stats or chart queries can never prevent Recent
+  // Requests (or anything else) from loading. Previously everything sat
+  // in one shared try/catch, so a single early failure silently blocked
+  // every section after it — including Recent Requests.
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
+
+    // ── Recent Requests — fetched first and independently ──────────────────
+    try {
+      setRecentError(null);
+      const { data: recent, error: recentErr } = await supabase
+        .from("requests")
+        .select("id, title, location, department, status, priority, created_at, reporter_name")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (recentErr) throw recentErr;
+      setRecentRequests(recent ?? []);
+    } catch (err) {
+      console.error("Recent requests fetch error:", err.message || err);
+      setRecentError(err.message || "Failed to load recent requests.");
+      setRecentRequests([]);
+    }
+
+    // ── Stats cards ──────────────────────────────────────────────────────────
     try {
       const [
         { count: total },
@@ -408,14 +432,12 @@ export default function AdminDashboard() {
         .in("status", ["Pending Approval", "Approved", "In Progress"]);
 
       setStats({ total, pending, completed, emergency, totalUsers, technicians, students, activeJobs });
+    } catch (err) {
+      console.error("Stats fetch error:", err.message || err);
+    }
 
-      const { data: recent } = await supabase
-        .from("requests")
-        .select("id, title, location, department, status, priority, created_at, reporter_name")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      setRecentRequests(recent ?? []);
-
+    // ── Monthly trend chart ─────────────────────────────────────────────────
+    try {
       const months = [];
       for (let i = 5; i >= 0; i--) {
         const d = new Date();
@@ -431,10 +453,16 @@ export default function AdminDashboard() {
         )
       );
       setMonthlyData(months.map((m, i) => ({ month: m.month, requests: monthCounts[i].count ?? 0 })));
+    } catch (err) {
+      console.error("Monthly chart fetch error:", err.message || err);
+    }
 
-      const { data: catRows } = await supabase
+    // ── Category breakdown chart ────────────────────────────────────────────
+    try {
+      const { data: catRows, error: catErr } = await supabase
         .from("requests")
         .select("category");
+      if (catErr) throw catErr;
       if (catRows && catRows.length > 0) {
         const counts = {};
         catRows.forEach(r => { counts[r.category || "Other"] = (counts[r.category || "Other"] || 0) + 1; });
@@ -445,12 +473,11 @@ export default function AdminDashboard() {
             .map(([name, value], i) => ({ name, value, color: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }))
         );
       }
-
     } catch (err) {
-      console.error("Dashboard fetch error:", err);
-    } finally {
-      setLoading(false);
+      console.error("Category chart fetch error:", err.message || err);
     }
+
+    setLoading(false);
   }, []);
 
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
@@ -609,6 +636,15 @@ export default function AdminDashboard() {
               <div style={{ padding: 40, textAlign: "center", color: C.onSurfaceVariant }}>
                 <Icon name="hourglass_empty" size={28} style={{ display: "block", margin: "0 auto 8px", color: C.outlineVariant }} />
                 Loading...
+              </div>
+            ) : recentError ? (
+              <div style={{ padding: 40, textAlign: "center" }}>
+                <Icon name="error" size={28} style={{ display: "block", margin: "0 auto 8px", color: C.error }} />
+                <p style={{ margin: 0, color: C.error, fontSize: 14, fontWeight: 600 }}>Couldn't load recent requests</p>
+                <p style={{ margin: "4px 0 0", color: C.onSurfaceVariant, fontSize: 12, fontFamily: MONO }}>{recentError}</p>
+                <button onClick={fetchDashboard} style={{ marginTop: 12, padding: "6px 16px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO, color: C.onSurface }}>
+                  Try again
+                </button>
               </div>
             ) : filteredRequests.length === 0 ? (
               <div style={{ padding: 48, textAlign: "center" }}>
