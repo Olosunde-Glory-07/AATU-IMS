@@ -27,7 +27,8 @@ export default function ProtectedRoute({ allowedRoles }) {
       admin: '/admin/dashboard',
       staff: '/staff/dashboard',
       technician: '/technician/dashboard',
-      student: '/student/dashboard',
+      hod: '/requester/dashboard',
+      dean: '/requester/dashboard',
     }
     return <Navigate to={roleHome[profile.role] ?? '/login'} replace />
   }

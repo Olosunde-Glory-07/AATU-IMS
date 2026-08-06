@@ -8,24 +8,25 @@ import { supabase } from '../../lib/supabase'
 
 const STATUS_BADGE = {
   Completed:    'bg-secondary-container text-on-secondary-container',
-  Assigned:     'bg-[#EEF2FF] text-[#4338CA]',
-  'In Progress':'bg-[#EEF2FF] text-[#4338CA]',
+  Assigned:     'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300',
+  'In Progress':'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300',
   Logged:       'bg-secondary-container text-on-secondary-container',
-  Emergency:    'bg-[#FEE2E2] text-error',
+  Emergency:    'bg-red-100 dark:bg-red-950 text-error',
   Success:      'bg-secondary-container text-on-secondary-container',
-  Medium:       'bg-[#FEF3C7] text-[#92400E]',
+  Medium:       'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300',
   Pending:      'bg-surface-container-highest text-on-surface-variant',
   Cancelled:    'bg-surface-container-highest text-on-surface-variant',
 }
 
 const RANGE_OPTIONS = ['Last 24h', '7 Days', '30 Days']
 
-// Role-based avatar coloring so students and staff are visually distinct
+// Role-based avatar coloring so each role is visually distinct
 const ROLE_AVATAR = {
-  student:    { bg: 'bg-[#dbe9fb]',            text: 'text-[#1a3a5c]' },
-  staff:      { bg: 'bg-secondary-container',   text: 'text-on-secondary-container' },
-  technician: { bg: 'bg-[#ffdcc3]',             text: 'text-[#6e3900]' },
-  admin:      { bg: 'bg-[#ffdad5]',             text: 'text-[#4a0404]' },
+  hod:        { bg: 'bg-blue-100 dark:bg-blue-950',     text: 'text-blue-800 dark:text-blue-200' },
+  dean:       { bg: 'bg-blue-100 dark:bg-blue-950',     text: 'text-blue-800 dark:text-blue-200' },
+  staff:      { bg: 'bg-secondary-container',            text: 'text-on-secondary-container' },
+  technician: { bg: 'bg-orange-100 dark:bg-orange-950',  text: 'text-orange-800 dark:text-orange-200' },
+  admin:      { bg: 'bg-red-100 dark:bg-red-950',        text: 'text-red-900 dark:text-red-200' },
 }
 
 function rangeToDate(range) {
@@ -70,7 +71,7 @@ export default function DepartmentalHistory() {
     setTimeout(() => setToast(null), 2500)
   }
 
-  // ── Fetch department history — both student and staff submitted requests ──
+  // ── Fetch department history — both requester and staff submitted requests ──
   const fetchHistory = useCallback(async () => {
     if (!department) { setLoading(false); return }
     setLoading(true)
@@ -98,13 +99,14 @@ export default function DepartmentalHistory() {
         const actorRole = r.reporter?.role ?? 'user'
         const initials  = actorName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
         const avatar    = ROLE_AVATAR[actorRole] ?? { bg: 'bg-surface-container-high', text: 'text-on-surface-variant' }
+        const roleLabel = actorRole === 'hod' ? 'HOD' : actorRole === 'dean' ? 'Dean' : actorRole === 'staff' ? 'Staff' : actorRole === 'admin' ? 'Admin' : actorRole
 
         return {
           id:         r.id,
           rawDate:    r.created_at,
           time:       new Date(r.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
           type:       r.category || 'Other',
-          actor:      `${actorName} (${actorRole === 'student' ? 'Student' : actorRole === 'staff' ? 'Staff' : actorRole})`,
+          actor:      `${actorName} (${roleLabel})`,
           status:     r.status,
           detail:     r.description ? `${r.title} — ${r.description}` : r.title,
           initials,
@@ -230,7 +232,7 @@ export default function DepartmentalHistory() {
 
         <div className="mb-2">
           <h1 className={`font-bold text-on-surface ${isMobile ? 'text-xl' : 'text-2xl'}`}>{department ?? 'Your Department'} — Activity Log</h1>
-          <p className="text-sm text-on-surface-variant mt-1">A complete record of maintenance requests filed by students and staff in your department.</p>
+          <p className="text-sm text-on-surface-variant mt-1">A complete record of maintenance requests filed by HODs, Deans, and staff in your department.</p>
         </div>
 
         {!department && (
@@ -376,7 +378,7 @@ export default function DepartmentalHistory() {
                       {logs.length === 0 ? 'No log entries yet.' : 'No log entries match your filters.'}
                     </div>
                   ) : pageLogs.map(l => (
-                    <div key={l.id} className={`p-4 border-t border-outline-variant ${l.flagged ? 'bg-red-50/30' : ''}`}>
+                    <div key={l.id} className={`p-4 border-t border-outline-variant ${l.flagged ? 'bg-error-container/20' : ''}`}>
                       <div className="flex items-center gap-2 mb-2">
                         <div className={`w-7 h-7 rounded-full ${l.avatarBg} ${l.avatarText} flex items-center justify-center text-[10px] font-bold flex-shrink-0`}>{l.initials}</div>
                         <span className="text-sm font-bold text-on-surface flex-1">{l.actor}</span>
@@ -409,7 +411,7 @@ export default function DepartmentalHistory() {
                         </td></tr>
                       )}
                       {pageLogs.map(l => (
-                        <tr key={l.id} className={`hover:bg-surface transition-colors cursor-pointer ${l.flagged ? 'bg-red-50/30' : ''}`}>
+                        <tr key={l.id} className={`hover:bg-surface transition-colors cursor-pointer ${l.flagged ? 'bg-error-container/20' : ''}`}>
                           <td className="px-6 py-4 text-sm whitespace-nowrap text-on-surface">{l.time}</td>
                           <td className="px-6 py-4 text-sm font-bold text-on-surface">{l.type}</td>
                           <td className="px-6 py-4">

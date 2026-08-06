@@ -335,19 +335,6 @@ export default function Login() {
               )}
             </button>
           </form>
-
-          <div className="my-5 flex items-center gap-3">
-            <div className="flex-1 h-px bg-outline-variant" />
-            <span className="text-label-md text-on-surface-variant font-mono">or</span>
-            <div className="flex-1 h-px bg-outline-variant" />
-          </div>
-
-          <p className="mt-6 text-center text-label-md text-on-surface-variant font-mono">
-            Don&apos;t have an account?{' '}
-            <Link to="/register" className="text-primary-container hover:underline font-bold">
-              Register
-            </Link>
-          </p>
         </div>
       </div>
 

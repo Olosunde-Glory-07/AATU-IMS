@@ -240,14 +240,13 @@ function CustomDonut({ data }) {
 
   const total = data.reduce((s, d) => s + d.value, 0);
   const radius = 80, cx = 110, cy = 110, thickness = 28;
-  let startAngle = -Math.PI / 2;
-  const slices = data.map((d) => {
+  const slices = data.reduce((acc, d) => {
     const angle = (d.value / total) * 2 * Math.PI;
-    const endAngle = startAngle + angle;
-    const slice = { ...d, startAngle, endAngle };
-    startAngle = endAngle;
-    return slice;
-  });
+    const endAngle = acc.current + angle;
+    acc.slices.push({ ...d, startAngle: acc.current, endAngle });
+    acc.current = endAngle;
+    return acc;
+  }, { current: -Math.PI / 2, slices: [] }).slices;
 
   function describeArc(cx, cy, r, s, e) {
     const x1 = cx + r * Math.cos(s), y1 = cy + r * Math.sin(s);
@@ -480,7 +479,12 @@ export default function AdminDashboard() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  useEffect(() => {
+    const loadDashboard = async () => {
+      await fetchDashboard();
+    };
+    loadDashboard();
+  }, [fetchDashboard]);
 
   const filteredRequests = recentRequests.filter((r) => {
     const q = search.toLowerCase();

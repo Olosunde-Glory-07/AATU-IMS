@@ -6,6 +6,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Allowed roles for admin-created accounts.
+// "hod" and "dean" share the same requester portal but are still distinct
+// role values in profiles.role — students no longer exist in this app.
+const ALLOWED_ROLES = ['staff', 'technician', 'hod', 'dean', 'admin']
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -57,8 +62,8 @@ serve(async (req: Request) => {
       })
     }
 
-    if (role === 'student') {
-      return new Response(JSON.stringify({ error: 'Students must self-register.' }), {
+    if (!ALLOWED_ROLES.includes(role)) {
+      return new Response(JSON.stringify({ error: `Invalid role. Must be one of: ${ALLOWED_ROLES.join(', ')}.` }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
@@ -90,7 +95,7 @@ serve(async (req: Request) => {
     if (resendError) {
       console.error('Failed to send OTP email:', resendError.message)
       // Don't fail the whole request — the account was still created successfully.
-      // Staff can use "Resend code" on the login OTP modal if this happens.
+      // Staff/HOD/Dean/Technician can use "Resend code" on the login OTP modal if this happens.
     }
 
     // ── Step 2: Upsert the profile row ────────────────────────────────────
@@ -129,7 +134,7 @@ serve(async (req: Request) => {
     // ── Step 4: Return the full user object so frontend can read user.id ───
     return new Response(JSON.stringify({
       success: true,
-      user:    newUser.user,   // ← full user object, not just userId
+      user:    newUser.user,
       message: `Account created for ${email}. They will receive an OTP on first login.`,
     }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -2,9 +2,11 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthContext";
-import { generateJobOrderPdf, uploadJobOrderPdf } from "../../lib/JobOrderPdf";
+import { generateJobOrderPdf, uploadJobOrderPdf } from "../../lib/jobOrderPdf";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
+// These pull from the CSS variables defined in index.css, so they flip
+// automatically with the `dark` class on <html>.
 const C = {
   primary:                "var(--color-on-surface)",
   primaryContainer:       "var(--color-primary-container)",
@@ -26,11 +28,12 @@ const C = {
   outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
-// Card/table/modal surfaces — flips to a dark surface in dark mode.
+// Cards/tables/modals should use this instead of C.white so they flip to a
+// dark surface in dark mode. C.white itself is kept for TEXT/ICON color on
+// top of colored backgrounds (sidebar, buttons) which should stay literal white.
 const CARD = "var(--color-surface-container-lowest)";
 // Sidebar stays a fixed brand color in both themes.
 const SIDEBAR_BG = "#4a0404";
-
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
@@ -44,9 +47,8 @@ const NAV_ITEMS = [
   { icon: "notifications", label: "Notifications", path: "/admin/notifications" },
 ];
 
-// These are semantic priority/status colors (not theme colors), so they stay
-// as literal light hex — they're intentionally light chips with dark text
-// regardless of app theme, same convention as most dashboards use for badges.
+// Semantic priority/status chip colors — intentionally kept as literal light
+// hex chips in both themes (no dark-mode equivalent token set exists yet).
 const PRIORITY_CFG = {
   Emergency: { bg: "#FEE2E2", text: "#991B1B" },
   High:      { bg: "#FEF3C7", text: "#92400E" },
@@ -55,10 +57,10 @@ const PRIORITY_CFG = {
 };
 
 const STATUS_CFG = {
-  Assigned:   { color: C.onSurface,  bg: "#EEF2FF",            label: "Assigned"   },
-  Completed:  { color: C.secondary,  bg: C.secondaryContainer, label: "Completed"  },
-  Unassigned: { color: C.error,      bg: C.errorContainer,     label: "Unassigned" },
-  Pending:    { color: "#92400E",    bg: "#FEF3C7",            label: "Pending"    },
+  "Monitor Approved": { color: "#166534", bg: "#DCFCE7", label: "Monitor Approved" },
+  Assigned:           { color: "#3730A3", bg: "#EEF2FF", label: "Assigned"          },
+  Completed:          { color: C.secondary, bg: C.secondaryContainer, label: "Completed" },
+  Pending:            { color: "#92400E", bg: "#FEF3C7", label: "Pending"           },
 };
 
 const CATEGORY_ICONS = {
@@ -67,9 +69,10 @@ const CATEGORY_ICONS = {
   Elevator: "elevator", Other: "build",
 };
 
-const TABS = ["All", "Unassigned", "Assigned", "Pending", "Completed", "Emergency"];
+const TABS    = ["All", "Monitor Approved", "Assigned", "Completed", "Emergency"];
 const PER_PAGE = 6;
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function useIsMobile() {
   const [mob, setMob] = useState(window.innerWidth < 768);
   useEffect(() => {
@@ -108,6 +111,7 @@ function StatusBadge({ status }) {
   );
 }
 
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
 function Sidebar({ currentPath, onNavigate, onLogout }) {
   return (
     <aside style={{ width: 260, background: SIDEBAR_BG, color: C.white, display: "flex", flexDirection: "column", height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 50, overflowY: "auto", fontFamily: SANS }}>
@@ -137,10 +141,6 @@ function Sidebar({ currentPath, onNavigate, onLogout }) {
         })}
       </nav>
       <div style={{ padding: "12px 8px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-        <button style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", background: "transparent", color: "rgba(255,255,255,0.65)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
-          <Icon name="account_circle" size={20} style={{ color: "rgba(255,255,255,0.65)" }} />
-          User Profile
-        </button>
         <button onClick={onLogout} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", background: "transparent", color: "rgba(255,255,255,0.40)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
           <Icon name="logout" size={20} style={{ color: "rgba(255,255,255,0.40)" }} />
           Logout
@@ -150,6 +150,7 @@ function Sidebar({ currentPath, onNavigate, onLogout }) {
   );
 }
 
+// ─── Mobile Drawer ────────────────────────────────────────────────────────────
 function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout }) {
   if (!open) return null;
   return (
@@ -184,6 +185,7 @@ function MobileDrawer({ open, onClose, currentPath, onNavigate, onLogout }) {
   );
 }
 
+// ─── Mobile Bottom Nav ────────────────────────────────────────────────────────
 function MobileBottomNav({ currentPath, onNavigate }) {
   return (
     <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 60, background: CARD, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 62 }}>
@@ -200,7 +202,11 @@ function MobileBottomNav({ currentPath, onNavigate }) {
   );
 }
 
+// ─── Top Bar ──────────────────────────────────────────────────────────────────
 function TopBar({ search, setSearch, onMenu, isMobile }) {
+  const navigate    = useNavigate();
+  const { profile } = useAuth();
+  const ini = (profile?.full_name || "A").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   return (
     <header style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px 0 20px", position: "sticky", top: 0, zIndex: 40, background: "color-mix(in srgb, var(--color-background) 94%, transparent)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 10 }}>
       {isMobile && (
@@ -210,20 +216,23 @@ function TopBar({ search, setSearch, onMenu, isMobile }) {
       )}
       <div style={{ flex: 1, maxWidth: isMobile ? "100%" : 420, position: "relative" }}>
         <Icon name="search" size={18} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.onSurfaceVariant }} />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search requests, location, reporter…" style={{ width: "100%", paddingLeft: 36, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: C.surfaceContainerLow, border: "none", borderRadius: 8, fontSize: 14, outline: "none", color: C.onSurface, boxSizing: "border-box", fontFamily: SANS }} />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search requests…" style={{ width: "100%", paddingLeft: 36, paddingRight: 12, paddingTop: 8, paddingBottom: 8, background: C.surfaceContainerLow, border: "none", borderRadius: 8, fontSize: 14, outline: "none", color: C.onSurface, boxSizing: "border-box", fontFamily: SANS }} />
       </div>
-      {!isMobile && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          <button style={{ background: "none", border: "none", cursor: "pointer", padding: 8, color: C.onSurfaceVariant, display: "flex" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        {!isMobile && (
+          <button onClick={() => navigate("/admin/notifications")} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, color: C.onSurfaceVariant, display: "flex" }}>
             <Icon name="notifications" size={22} />
           </button>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.surfaceContainerHigh, border: `1px solid ${C.outlineVariant}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: C.onSurface, fontSize: 14 }}>A</div>
-        </div>
-      )}
+        )}
+        <button onClick={() => navigate("/profile")} title={profile?.full_name || "My Profile"} style={{ width: 34, height: 34, borderRadius: "50%", background: C.primaryContainer, border: `2px solid ${C.outlineVariant}`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: C.white, fontSize: 13, flexShrink: 0, cursor: "pointer", fontFamily: MONO }}>
+          {ini}
+        </button>
+      </div>
     </header>
   );
 }
 
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ icon, iconBg, iconColor, label, value, loading }) {
   return (
     <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: 18 }}>
@@ -240,16 +249,16 @@ function StatCard({ icon, iconBg, iconColor, label, value, loading }) {
   );
 }
 
+// ─── Request Card ─────────────────────────────────────────────────────────────
 function RequestCard({ req, onOpen }) {
   const [hov, setHov] = useState(false);
-  const leftAccent = req.status === "Unassigned" ? C.error : req.priority === "Emergency" ? C.error : req.status === "Completed" ? C.secondary : C.surfaceContainerHigh;
+  const leftAccent = req.priority === "Emergency" ? C.error
+    : req.status === "Completed" ? C.secondary
+    : req.status === "Assigned"  ? "#6366f1"
+    : "#166534";
 
   return (
-    <div onClick={() => onOpen(req)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{
-      background: CARD, border: `1px solid ${C.outlineVariant}`, borderLeft: `4px solid ${leftAccent}`,
-      borderRadius: 12, padding: "16px 18px", display: "flex", alignItems: "center", gap: 16,
-      cursor: "pointer", boxShadow: hov ? "0 4px 14px rgba(0,0,0,0.07)" : "none", transition: "box-shadow 0.18s",
-    }}>
+    <div onClick={() => onOpen(req)} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderLeft: `4px solid ${leftAccent}`, borderRadius: 12, padding: "16px 18px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", boxShadow: hov ? "0 4px 14px rgba(0,0,0,0.07)" : "none", transition: "box-shadow 0.18s" }}>
       <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: C.surfaceContainerHigh, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Icon name={CATEGORY_ICONS[req.category] || "build"} size={22} style={{ color: C.primary }} />
       </div>
@@ -259,8 +268,13 @@ function RequestCard({ req, onOpen }) {
           <PriorityBadge priority={req.priority} />
         </div>
         <p style={{ margin: 0, fontSize: 12, color: C.onSurfaceVariant }}>
-          #{req.id} · {req.reporterName} ({req.reporterRole}) · {req.location}
+          {req.reporterName} ({req.reporterRole}) · {req.location}
         </p>
+        {req.monitorName && (
+          <p style={{ margin: "3px 0 0", fontSize: 11, color: "#166534", fontFamily: MONO }}>
+            ✓ Monitor approved by {req.monitorName}
+          </p>
+        )}
       </div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
         <StatusBadge status={req.status} />
@@ -277,26 +291,24 @@ function RequestCard({ req, onOpen }) {
   );
 }
 
+// ─── Assign Technician Modal ───────────────────────────────────────────────────
 function AssignTechnicianModal({ req, technicians, onClose, onAssign, loadingTechs }) {
   const [selectedId, setSelectedId] = useState(null);
-  const [note, setNote] = useState("");
+  const [note,       setNote]       = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [step, setStep] = useState("select");
-  const [errorMsg, setErrorMsg] = useState("");
+  const [step,       setStep]       = useState("select");
+  const [errorMsg,   setErrorMsg]   = useState("");
 
   async function handleConfirm() {
     if (!selectedId) return;
-    setSubmitting(true);
-    setStep("generating");
-    setErrorMsg("");
+    setSubmitting(true); setStep("generating"); setErrorMsg("");
     try {
       await onAssign(req, selectedId, note);
       setStep("done");
       setTimeout(onClose, 1000);
     } catch (err) {
-      console.error(err);
       setStep("error");
-      setErrorMsg(err.message || "Something went wrong while assigning.");
+      setErrorMsg(err.message || "Something went wrong.");
     } finally {
       setSubmitting(false);
     }
@@ -309,7 +321,10 @@ function AssignTechnicianModal({ req, technicians, onClose, onAssign, loadingTec
         <div style={{ padding: "20px 24px 16px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.onSurface }}>Assign Technician</h3>
-            <p style={{ margin: "3px 0 0", fontSize: 13, color: C.onSurfaceVariant }}>{req.title} · #{req.id}</p>
+            <p style={{ margin: "3px 0 0", fontSize: 13, color: C.onSurfaceVariant }}>{req.title}</p>
+            {req.monitorName && (
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#166534", fontFamily: MONO }}>✓ Monitor approved by {req.monitorName}</p>
+            )}
           </div>
           {!submitting && (
             <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 6, color: C.onSurfaceVariant, display: "flex" }}>
@@ -323,7 +338,7 @@ function AssignTechnicianModal({ req, technicians, onClose, onAssign, loadingTec
             <div style={{ width: 48, height: 48, border: `3px solid ${C.surfaceContainerHigh}`, borderTopColor: C.primaryContainer, borderRadius: "50%", margin: "0 auto 16px", animation: "spin 0.8s linear infinite" }} />
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
             <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: C.onSurface }}>Assigning technician…</p>
-            <p style={{ margin: "6px 0 0", fontSize: 12, color: C.onSurfaceVariant }}>Generating job order PDF and notifying technician.</p>
+            <p style={{ margin: "6px 0 0", fontSize: 12, color: C.onSurfaceVariant }}>Generating job order PDF.</p>
           </div>
         )}
 
@@ -338,32 +353,28 @@ function AssignTechnicianModal({ req, technicians, onClose, onAssign, loadingTec
           <>
             <div style={{ padding: "16px 24px", overflowY: "auto", flex: 1 }}>
               {step === "error" && (
-                <div style={{ padding: "10px 14px", background: C.errorContainer, color: C.onErrorContainer, borderRadius: 8, fontSize: 13, marginBottom: 14, display: "flex", gap: 8, alignItems: "flex-start" }}>
-                  <Icon name="error" size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+                <div style={{ padding: "10px 14px", background: C.errorContainer, color: C.onErrorContainer, borderRadius: 8, fontSize: 13, marginBottom: 14 }}>
                   {errorMsg}
                 </div>
               )}
-              <p style={{ margin: "0 0 12px", fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                Available Technicians
-              </p>
+              <p style={{ margin: "0 0 12px", fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase" }}>Available Technicians</p>
               {loadingTechs ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[1, 2, 3].map((i) => <div key={i} style={{ height: 64, background: C.surfaceContainerLow, borderRadius: 10, animation: "pulse 1.5s ease-in-out infinite" }} />)}
+                  {[1,2,3].map((i) => <div key={i} style={{ height: 64, background: C.surfaceContainerLow, borderRadius: 10, animation: "pulse 1.5s ease-in-out infinite" }} />)}
                 </div>
               ) : technicians.length === 0 ? (
                 <div style={{ padding: "32px 0", textAlign: "center", color: C.onSurfaceVariant }}>
                   <Icon name="engineering" size={36} style={{ color: C.outlineVariant, display: "block", margin: "0 auto 10px" }} />
                   <p style={{ margin: 0, fontSize: 14 }}>No registered technicians found.</p>
-                  <p style={{ margin: "4px 0 0", fontSize: 12 }}>Invite technicians from the Users page first.</p>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {technicians.map((tech) => {
                     const isSelected = selectedId === tech.id;
-                    const loadColor = tech.activeJobs === 0 ? C.secondary : tech.activeJobs <= 2 ? "#b45309" : C.error;
-                    const loadLabel = tech.activeJobs === 0 ? "Available" : tech.activeJobs <= 2 ? "Moderate load" : "High load";
+                    const loadColor  = tech.activeJobs === 0 ? C.secondary : tech.activeJobs <= 2 ? "#b45309" : C.error;
+                    const loadLabel  = tech.activeJobs === 0 ? "Available" : tech.activeJobs <= 2 ? "Moderate" : "High load";
                     return (
-                      <button key={tech.id} onClick={() => setSelectedId(tech.id)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", border: `2px solid ${isSelected ? C.primaryContainer : C.outlineVariant}`, background: isSelected ? "color-mix(in srgb, var(--color-primary-container) 5%, transparent)" : CARD, borderRadius: 10, cursor: "pointer", textAlign: "left", width: "100%", transition: "all 0.15s" }}>
+                      <button key={tech.id} onClick={() => setSelectedId(tech.id)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", border: `2px solid ${isSelected ? C.primaryContainer : C.outlineVariant}`, background: isSelected ? "color-mix(in srgb, var(--color-primary-container) 8%, transparent)" : CARD, borderRadius: 10, cursor: "pointer", textAlign: "left", width: "100%", transition: "all 0.15s" }}>
                         <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.surfaceContainerHigh, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, color: C.onSurfaceVariant, fontSize: 14 }}>
                           {tech.name?.[0] ?? "T"}
                         </div>
@@ -373,7 +384,7 @@ function AssignTechnicianModal({ req, technicians, onClose, onAssign, loadingTec
                         </div>
                         <div style={{ textAlign: "right", flexShrink: 0 }}>
                           <p style={{ margin: 0, fontSize: 12, fontWeight: 700, fontFamily: MONO, color: loadColor }}>{loadLabel}</p>
-                          <p style={{ margin: "1px 0 0", fontSize: 11, color: C.onSurfaceVariant, fontFamily: MONO }}>{tech.activeJobs} active job{tech.activeJobs !== 1 ? "s" : ""}</p>
+                          <p style={{ margin: "1px 0 0", fontSize: 11, color: C.onSurfaceVariant, fontFamily: MONO }}>{tech.activeJobs} active</p>
                         </div>
                         {isSelected && <Icon name="check_circle" filled size={20} style={{ color: C.primaryContainer, flexShrink: 0 }} />}
                       </button>
@@ -383,23 +394,21 @@ function AssignTechnicianModal({ req, technicians, onClose, onAssign, loadingTec
               )}
               {technicians.length > 0 && (
                 <div style={{ marginTop: 16 }}>
-                  <label style={{ display: "block", fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 5 }}>
-                    Note for Technician (optional)
-                  </label>
+                  <label style={{ display: "block", fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 5 }}>Note for Technician (optional)</label>
                   <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Any special instructions…" rows={2} style={{ width: "100%", padding: "9px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, fontSize: 13, fontFamily: SANS, color: C.onSurface, background: C.surfaceContainerLow, outline: "none", resize: "vertical", boxSizing: "border-box" }} />
                 </div>
               )}
               <div style={{ display: "flex", gap: 8, marginTop: 16, padding: "10px 14px", background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`, borderRadius: 8 }}>
                 <Icon name="picture_as_pdf" size={16} style={{ color: C.onSurfaceVariant, flexShrink: 0, marginTop: 1 }} />
                 <p style={{ margin: 0, fontSize: 12, color: C.onSurfaceVariant, lineHeight: 1.5 }}>
-                  A Job Order PDF will be generated automatically with your approval signature. The technician will get it for the Head of Department's physical sign-off.
+                  A Job Order PDF will be generated automatically and sent to the technician.
                 </p>
               </div>
             </div>
             <div style={{ padding: "14px 24px", borderTop: `1px solid ${C.outlineVariant}`, display: "flex", justifyContent: "flex-end", gap: 10, background: C.surfaceContainerLow }}>
               <button onClick={onClose} style={{ padding: "9px 20px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO, color: C.onSurface }}>Cancel</button>
-              <button onClick={handleConfirm} disabled={!selectedId || submitting} style={{ padding: "9px 22px", background: C.primaryContainer, color: "#ffffff", border: "none", borderRadius: 8, cursor: (!selectedId || submitting) ? "not-allowed" : "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, opacity: (!selectedId || submitting) ? 0.5 : 1, display: "flex", alignItems: "center", gap: 6 }}>
-                <Icon name="task_alt" size={15} style={{ color: "#ffffff" }} />
+              <button onClick={handleConfirm} disabled={!selectedId || submitting} style={{ padding: "9px 22px", background: C.primaryContainer, color: C.white, border: "none", borderRadius: 8, cursor: (!selectedId || submitting) ? "not-allowed" : "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, opacity: (!selectedId || submitting) ? 0.5 : 1, display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="task_alt" size={15} style={{ color: C.white }} />
                 Confirm Assignment
               </button>
             </div>
@@ -410,6 +419,7 @@ function AssignTechnicianModal({ req, technicians, onClose, onAssign, loadingTec
   );
 }
 
+// ─── Detail Drawer ────────────────────────────────────────────────────────────
 function DetailDrawer({ req, onClose, onAssignClick, onMarkComplete, onViewPdf }) {
   if (!req) return null;
   return (
@@ -428,7 +438,7 @@ function DetailDrawer({ req, onClose, onAssignClick, onMarkComplete, onViewPdf }
                   <Icon name={CATEGORY_ICONS[req.category] || "build"} size={22} style={{ color: C.primary }} />
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 11, fontFamily: MONO, color: C.onSurfaceVariant }}>#{req.id}</p>
+                  <p style={{ margin: 0, fontSize: 11, fontFamily: MONO, color: C.onSurfaceVariant }}>#{req.id?.toString().slice(0, 8)}</p>
                   <h2 style={{ margin: "2px 0 0", fontSize: 17, fontWeight: 700, color: C.onSurface, lineHeight: 1.3 }}>{req.title}</h2>
                 </div>
               </div>
@@ -441,11 +451,11 @@ function DetailDrawer({ req, onClose, onAssignClick, onMarkComplete, onViewPdf }
 
         <div style={{ flex: 1, padding: 24, display: "flex", flexDirection: "column", gap: 18 }}>
           {[
-            ["Reported By", `${req.reporterName} (${req.reporterRole})`, "person"],
-            ["Location",    req.location,   "location_on"],
-            ["Department",  req.department, "domain"],
-            ["Category",    req.category,   "category"],
-            ["Date Filed",  req.date,       "calendar_today"],
+            ["Requested By",  `${req.reporterName} (${req.reporterRole})`, "person"        ],
+            ["Location",       req.location,                               "location_on"   ],
+            ["Department",     req.department,                             "domain"        ],
+            ["Category",       req.category,                               "category"      ],
+            ["Date Filed",     req.date,                                   "calendar_today"],
           ].map(([label, value, icon]) => (
             <div key={label} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: C.surfaceContainerLow, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -453,10 +463,24 @@ function DetailDrawer({ req, onClose, onAssignClick, onMarkComplete, onViewPdf }
               </div>
               <div>
                 <p style={{ margin: 0, fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase" }}>{label}</p>
-                <p style={{ margin: "2px 0 0", fontSize: 14, fontWeight: 500, color: C.onSurface }}>{value}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 14, fontWeight: 500, color: C.onSurface }}>{value || "—"}</p>
               </div>
             </div>
           ))}
+
+          {/* Monitor approval banner */}
+          {req.monitorName && (
+            <div style={{ background: "#DCFCE7", border: "1px solid #bbf7d0", borderRadius: 10, padding: "12px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <Icon name="verified" size={18} style={{ color: "#166534", flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#166534" }}>Monitor Approved</p>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#166534" }}>
+                  Approved by <strong>{req.monitorName}</strong>
+                  {req.monitorReviewedAt && ` · ${new Date(req.monitorReviewedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`}
+                </p>
+              </div>
+            </div>
+          )}
 
           {req.description && (
             <div>
@@ -467,20 +491,17 @@ function DetailDrawer({ req, onClose, onAssignClick, onMarkComplete, onViewPdf }
             </div>
           )}
 
+          {/* Assigned Technician */}
           <div>
             <p style={{ margin: "0 0 8px", fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase" }}>Assigned Technician</p>
             {req.technicianName ? (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.surfaceContainerHigh, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: C.onSurfaceVariant, fontSize: 14 }}>
-                  {req.technicianName[0]}
-                </div>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.surfaceContainerHigh, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, color: C.onSurfaceVariant, fontSize: 14 }}>{req.technicianName[0]}</div>
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.onSurface }}>{req.technicianName}</p>
-                  <p style={{ margin: 0, fontSize: 11, color: C.onSurfaceVariant, fontFamily: MONO }}>Job Order #{req.jobOrderId}</p>
+                  <p style={{ margin: 0, fontSize: 11, color: C.onSurfaceVariant, fontFamily: MONO }}>Job Order #{req.jobOrderId?.toString().slice(0, 8)}</p>
                 </div>
-                <button onClick={() => onAssignClick(req)} style={{ background: "none", border: "none", cursor: "pointer", color: C.primaryContainer, fontSize: 11, fontFamily: MONO, fontWeight: 700 }}>
-                  Reassign
-                </button>
+                <button onClick={() => onAssignClick(req)} style={{ background: "none", border: "none", cursor: "pointer", color: C.primaryContainer, fontSize: 11, fontFamily: MONO, fontWeight: 700 }}>Reassign</button>
               </div>
             ) : (
               <button onClick={() => onAssignClick(req)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 8, border: `1px dashed ${C.outlineVariant}`, background: "none", cursor: "pointer", color: C.onSurfaceVariant, fontSize: 13, width: "100%", justifyContent: "center" }}>
@@ -490,30 +511,27 @@ function DetailDrawer({ req, onClose, onAssignClick, onMarkComplete, onViewPdf }
             )}
           </div>
 
+          {/* PDF */}
           {req.pdfUrl && (
             <div>
               <p style={{ margin: "0 0 8px", fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase" }}>Job Order Document</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <button onClick={() => onViewPdf(req)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.outlineVariant}`, background: CARD, cursor: "pointer", textAlign: "left" }}>
-                  <Icon name="picture_as_pdf" size={20} style={{ color: C.error }} />
-                  <span style={{ flex: 1, fontSize: 13, color: C.onSurface, fontWeight: 600 }}>View Job Order PDF</span>
-                  <Icon name="open_in_new" size={16} style={{ color: C.onSurfaceVariant }} />
-                </button>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: req.hodSignedAt ? "#DCFCE7" : "#FEF3C7" }}>
-                  <Icon name={req.hodSignedAt ? "verified" : "pending"} size={16} style={{ color: req.hodSignedAt ? "#166534" : "#92400E" }} />
-                  <span style={{ fontSize: 12, fontWeight: 600, color: req.hodSignedAt ? "#166634" : "#92400E" }}>
-                    {req.hodSignedAt ? "HOD approval received" : "Awaiting Head of Department's physical signature"}
-                  </span>
-                </div>
+              <button onClick={() => onViewPdf(req)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, border: `1px solid ${C.outlineVariant}`, background: CARD, cursor: "pointer", textAlign: "left", width: "100%" }}>
+                <Icon name="picture_as_pdf" size={20} style={{ color: C.error }} />
+                <span style={{ flex: 1, fontSize: 13, color: C.onSurface, fontWeight: 600 }}>View Job Order PDF</span>
+                <Icon name="open_in_new" size={16} style={{ color: C.onSurfaceVariant }} />
+              </button>
+              <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: req.hodSignedAt ? "#DCFCE7" : "#FEF3C7" }}>
+                <Icon name={req.hodSignedAt ? "verified" : "pending"} size={16} style={{ color: req.hodSignedAt ? "#166534" : "#92400E" }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: req.hodSignedAt ? "#166534" : "#92400E" }}>
+                  {req.hodSignedAt ? "HOD approval received" : "Awaiting HOD physical signature"}
+                </span>
               </div>
             </div>
           )}
         </div>
 
         <div style={{ padding: "16px 24px", borderTop: `1px solid ${C.outlineVariant}`, display: "flex", gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: "10px 0", background: C.surfaceContainerHigh, color: C.onSurface, border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: MONO }}>
-            Close
-          </button>
+          <button onClick={onClose} style={{ flex: 1, padding: "10px 0", background: C.surfaceContainerHigh, color: C.onSurface, border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: MONO }}>Close</button>
           {req.status === "Assigned" && (
             <button onClick={() => onMarkComplete(req)} style={{ flex: 1, padding: "10px 0", background: C.secondaryContainer, color: C.onSecondaryContainer, border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 12, fontFamily: MONO, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <Icon name="check_circle" size={15} style={{ color: C.onSecondaryContainer }} />
@@ -526,12 +544,11 @@ function DetailDrawer({ req, onClose, onAssignClick, onMarkComplete, onViewPdf }
   );
 }
 
+// ─── Toast ────────────────────────────────────────────────────────────────────
 function Toast({ msg, type = "default" }) {
   if (!msg) return null;
-  const bg = type === "error" ? C.error : "var(--color-inverse-surface)";
-  const fg = type === "error" ? "#ffffff" : "var(--color-inverse-on-surface)";
   return (
-    <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: bg, color: fg, padding: "10px 22px", borderRadius: 99, fontSize: 13, fontFamily: SANS, fontWeight: 600, zIndex: 300, whiteSpace: "nowrap", boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
+    <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: type === "error" ? C.error : "var(--color-inverse-surface)", color: type === "error" ? "#ffffff" : "var(--color-inverse-on-surface)", padding: "10px 22px", borderRadius: 99, fontSize: 13, fontFamily: SANS, fontWeight: 600, zIndex: 300, whiteSpace: "nowrap", boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}>
       {msg}
     </div>
   );
@@ -544,26 +561,25 @@ export default function AdminRequests() {
   const isMobile  = useIsMobile();
   const { profile } = useAuth();
 
-  const [search,      setSearch]      = useState("");
-  const [tab,         setTab]         = useState("All");
-  const [page,        setPage]        = useState(1);
-  const [drawerOpen,  setDrawerOpen]  = useState(false);
-  const [selected,    setSelected]    = useState(null);
-  const [assignTarget,setAssignTarget]= useState(null);
-  const [toast,       setToast]       = useState(null);
-  const [toastType,   setToastType]   = useState("default");
-  const [loading,     setLoading]     = useState(true);
-  const [loadingTechs,setLoadingTechs]= useState(false);
-
-  const [requests,    setRequests]    = useState([]);
-  const [technicians, setTechnicians] = useState([]);
+  const [search,       setSearch]       = useState("");
+  const [tab,          setTab]          = useState("All");
+  const [page,         setPage]         = useState(1);
+  const [drawerOpen,   setDrawerOpen]   = useState(false);
+  const [selected,     setSelected]     = useState(null);
+  const [assignTarget, setAssignTarget] = useState(null);
+  const [toast,        setToast]        = useState(null);
+  const [toastType,    setToastType]    = useState("default");
+  const [loading,      setLoading]      = useState(true);
+  const [loadingTechs, setLoadingTechs] = useState(false);
+  const [requests,     setRequests]     = useState([]);
+  const [technicians,  setTechnicians]  = useState([]);
 
   function showToast(msg, type = "default") {
-    setToast(msg);
-    setToastType(type);
+    setToast(msg); setToastType(type);
     setTimeout(() => setToast(null), 3000);
   }
 
+  // ── Fetch monitor-approved requests using actual column names ─────────────
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     try {
@@ -571,38 +587,55 @@ export default function AdminRequests() {
         .from("requests")
         .select(`
           id, title, description, category, priority, status,
-          location, department, created_at,
-          assigned_technician_id, job_order_id,
+          location, department, created_at, assigned_technician_id,
+          job_order_id, monitor_status, monitor_rejection_reason,
+          monitor_reviewed_at, monitor_id,
           reporter:profiles!requests_created_by_fkey ( full_name, role ),
           technician:profiles!requests_assigned_technician_id_fkey ( full_name )
         `)
+        .not("status", "in", '("Pending Monitor Approval","Rejected by Monitor")')
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Fetch error:", error.message, error.details);
+        console.error("Fetch error:", error.message, error.details, error.hint);
         showToast("Failed to load requests.", "error");
         return;
       }
 
+      // Fetch monitor names separately using monitor_id column
+      const monitorIds = [...new Set(
+        (data ?? []).map(r => r.monitor_id).filter(Boolean)
+      )];
+      let monitorMap = {};
+      if (monitorIds.length > 0) {
+        const { data: monitors } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", monitorIds);
+        (monitors ?? []).forEach(m => { monitorMap[m.id] = m.full_name; });
+      }
+
       setRequests((data ?? []).map((r) => ({
-        id: r.id,
-        title: r.title,
-        description: r.description,
-        category: r.category,
-        priority: r.priority,
-        status: r.status,
-        location: r.location,
-        department: r.department,
-        date: new Date(r.created_at).toLocaleDateString("en-GB", {
-          day: "numeric", month: "short", year: "numeric",
-          hour: "2-digit", minute: "2-digit",
-        }),
-        reporterName: r.reporter?.full_name ?? "Unknown",
-        reporterRole: r.reporter?.role ?? "user",
-        technicianName: r.technician?.full_name ?? null,
-        jobOrderId: r.job_order_id,
-        pdfUrl: null,
-        hodSignedAt: null,
+        id:                r.id,
+        title:             r.title,
+        description:       r.description,
+        category:          r.category,
+        priority:          r.priority,
+        status:            r.status,
+        location:          r.location,
+        department:        r.department,
+        date:              new Date(r.created_at).toLocaleDateString("en-GB", {
+                             day: "numeric", month: "short", year: "numeric",
+                             hour: "2-digit", minute: "2-digit",
+                           }),
+        reporterName:      r.reporter?.full_name ?? "Unknown",
+        reporterRole:      r.reporter?.role ?? "requester",
+        technicianName:    r.technician?.full_name ?? null,
+        monitorName:       r.monitor_id ? monitorMap[r.monitor_id] ?? null : null,
+        monitorReviewedAt: r.monitor_reviewed_at,
+        jobOrderId:        r.job_order_id,
+        pdfUrl:            null,
+        hodSignedAt:       null,
       })));
     } catch (err) {
       console.error("Unexpected fetch error:", err);
@@ -614,6 +647,7 @@ export default function AdminRequests() {
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
+  // ── Open assign modal — load technicians with live workload ───────────────
   async function openAssignModal(req) {
     setAssignTarget(req);
     setLoadingTechs(true);
@@ -622,132 +656,102 @@ export default function AdminRequests() {
         .from("profiles")
         .select("id, full_name, specialty")
         .eq("role", "technician");
-
       if (techErr) throw techErr;
 
-      const { data: jobCounts, error: jobErr } = await supabase
+      const { data: jobCounts } = await supabase
         .from("job_orders")
         .select("technician_id")
         .in("status", ["Pending Approval", "Approved", "In Progress"]);
 
-      if (jobErr) throw jobErr;
-
       const countMap = {};
-      (jobCounts ?? []).forEach((j) => {
-        countMap[j.technician_id] = (countMap[j.technician_id] || 0) + 1;
-      });
+      (jobCounts ?? []).forEach(j => { countMap[j.technician_id] = (countMap[j.technician_id] || 0) + 1; });
 
-      setTechnicians((techs ?? []).map((t) => ({
-        id: t.id,
-        name: t.full_name,
-        specialty: t.specialty,
-        activeJobs: countMap[t.id] || 0,
+      setTechnicians((techs ?? []).map(t => ({
+        id: t.id, name: t.full_name,
+        specialty: t.specialty, activeJobs: countMap[t.id] || 0,
       })));
     } catch (err) {
-      console.error("Technicians fetch error:", err);
       showToast("Failed to load technicians.", "error");
     } finally {
       setLoadingTechs(false);
     }
   }
 
+  // ── Assign technician → create job order → generate PDF ──────────────────
   async function handleAssign(req, technicianId, note) {
-    const technician = technicians.find((t) => t.id === technicianId);
-    if (!technician) throw new Error("Selected technician not found.");
+    const technician = technicians.find(t => t.id === technicianId);
+    if (!technician) throw new Error("Technician not found.");
 
+    // 1. Create job order
     const { data: jobOrder, error: joErr } = await supabase
       .from("job_orders")
       .insert({
-        request_id: req.id,
-        technician_id: technicianId,
-        title: req.title,
-        location: req.location,
-        department: req.department,
-        priority: req.priority,
-        status: "Pending Approval",
-        progress: 0,
-        notes: note || null,
+        request_id:      req.id,
+        technician_id:   technicianId,
+        title:           req.title,
+        location:        req.location,
+        department:      req.department,
+        priority:        req.priority,
+        status:          "Pending Approval",
+        progress:        0,
+        notes:           note || null,
         admin_signed_by: profile?.id,
         admin_signed_at: new Date().toISOString(),
       })
       .select()
       .single();
-
     if (joErr) throw joErr;
 
+    // 2. Generate PDF
     const pdfBytes = await generateJobOrderPdf({
-      id: jobOrder.id,
-      requestId: req.id,
-      title: req.title,
-      location: req.location,
-      department: req.department,
-      priority: req.priority,
-      category: req.category,
+      id: jobOrder.id, requestId: req.id, title: req.title,
+      location: req.location, department: req.department,
+      priority: req.priority, category: req.category,
       description: req.description,
-      reporterName: req.reporterName,
-      reporterRole: req.reporterRole,
+      reporterName: req.reporterName, reporterRole: req.reporterRole,
       technicianName: technician.name,
       adminName: profile?.full_name ?? "Administrator",
       adminSignedAt: jobOrder.admin_signed_at,
-      notes: note,
-      createdAt: jobOrder.created_at,
+      notes: note, createdAt: jobOrder.created_at,
     });
 
+    // 3. Upload PDF
     const pdfUrl = await uploadJobOrderPdf(supabase, jobOrder.id, pdfBytes);
 
-    const { error: updateJoErr } = await supabase
-      .from("job_orders")
-      .update({ pdf_url: pdfUrl })
-      .eq("id", jobOrder.id);
+    // 4. Save pdf_url on job order
+    await supabase.from("job_orders").update({ pdf_url: pdfUrl }).eq("id", jobOrder.id);
 
-    if (updateJoErr) throw updateJoErr;
-
+    // 5. Update request — status → Assigned
     const { error: reqErr } = await supabase
       .from("requests")
-      .update({
-        status: "Assigned",
-        assigned_technician_id: technicianId,
-        job_order_id: jobOrder.id,
-      })
+      .update({ status: "Assigned", assigned_technician_id: technicianId, job_order_id: jobOrder.id })
       .eq("id", req.id);
-
     if (reqErr) throw reqErr;
 
-    const { error: notifErr } = await supabase.from("notifications").insert({
-      user_id: technicianId,
-      type: "Assigned",
+    // 6. Notify technician
+    await supabase.from("notifications").insert({
+      user_id: technicianId, type: "Assigned",
       title: "New Job Order Assigned",
-      body: `You've been assigned: ${req.title}. Download the job order PDF and get it signed by the Head of Department before starting work.`,
+      body: `You've been assigned: ${req.title}. Download the job order PDF and get HOD sign-off before starting.`,
       read: false,
-    });
-    if (notifErr) console.warn("Notification insert failed (non-blocking):", notifErr);
+    }).catch(() => {});
 
+    // 7. Refresh
     await fetchRequests();
     showToast(`Assigned to ${technician.name}. Job order PDF generated.`);
   }
 
+  // ── Mark complete ──────────────────────────────────────────────────────────
   async function handleMarkComplete(req) {
     try {
-      const { error: reqErr } = await supabase
-        .from("requests")
-        .update({ status: "Completed" })
-        .eq("id", req.id);
-      if (reqErr) throw reqErr;
-
+      await supabase.from("requests").update({ status: "Completed" }).eq("id", req.id);
       if (req.jobOrderId) {
-        const { error: joErr } = await supabase
-          .from("job_orders")
-          .update({ status: "Completed", progress: 100 })
-          .eq("id", req.jobOrderId);
-        if (joErr) throw joErr;
+        await supabase.from("job_orders").update({ status: "Completed", progress: 100 }).eq("id", req.jobOrderId);
       }
-
       await fetchRequests();
-      setSelected(null);
-      setDrawerOpen(false);
+      setSelected(null); setDrawerOpen(false);
       showToast("Request marked as completed.");
     } catch (err) {
-      console.error("Mark complete error:", err);
       showToast("Failed to mark complete.", "error");
     }
   }
@@ -757,53 +761,44 @@ export default function AdminRequests() {
   }
 
   async function handleOpen(req, assignDirect = false) {
-    setSelected(req);
-    setDrawerOpen(true);
+    setSelected(req); setDrawerOpen(true);
     if (assignDirect) openAssignModal(req);
-
     if (req.jobOrderId) {
       const { data } = await supabase
         .from("job_orders")
         .select("pdf_url, hod_signed_at")
         .eq("id", req.jobOrderId)
         .single();
-
-      if (data) {
-        setSelected((s) => s ? { ...s, pdfUrl: data.pdf_url, hodSignedAt: data.hod_signed_at } : s);
-      }
+      if (data) setSelected(s => s ? { ...s, pdfUrl: data.pdf_url, hodSignedAt: data.hod_signed_at } : s);
     }
   }
 
   const go = useCallback((path) => navigate(path), [navigate]);
 
+  // ── Filtering ─────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return requests.filter((r) => {
-      const tabOk = tab === "All" || r.status === tab || r.priority === tab;
+      const tabOk    = tab === "All" || r.status === tab || r.priority === tab;
       const searchOk = !q || [r.id, r.title, r.location, r.reporterName, r.department]
-        .some((f) => f?.toLowerCase().includes(q));
+        .some(f => f?.toLowerCase().includes(q));
       return tabOk && searchOk;
     });
   }, [requests, tab, search]);
 
-  const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const paged      = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
 
-  const emergencyCount  = requests.filter((r) => r.priority === "Emergency").length;
-  const activeCount     = requests.filter((r) => r.status !== "Completed").length;
-  const unassignedCount = requests.filter((r) => r.status === "Unassigned" || r.status === "Pending").length;
-  const completedCount  = requests.filter((r) => r.status === "Completed").length;
-
   const STAT_CARDS = [
-    { icon: "emergency",       label: "Emergency",       value: emergencyCount,  iconBg: "#FEE2E255", iconColor: C.error },
-    { icon: "pending_actions", label: "Active Requests", value: activeCount,     iconBg: `color-mix(in srgb, var(--color-secondary-container) 55%, transparent)`, iconColor: C.secondary },
-    { icon: "assignment_ind",  label: "Unassigned",      value: unassignedCount, iconBg: C.surfaceContainerHigh, iconColor: C.primary },
-    { icon: "check_circle",    label: "Completed",       value: completedCount,  iconBg: C.secondaryContainer, iconColor: C.onSecondaryContainer },
+    { icon: "verified",        label: "Monitor Approved", value: requests.filter(r => !r.technicianName).length,       iconBg: "#DCFCE755", iconColor: "#166534" },
+    { icon: "pending_actions", label: "Pending Assign",   value: requests.filter(r => !r.technicianName).length,       iconBg: "#FEF3C755", iconColor: "#92400E" },
+    { icon: "engineering",     label: "Assigned",         value: requests.filter(r => r.status === "Assigned").length, iconBg: "#EEF2FF",   iconColor: "#3730A3" },
+    { icon: "check_circle",    label: "Completed",        value: requests.filter(r => r.status === "Completed").length, iconBg: C.secondaryContainer, iconColor: C.onSecondaryContainer },
   ];
 
   return (
     <div style={{ background: C.surface, minHeight: "100vh", fontFamily: SANS, color: C.onSurface }}>
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}} *{box-sizing:border-box}`}</style>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}} @keyframes spin{to{transform:rotate(360deg)}} *{box-sizing:border-box}`}</style>
 
       {!isMobile && <Sidebar currentPath={location.pathname} onNavigate={go} onLogout={() => navigate("/login")} />}
       {isMobile && (
@@ -817,44 +812,43 @@ export default function AdminRequests() {
         <main style={{ flex: 1, padding: isMobile ? "20px 14px 80px" : "32px", maxWidth: 1600, width: "100%", alignSelf: "center" }}>
 
           <div style={{ marginBottom: 20 }}>
-            <h1 style={{ margin: "0 0 4px", fontSize: isMobile ? 22 : 28, fontWeight: 700, color: C.primary }}>Maintenance Requests</h1>
-            <p style={{ margin: 0, fontSize: 14, color: C.onSurfaceVariant }}>Review incoming requests and assign technicians.</p>
+            <h1 style={{ margin: "0 0 4px", fontSize: isMobile ? 22 : 28, fontWeight: 700, color: C.primary }}>Approved Requests</h1>
+            <p style={{ margin: 0, fontSize: 14, color: C.onSurfaceVariant }}>
+              Requests verified by the monitor — ready for technician assignment.
+            </p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: isMobile ? 10 : 16, marginBottom: 24 }}>
-            {STAT_CARDS.map((c) => <StatCard key={c.label} {...c} loading={loading} />)}
+            {STAT_CARDS.map(c => <StatCard key={c.label} {...c} loading={loading} />)}
           </div>
 
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>
-            {TABS.map((t) => (
-              <button key={t} onClick={() => { setTab(t); setPage(1); }} style={{
-                padding: "6px 16px", borderRadius: 99, fontSize: 12, fontWeight: 700, fontFamily: MONO,
-                border: "none", cursor: "pointer",
-                background: tab === t ? C.primaryContainer : C.surfaceContainerHigh,
-                color: tab === t ? "#ffffff" : C.onSurfaceVariant,
-              }}>{t}</button>
+            {TABS.map(t => (
+              <button key={t} onClick={() => { setTab(t); setPage(1); }} style={{ padding: "6px 16px", borderRadius: 99, fontSize: 12, fontWeight: 700, fontFamily: MONO, border: "none", cursor: "pointer", background: tab === t ? C.primaryContainer : C.surfaceContainerHigh, color: tab === t ? C.white : C.onSurfaceVariant }}>
+                {t}
+              </button>
             ))}
           </div>
 
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {[1, 2, 3].map((i) => <div key={i} style={{ height: 76, background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, animation: "pulse 1.5s ease-in-out infinite" }} />)}
+              {[1,2,3].map(i => <div key={i} style={{ height: 76, background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, animation: "pulse 1.5s ease-in-out infinite" }} />)}
             </div>
           ) : paged.length === 0 ? (
             <div style={{ padding: "56px 24px", textAlign: "center", background: CARD, borderRadius: 14, border: `1px solid ${C.outlineVariant}` }}>
-              <Icon name="inbox" size={44} style={{ color: C.outlineVariant, display: "block", margin: "0 auto 12px" }} />
+              <Icon name="verified" size={44} style={{ color: C.outlineVariant, display: "block", margin: "0 auto 12px" }} />
               <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.onSurface }}>
-                {requests.length === 0 ? "No requests yet" : "No requests match your filters"}
+                {requests.length === 0 ? "No approved requests yet" : "No requests match your filters"}
               </p>
               <p style={{ margin: "6px 0 0", fontSize: 13, color: C.onSurfaceVariant }}>
                 {requests.length === 0
-                  ? "Requests from students and staff will appear here for review."
-                  : "Try adjusting your search or tab filter."}
+                  ? "Requests appear here after the monitor approves them."
+                  : "Try adjusting your search or tab."}
               </p>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {paged.map((req) => <RequestCard key={req.id} req={req} onOpen={handleOpen} />)}
+              {paged.map(req => <RequestCard key={req.id} req={req} onOpen={handleOpen} />)}
             </div>
           )}
 
@@ -862,11 +856,11 @@ export default function AdminRequests() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 24, paddingTop: 16, borderTop: `1px solid ${C.outlineVariant}` }}>
               <span style={{ fontSize: 13, color: C.onSurfaceVariant }}>Showing {paged.length} of {filtered.length}</span>
               <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: "6px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: "none", cursor: page === 1 ? "default" : "pointer", opacity: page === 1 ? 0.4 : 1, fontSize: 13, color: C.onSurface }}>Previous</button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <button key={p} onClick={() => setPage(p)} style={{ padding: "6px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: page === p ? C.primaryContainer : "none", color: page === p ? "#ffffff" : C.onSurface, cursor: "pointer", fontSize: 13, fontWeight: page === p ? 700 : 400, fontFamily: MONO }}>{p}</button>
+                <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1} style={{ padding: "6px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: "none", cursor: page===1?"default":"pointer", opacity: page===1?0.4:1, fontSize: 13, color: C.onSurface }}>Previous</button>
+                {Array.from({ length: totalPages }, (_, i) => i+1).map(p => (
+                  <button key={p} onClick={() => setPage(p)} style={{ padding: "6px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: page===p?C.primaryContainer:"none", color: page===p?"#ffffff":C.onSurface, cursor: "pointer", fontSize: 13, fontWeight: page===p?700:400, fontFamily: MONO }}>{p}</button>
                 ))}
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: "6px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: "none", cursor: page === totalPages ? "default" : "pointer", opacity: page === totalPages ? 0.4 : 1, fontSize: 13, color: C.onSurface }}>Next</button>
+                <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages} style={{ padding: "6px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 6, background: "none", cursor: page===totalPages?"default":"pointer", opacity: page===totalPages?0.4:1, fontSize: 13, color: C.onSurface }}>Next</button>
               </div>
             </div>
           )}
@@ -876,11 +870,22 @@ export default function AdminRequests() {
       {isMobile && <MobileBottomNav currentPath={location.pathname} onNavigate={go} />}
 
       {drawerOpen && selected && (
-        <DetailDrawer req={selected} onClose={() => { setDrawerOpen(false); setSelected(null); }} onAssignClick={openAssignModal} onMarkComplete={handleMarkComplete} onViewPdf={handleViewPdf} />
+        <DetailDrawer req={selected}
+          onClose={() => { setDrawerOpen(false); setSelected(null); }}
+          onAssignClick={openAssignModal}
+          onMarkComplete={handleMarkComplete}
+          onViewPdf={handleViewPdf}
+        />
       )}
 
       {assignTarget && (
-        <AssignTechnicianModal req={assignTarget} technicians={technicians} loadingTechs={loadingTechs} onClose={() => setAssignTarget(null)} onAssign={handleAssign} />
+        <AssignTechnicianModal
+          req={assignTarget}
+          technicians={technicians}
+          loadingTechs={loadingTechs}
+          onClose={() => setAssignTarget(null)}
+          onAssign={handleAssign}
+        />
       )}
 
       <Toast msg={toast} type={toastType} />

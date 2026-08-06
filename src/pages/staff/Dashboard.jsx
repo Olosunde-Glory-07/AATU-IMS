@@ -1,111 +1,59 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                "var(--color-primary)",
-  primaryContainer:       "var(--color-primary-container)",
-  onPrimaryContainer:     "var(--color-on-primary-container)",
-  primaryFixed:           "var(--color-primary-fixed)",
-  primaryFixedDim:        "var(--color-primary-fixed-dim)",
-  onPrimaryFixed:         "var(--color-on-primary-fixed)",
-  onPrimaryFixedVariant:  "var(--color-on-primary-fixed-variant)",
-  secondary:              "var(--color-secondary)",
-  secondaryContainer:     "var(--color-secondary-container)",
-  onSecondaryContainer:   "var(--color-on-secondary-container)",
-  secondaryFixed:         "var(--color-secondary-fixed)",
-  tertiaryFixed:          "var(--color-tertiary-fixed)",
-  onTertiaryFixed:        "var(--color-on-tertiary-fixed)",
-  onTertiaryFixedVariant: "var(--color-on-tertiary-fixed-variant)",
-  errorContainer:         "var(--color-error-container)",
-  onErrorContainer:       "var(--color-on-error-container)",
-  error:                  "var(--color-error)",
-  surface:                "var(--color-surface)",
-  surfaceContainer:       "var(--color-surface-container)",
-  surfaceContainerLow:    "var(--color-surface-container-low)",
-  surfaceContainerHigh:   "var(--color-surface-container-high)",
-  surfaceContainerHighest:"var(--color-surface-container-highest)",
-  surfaceDim:             "var(--color-surface-dim)",
-  onSurface:              "var(--color-on-surface)",
-  onSurfaceVariant:       "var(--color-on-surface-variant)",
-  outlineVariant:         "var(--color-outline-variant)",
-  outline:                "var(--color-outline)",
-  white:                  "#ffffff",
+  primaryContainer:     "var(--color-primary-container)",
+  onPrimaryContainer:   "var(--color-on-primary-container)",
+  secondary:            "var(--color-secondary)",
+  secondaryContainer:   "var(--color-secondary-container)",
+  onSecondaryContainer: "var(--color-on-secondary-container)",
+  tertiaryFixed:        "var(--color-tertiary-fixed)",
+  onTertiaryFixedVariant:"var(--color-on-tertiary-fixed-variant)",
+  errorContainer:       "var(--color-error-container)",
+  onErrorContainer:     "var(--color-on-error-container)",
+  error:                "var(--color-error)",
+  surface:              "var(--color-background)",
+  surfaceContainer:     "var(--color-surface-container)",
+  surfaceContainerLow:  "var(--color-surface-container-low)",
+  surfaceContainerHigh: "var(--color-surface-container-high)",
+  onSurface:            "var(--color-on-surface)",
+  onSurfaceVariant:     "var(--color-on-surface-variant)",
+  outlineVariant:        "var(--color-outline-variant)",
+  white:                "#ffffff",
 };
+const CARD = "var(--color-surface-container-lowest)";
+const SIDEBAR_BG = "#4a0404";
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
-// ─── Nav config — corrected to match real AppRoutes.jsx paths ────────────────
 const NAV_ITEMS = [
-  { icon: "dashboard",     label: "Dashboard",     path: "/staff/dashboard" },
-  { icon: "list_alt",      label: "Requests",      path: "/staff/requests" },
-  { icon: "history",       label: "Dept. History", path: "/staff/history" },
-  { icon: "notifications", label: "Notifications", path: "/staff/notifications" },
+  { icon: "dashboard",     label: "Dashboard",           path: "/staff/dashboard"            },
+  { icon: "list_alt",      label: "Requests",            path: "/staff/maintenance-requests" },
+  { icon: "fact_check",    label: "Approvals",           path: "/staff/monitor-approvals"    },
+  { icon: "history",       label: "History",             path: "/staff/monitored-requests"   },
+  { icon: "domain",        label: "Dept.",                path: "/staff/departmental-history"  },
+  { icon: "notifications", label: "Alerts",               path: "/staff/notifications"        },
 ];
 
-const PRIORITY_CFG = {
-  Emergency: { bg: C.errorContainer,         text: C.error            },
-  High:      { bg: "#FEF3C7",                text: C.onTertiaryFixedVariant },
-  Medium:    { bg: C.surfaceContainerHighest, text: C.onSurfaceVariant },
-  Low:       { bg: C.surfaceContainerHigh,    text: C.onSurfaceVariant },
+const CATEGORY_ICONS = {
+  Electrical: "bolt", Plumbing: "water_drop", HVAC: "hvac", Structural: "domain",
+  "IT Services": "router", Furniture: "chair", Lighting: "light_mode",
+  Elevator: "elevator", Other: "build",
 };
 
-const STATUS_CFG = {
-  "In Progress": { text: C.secondary,              dot: C.secondary              },
-  "Completed":   { text: C.onTertiaryFixedVariant, dot: C.onTertiaryFixedVariant },
-  "Pending":     { text: C.onSurfaceVariant,        dot: C.outline                },
-  "Assigned":    { text: "#3730A3",                 dot: "#6366f1"                },
-  "Cancelled":   { text: "#6b7280",                 dot: "#9ca3af"                },
-};
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function Icon({ name, size = 22, filled = false, style = {} }) {
   return (
-    <span
-      className="material-symbols-outlined"
-      style={{
-        fontSize: size, lineHeight: 1, verticalAlign: "middle",
-        fontVariationSettings: filled ? "'FILL' 1,'wght' 400" : "'FILL' 0,'wght' 400",
-        ...style,
-      }}
-    >{name}</span>
+    <span className="material-symbols-outlined" style={{
+      fontSize: size, lineHeight: 1, verticalAlign: "middle",
+      fontVariationSettings: filled ? "'FILL' 1,'wght' 400" : "'FILL' 0,'wght' 400",
+      ...style,
+    }}>{name}</span>
   );
 }
 
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good Morning";
-  if (h < 17) return "Good Afternoon";
-  return "Good Evening";
-}
-
-// Builds the "Monthly Trends" bar data from real request rows by bucketing
-// created_at into the last 6 calendar months.
-function buildMonthlyData(requests) {
-  const months = [];
-  const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({ key: `${d.getFullYear()}-${d.getMonth()}`, month: d.toLocaleDateString("en-US", { month: "short" }), count: 0 });
-  }
-  requests.forEach((r) => {
-    if (!r.created_at) return;
-    const d = new Date(r.created_at);
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    const bucket = months.find((m) => m.key === key);
-    if (bucket) bucket.count += 1;
-  });
-  const max = Math.max(1, ...months.map((m) => m.count));
-  return months.map((m, i) => ({
-    ...m,
-    pct: m.count === 0 ? 2 : Math.max(6, Math.round((m.count / max) * 100)),
-    active: i === months.length - 1,
-  }));
-}
-
-// ─── Responsive hook ──────────────────────────────────────────────────────────
 function useIsMobile() {
   const [mobile, setMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
@@ -116,6 +64,11 @@ function useIsMobile() {
   return mobile;
 }
 
+function getGreeting() {
+  const h = new Date().getHours();
+  return h < 12 ? "Good Morning" : h < 17 ? "Good Afternoon" : "Good Evening";
+}
+
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 function Sidebar({ open, onClose }) {
   const navigate = useNavigate();
@@ -123,46 +76,31 @@ function Sidebar({ open, onClose }) {
   const isMobile = useIsMobile();
 
   const content = (
-    <aside style={{
-      width: 260, background: C.primaryContainer, color: C.white,
-      display: "flex", flexDirection: "column", height: "100%",
-      overflowY: "auto", borderRight: `1px solid ${C.outlineVariant}`,
-      fontFamily: SANS,
-    }}>
-      {/* Brand */}
+    <aside style={{ width: 260, background: SIDEBAR_BG, color: C.white, display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", borderRight: `1px solid ${C.outlineVariant}`, fontFamily: SANS }}>
       <div style={{ padding: "24px 24px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.white, letterSpacing: "-0.02em" }}>AATU</h1>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: MONO, letterSpacing: "0.04em" }}>
-            Infrastructure Mgmt
-          </p>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.white }}>AATU</h1>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: MONO }}>Staff Portal</p>
         </div>
         {isMobile && (
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.7)", padding: 4 }}>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.7)" }}>
             <Icon name="close" size={22} />
           </button>
         )}
       </div>
 
-      {/* Nav */}
       <nav style={{ flex: 1, padding: "16px 8px 0", display: "flex", flexDirection: "column", gap: 2 }}>
         {NAV_ITEMS.map((item) => {
           const isActive = location.pathname === item.path;
           return (
-            <button
-              key={item.label}
-              onClick={() => { navigate(item.path); if (isMobile) onClose(); }}
-              style={{
-                width: "100%", display: "flex", alignItems: "center", gap: 12,
-                padding: "12px 16px",
-                background: isActive ? "rgba(255,255,255,0.10)" : "transparent",
-                color: isActive ? C.white : "rgba(255,255,255,0.7)",
-                fontWeight: isActive ? 700 : 400,
-                borderLeft: isActive ? `4px solid ${C.primaryFixedDim}` : "4px solid transparent",
-                border: "none", cursor: "pointer", textAlign: "left",
-                fontSize: 12, letterSpacing: "0.04em", fontFamily: MONO,
-                transition: "background 0.15s",
-              }}
+            <button key={item.label} onClick={() => { navigate(item.path); if (isMobile) onClose(); }} style={{
+              width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
+              background: isActive ? "rgba(255,255,255,0.10)" : "transparent",
+              color: isActive ? C.white : "rgba(255,255,255,0.7)", fontWeight: isActive ? 700 : 400,
+              borderLeft: isActive ? "4px solid #ffb4aa" : "4px solid transparent",
+              border: "none", cursor: "pointer", textAlign: "left", fontSize: 12, letterSpacing: "0.04em", fontFamily: MONO,
+              transition: "background 0.15s",
+            }}
               onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
               onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
             >
@@ -173,82 +111,62 @@ function Sidebar({ open, onClose }) {
         })}
       </nav>
 
-      {/* Footer */}
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", padding: "12px 8px" }}>
-        <button
-          onClick={() => navigate("/staff/profile")}
-          style={{
-            width: "100%", display: "flex", alignItems: "center", gap: 12,
-            padding: "12px 16px", background: "transparent",
-            color: "rgba(255,255,255,0.7)", border: "none",
-            cursor: "pointer", fontSize: 12, fontFamily: MONO,
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
-          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-        >
+        <button onClick={() => navigate("/staff/profile")} style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
+          background: "transparent", color: "rgba(255,255,255,0.7)", border: "none",
+          cursor: "pointer", fontSize: 12, fontFamily: MONO,
+        }}>
           <Icon name="account_circle" size={20} style={{ color: "rgba(255,255,255,0.7)" }} />
           User Profile
         </button>
-        <button
-          onClick={() => navigate("/login")}
-          style={{
-            width: "100%", marginTop: 8, padding: "8px 16px",
-            background: "rgba(255,255,255,0.10)",
-            color: C.white, border: "none", borderRadius: 6,
-            cursor: "pointer", fontSize: 12, fontFamily: MONO,
-            letterSpacing: "0.04em", transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.18)"}
-          onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.10)"}
-        >
+        <button onClick={() => supabase.auth.signOut().then(() => navigate("/login"))} style={{
+          width: "100%", marginTop: 4, display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
+          background: "transparent", color: "rgba(255,255,255,0.5)", border: "none",
+          cursor: "pointer", fontSize: 12, fontFamily: MONO,
+        }}>
+          <Icon name="logout" size={20} style={{ color: "rgba(255,255,255,0.5)" }} />
           Logout
         </button>
       </div>
     </aside>
   );
 
-  if (!isMobile) {
-    return <div style={{ width: 260, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 50 }}>{content}</div>;
-  }
-
+  if (!isMobile) return <div style={{ width: 260, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 50 }}>{content}</div>;
   if (!open) return null;
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100 }} />
-      <div style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 260, zIndex: 101, boxShadow: "4px 0 20px rgba(0,0,0,0.2)" }}>
-        {content}
-      </div>
+      <div style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 260, zIndex: 101, boxShadow: "4px 0 20px rgba(0,0,0,0.2)" }}>{content}</div>
     </>
   );
 }
 
-// ─── Mobile bottom tab bar ────────────────────────────────────────────────────
+// ─── Bottom Nav — FIX: now shows all 6 items (was previously sliced to 5,
+// silently dropping "Notifications"), with tighter sizing so they all fit ──
 function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
   return (
-    <nav style={{
-      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90,
-      background: 'var(--color-surface-container-lowest)', borderTop: `1px solid ${C.outlineVariant}`,
-      display: "flex", height: 60,
-    }}>
+    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90, background: CARD, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 60 }}>
       {NAV_ITEMS.map((item) => {
         const isActive = location.pathname === item.path;
         return (
           <button
             key={item.label}
+            type="button"
             onClick={() => navigate(item.path)}
             style={{
               flex: 1, display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center", gap: 2,
               background: "none", border: "none", cursor: "pointer",
               color: isActive ? C.primaryContainer : C.onSurfaceVariant,
-              fontSize: 9, fontFamily: MONO, letterSpacing: "0.06em",
+              fontSize: 8, fontFamily: MONO, padding: "4px 2px",
+              minWidth: 0,
             }}
           >
-            <Icon name={item.icon} size={22} filled={isActive} style={{ color: isActive ? C.primaryContainer : C.onSurfaceVariant }} />
-            {item.label}
+            <Icon name={item.icon} size={18} filled={isActive} style={{ color: isActive ? C.primaryContainer : C.onSurfaceVariant }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{item.label}</span>
           </button>
         );
       })}
@@ -256,695 +174,217 @@ function BottomNav() {
   );
 }
 
-// ─── TopBar ───────────────────────────────────────────────────────────────────
-function TopBar({ onMenuClick, search, setSearch, onReportIssue, onSettings }) {
-  const isMobile = useIsMobile();
+function TopBar({ isMobile, onMenu, onRefresh, refreshing }) {
+  const navigate = useNavigate();
   return (
-    <header style={{
-      height: 64, display: "flex", alignItems: "center",
-      justifyContent: "space-between", padding: isMobile ? "0 16px" : "0 32px",
-      position: "sticky", top: 0, zIndex: 40,
-      background: "rgba(249,249,255,0.94)", backdropFilter: "blur(12px)",
-      borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 12,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+    <header style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "0 16px" : "0 32px", position: "sticky", top: 0, zIndex: 40, background: "color-mix(in srgb, var(--color-background) 94%, transparent)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {isMobile && (
-          <button onClick={onMenuClick} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurface, padding: 4, flexShrink: 0, display: "flex" }}>
+          <button onClick={onMenu} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurface, padding: 4, display: "flex" }}>
             <Icon name="menu" size={24} />
           </button>
         )}
-        <div style={{ flex: 1, maxWidth: isMobile ? "100%" : 440, position: "relative" }}>
-          <Icon name="search" size={20} style={{
-            position: "absolute", left: 12, top: "50%",
-            transform: "translateY(-50%)", color: C.onSurfaceVariant,
-          }} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search infrastructure..."
-            style={{
-              width: "100%", paddingLeft: 40, paddingRight: 20,
-              paddingTop: 9, paddingBottom: 9,
-              background: C.surfaceContainerLow,
-              border: "none", borderRadius: 99,
-              fontSize: 14, outline: "none",
-              color: C.onSurface, fontFamily: SANS, boxSizing: "border-box",
-            }}
-          />
-        </div>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.onSurface }}>Staff Dashboard</h2>
       </div>
-
-      {/* Actions */}
-      <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 12 }}>
-        <button onClick={onReportIssue} style={{
-          display: "flex", alignItems: "center", gap: 8,
-          background: C.primaryContainer, color: C.white,
-          border: "none", cursor: "pointer",
-          padding: isMobile ? "8px 12px" : "8px 18px", borderRadius: 99,
-          fontSize: 12, fontFamily: MONO, fontWeight: 700, letterSpacing: "0.04em", flexShrink: 0,
-        }}>
-          <Icon name="add_circle" size={16} style={{ color: C.white }} />
-          {!isMobile && "Report Issue"}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <button onClick={onRefresh} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, color: C.onSurfaceVariant, display: "flex" }}>
+          <Icon name="refresh" size={20} style={{ animation: refreshing ? "spin 0.8s linear infinite" : "none" }} />
         </button>
-        <div style={{ display: "flex", alignItems: "center", gap: 2, paddingLeft: isMobile ? 0 : 12, borderLeft: isMobile ? "none" : `1px solid ${C.outlineVariant}` }}>
-          {!isMobile && (
-            <button onClick={onSettings} style={{
-              background: "none", border: "none", cursor: "pointer",
-              padding: 8, color: C.onSurfaceVariant, display: "flex",
-              borderRadius: "50%", transition: "color 0.15s",
-            }}>
-              <Icon name="settings" size={22} />
-            </button>
-          )}
-          <button
-            onClick={onSettings}
-            style={{
-              width: isMobile ? 30 : 34, height: isMobile ? 30 : 34, borderRadius: "50%",
-              background: C.surfaceDim, border: `1px solid ${C.outline}`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontWeight: 700, color: C.onSurface, fontSize: 14, marginLeft: isMobile ? 0 : 6, flexShrink: 0,
-              cursor: "pointer",
-            }}
-          >S</button>
-        </div>
+        <button onClick={() => navigate("/staff/notifications")} style={{ background: "none", border: "none", cursor: "pointer", padding: 8, color: C.onSurfaceVariant, display: "flex" }}>
+          <Icon name="notifications" size={22} />
+        </button>
       </div>
     </header>
   );
 }
 
-// ─── Welcome Banner — live counts, no hardcoded numbers ───────────────────────
-function WelcomeBanner({ requests, isMobile, firstName, onViewRequests, onFileRequest }) {
-  const emergencyCount = requests.filter((r) => r.priority === "Emergency").length;
-  const inProgressCount = requests.filter((r) => r.status === "In Progress").length;
-
+function StatCard({ icon, iconBg, iconColor, label, value, loading, onClick }) {
   return (
-    <section style={{
-      position: "relative", overflow: "hidden",
-      borderRadius: 14,
-      background: `linear-gradient(135deg, ${C.primary} 0%, #5a0808 60%, #7e2b23 100%)`,
-      padding: isMobile ? "28px 20px" : "40px 40px",
-      minHeight: isMobile ? 170 : 190,
-      display: "flex", flexDirection: "column", justifyContent: "center",
-      color: C.white,
-    }}>
-      {/* Decorative rings */}
-      {!isMobile && [200, 280, 360, 440, 520].map((s, i) => (
-        <div key={i} style={{
-          position: "absolute",
-          right: -80 + i * 30, top: "50%",
-          transform: "translateY(-50%)",
-          width: s, height: s, borderRadius: "50%",
-          border: "1px solid rgba(255,180,170,0.12)",
-          pointerEvents: "none",
-        }} />
-      ))}
-
-      {/* Emergency pulse pill — only shows when there actually is an emergency */}
-      {emergencyCount > 0 && (
-        <div style={{
-          position: isMobile ? "static" : "absolute", top: 24, right: 28,
-          display: "inline-flex", alignItems: "center", gap: 8,
-          background: "rgba(186,26,26,0.3)",
-          padding: "6px 14px", borderRadius: 99,
-          border: "1px solid rgba(255,180,170,0.25)",
-          marginBottom: isMobile ? 14 : 0, alignSelf: isMobile ? "flex-start" : "auto",
-        }}>
-          <PulseDot color={C.primaryFixedDim} />
-          <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 700, color: C.primaryFixedDim, letterSpacing: "0.06em" }}>
-            {emergencyCount} EMERGENCY ALERT{emergencyCount !== 1 ? "S" : ""}
-          </span>
-        </div>
-      )}
-
-      {/* Text */}
-      <div style={{ position: "relative", zIndex: 1 }}>
-        <h2 style={{ margin: "0 0 10px", fontSize: isMobile ? 20 : 28, fontWeight: 700, lineHeight: 1.2 }}>
-          {getGreeting()}, {firstName}
-        </h2>
-        <p style={{ margin: 0, fontSize: isMobile ? 13 : 15, color: "rgba(255,255,255,0.80)", maxWidth: 560, lineHeight: 1.65 }}>
-          {requests.length === 0
-            ? "You have no requests on file yet. File a new request to get started."
-            : (
-              <>
-                You have <strong>{inProgressCount} request{inProgressCount !== 1 ? "s" : ""}</strong> currently in progress.
-                {emergencyCount > 0 && (
-                  <> Your department has <strong style={{ color: C.primaryFixedDim }}>{emergencyCount} emergency alert{emergencyCount !== 1 ? "s" : ""}</strong> that require immediate attention.</>
-                )}
-              </>
-            )}
-        </p>
-        <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
-          <button onClick={onViewRequests} style={{
-            padding: "9px 20px", background: 'var(--color-surface-container-lowest)', color: C.primary,
-            border: "none", borderRadius: 8, cursor: "pointer",
-            fontSize: 12, fontFamily: MONO, fontWeight: 700, letterSpacing: "0.04em",
-          }}>
-            View Requests →
-          </button>
-          <button onClick={onFileRequest} style={{
-            padding: "9px 20px", background: "rgba(255,255,255,0.12)", color: C.white,
-            border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, cursor: "pointer",
-            fontSize: 12, fontFamily: MONO, fontWeight: 500, letterSpacing: "0.04em",
-          }}>
-            File New Request
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Pulse Dot ────────────────────────────────────────────────────────────────
-function PulseDot({ color = C.error, size = 8 }) {
-  const [on, setOn] = useState(true);
-  useEffect(() => {
-    const id = setInterval(() => setOn((v) => !v), 900);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: "50%",
-      background: color, flexShrink: 0,
-      opacity: on ? 1 : 0.3, transition: "opacity 0.5s ease",
-    }} />
-  );
-}
-
-// ─── Stat Card — values derived live, no hardcoded numbers ────────────────────
-function StatCard({ card, loading }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        background: 'var(--color-surface-container-lowest)',
-        border: `1px solid ${C.outlineVariant}`,
-        borderLeft: card.borderLeft || `1px solid ${C.outlineVariant}`,
-        borderRadius: 10, padding: "20px 20px",
-        display: "flex", flexDirection: "column", justifyContent: "space-between",
-        boxShadow: hov ? "0 10px 20px rgba(0,0,0,0.06)" : "none",
-        transform: hov ? "translateY(-2px)" : "none",
-        transition: "box-shadow 0.2s, transform 0.18s",
-        fontFamily: SANS, minHeight: 130,
-      }}
+    <div onClick={onClick} style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, padding: 20, cursor: onClick ? "pointer" : "default", display: "flex", flexDirection: "column", gap: 12, transition: "box-shadow 0.15s" }}
+      onMouseEnter={(e) => { if (onClick) e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,0.08)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "none"; }}
     >
-      <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <span style={{
-            fontSize: 10, fontFamily: MONO, letterSpacing: "0.1em",
-            textTransform: "uppercase", color: card.labelColor || C.onSurfaceVariant,
-            opacity: 0.7,
-          }}>{card.label}</span>
-          <div style={{
-            width: 32, height: 32, borderRadius: "50%",
-            background: card.iconBg,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <Icon name={card.icon} size={18} style={{ color: card.iconColor }} />
-          </div>
-        </div>
-        {loading ? (
-          <div style={{ width: 48, height: 30, background: C.surfaceContainerLow, borderRadius: 6, animation: "pulse 1.5s ease-in-out infinite" }} />
-        ) : (
-          <div style={{ fontSize: 30, fontWeight: 700, color: card.valueColor || C.onSurface }}>
-            {card.value}
-          </div>
-        )}
+      <div style={{ width: 42, height: 42, borderRadius: "50%", background: iconBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Icon name={icon} size={21} filled style={{ color: iconColor }} />
       </div>
-      <div style={{ fontSize: 11, fontFamily: MONO, fontWeight: 700, color: card.trendColor, marginTop: 8 }}>
-        {card.trend}
-      </div>
+      {loading
+        ? <div style={{ width: 44, height: 26, background: C.surfaceContainerHigh, borderRadius: 6 }} />
+        : <h3 style={{ margin: 0, fontSize: 26, fontWeight: 700, color: C.onSurface }}>{value}</h3>}
+      <p style={{ margin: 0, fontSize: 11, fontFamily: MONO, color: C.onSurfaceVariant, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
     </div>
-  );
-}
-
-// ─── Bar Chart ────────────────────────────────────────────────────────────────
-function MiniBarChart({ monthlyData }) {
-  const [chartRange, setChartRange] = useState("Last 6 Months");
-  const [tooltip, setTooltip] = useState(null);
-
-  return (
-    <div style={{
-      background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`,
-      borderRadius: 10, padding: "22px 24px",
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.onSurface }}>Monthly Trends</h3>
-        <select
-          value={chartRange}
-          onChange={(e) => setChartRange(e.target.value)}
-          style={{
-            background: C.surfaceContainerLow, border: "none",
-            padding: "4px 12px", borderRadius: 6,
-            fontSize: 12, fontFamily: MONO, color: C.onSurface,
-            cursor: "pointer", outline: "none",
-          }}
-        >
-          <option>Last 6 Months</option>
-          <option disabled>Last Year (coming soon)</option>
-        </select>
-      </div>
-
-      {monthlyData.every((m) => m.count === 0) ? (
-        <div style={{ height: 160, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, color: C.onSurfaceVariant }}>
-          <Icon name="bar_chart" size={32} style={{ color: C.outlineVariant }} />
-          <span style={{ fontSize: 12, fontFamily: MONO }}>No request data yet</span>
-        </div>
-      ) : (
-        <>
-          {/* Bar area */}
-          <div style={{ height: 160, display: "flex", alignItems: "flex-end", gap: 8, padding: "0 8px", position: "relative" }}>
-            {[0, 25, 50, 75, 100].map((pct) => (
-              <div key={pct} style={{
-                position: "absolute", left: 8, right: 8,
-                bottom: `${pct}%`, height: 1,
-                background: `color-mix(in srgb, var(--color-outline-variant) 38%, transparent)`,
-                zIndex: 0,
-              }} />
-            ))}
-
-            {monthlyData.map((bar, i) => (
-              <div
-                key={i}
-                style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", position: "relative", height: "100%", justifyContent: "flex-end" }}
-                onMouseEnter={() => setTooltip(i)}
-                onMouseLeave={() => setTooltip(null)}
-              >
-                {tooltip === i && (
-                  <div style={{
-                    position: "absolute", bottom: `${bar.pct}%`, left: "50%",
-                    transform: "translate(-50%, -8px)",
-                    background: C.primary, color: C.white,
-                    fontSize: 10, fontFamily: MONO, fontWeight: 700,
-                    padding: "3px 8px", borderRadius: 4,
-                    whiteSpace: "nowrap", zIndex: 10,
-                  }}>{bar.count} reqs</div>
-                )}
-                <div style={{
-                  width: "100%",
-                  height: `${bar.pct}%`,
-                  background: bar.active ? C.primaryContainer : `color-mix(in srgb, var(--color-primary-fixed-dim) 25%, transparent)`,
-                  borderRadius: "4px 4px 0 0",
-                  transition: "background 0.2s",
-                  cursor: "pointer",
-                  zIndex: 1,
-                }}
-                  onMouseEnter={(e) => {
-                    if (!bar.active) e.currentTarget.style.background = `color-mix(in srgb, var(--color-primary-fixed-dim) 44%, transparent)`;
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!bar.active) e.currentTarget.style.background = `color-mix(in srgb, var(--color-primary-fixed-dim) 25%, transparent)`;
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* X axis labels */}
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, padding: "0 8px" }}>
-            {monthlyData.map((bar) => (
-              <span key={bar.month} style={{
-                flex: 1, textAlign: "center",
-                fontSize: 11, fontFamily: MONO,
-                color: bar.active ? C.primary : `color-mix(in srgb, var(--color-on-surface-variant) 50%, transparent)`,
-                fontWeight: bar.active ? 700 : 400,
-              }}>{bar.month}</span>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ─── Recent Requests Table ────────────────────────────────────────────────────
-function RecentRequests({ requests, search, onViewAll, onRowClick, loading }) {
-  const filtered = useMemo(() => requests.filter((r) => {
-    const q = search.toLowerCase();
-    return !q || [r.id, r.category, r.location, r.priority, r.status]
-      .some((f) => String(f).toLowerCase().includes(q));
-  }), [requests, search]);
-
-  return (
-    <section style={{
-      background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`,
-      borderRadius: 10, overflow: "hidden", fontFamily: SANS,
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: "18px 24px", borderBottom: `1px solid ${C.outlineVariant}`,
-        display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10,
-      }}>
-        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.onSurface }}>Recent Requests</h3>
-        <button onClick={onViewAll} style={{
-          background: "none", border: "none", cursor: "pointer",
-          color: C.primary, fontWeight: 700, fontSize: 12, fontFamily: MONO,
-          letterSpacing: "0.04em",
-        }}>
-          View All Requests →
-        </button>
-      </div>
-
-      {/* Table */}
-      {loading ? (
-        <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
-          {[1, 2, 3].map((i) => <div key={i} style={{ height: 56, background: C.surfaceContainerLow, borderRadius: 8, animation: "pulse 1.5s ease-in-out infinite" }} />)}
-          <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}`}</style>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div style={{ padding: 40, textAlign: "center", color: C.onSurfaceVariant }}>
-          <Icon name="inbox" size={32} style={{ display: "block", margin: "0 auto 10px", color: C.outlineVariant }} />
-          {requests.length === 0 ? "No requests filed yet." : "No requests match your search."}
-        </div>
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: C.surfaceContainerLow }}>
-                {["Request ID", "Category", "Location", "Priority", "Status", "Actions"].map((h, i) => (
-                  <th key={i} style={{
-                    padding: "12px 24px",
-                    textAlign: i === 5 ? "right" : "left",
-                    fontSize: 10, fontWeight: 500, fontFamily: MONO,
-                    color: C.onSurfaceVariant, letterSpacing: "0.1em",
-                    textTransform: "uppercase", opacity: 0.7, whiteSpace: "nowrap",
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.slice(0, 8).map((req) => {
-                const prCfg = PRIORITY_CFG[req.priority] || PRIORITY_CFG.Medium;
-                const stCfg = STATUS_CFG[req.status]   || STATUS_CFG["Pending"];
-                return (
-                  <TableRow key={req.id} req={req} prCfg={prCfg} stCfg={stCfg} onRowClick={onRowClick} />
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function TableRow({ req, prCfg, stCfg, onRowClick }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <tr
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      onClick={() => onRowClick(req)}
-      style={{
-        borderTop: `1px solid ${C.outlineVariant}`,
-        background: hov ? `color-mix(in srgb, var(--color-surface-container-low) 50%, transparent)` : "transparent",
-        transition: "background 0.12s", cursor: "pointer",
-      }}
-    >
-      <td style={{ padding: "16px 24px", fontSize: 12, fontFamily: MONO, color: C.primary, fontWeight: 600, whiteSpace: "nowrap" }}>
-        #{req.id}
-      </td>
-      <td style={{ padding: "16px 24px", fontSize: 14, fontWeight: 600, color: C.onSurface }}>
-        {req.category || "—"}
-      </td>
-      <td style={{ padding: "16px 24px", fontSize: 14, color: C.onSurfaceVariant }}>
-        {req.location || "—"}
-      </td>
-      <td style={{ padding: "16px 24px" }}>
-        <span style={{
-          padding: "2px 10px", borderRadius: 99,
-          background: prCfg.bg, color: prCfg.text,
-          fontSize: 10, fontWeight: 700, fontFamily: MONO,
-          letterSpacing: "0.06em", textTransform: "uppercase", whiteSpace: "nowrap",
-        }}>{req.priority}</span>
-      </td>
-      <td style={{ padding: "16px 24px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {req.status === "In Progress" ? (
-            <PulseDot color={stCfg.dot} size={7} />
-          ) : (
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: stCfg.dot }} />
-          )}
-          <span style={{ fontSize: 12, fontFamily: MONO, fontWeight: 700, color: stCfg.text, whiteSpace: "nowrap" }}>
-            {req.status}
-          </span>
-        </div>
-      </td>
-      <td style={{ padding: "16px 24px", textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-        <button
-          onClick={() => onRowClick(req)}
-          style={{
-            background: "none", border: "none", cursor: "pointer",
-            padding: 4, color: C.onSurfaceVariant, display: "flex",
-            marginLeft: "auto", opacity: hov ? 1 : 0.5, transition: "opacity 0.15s",
-          }}
-        >
-          <Icon name="more_vert" size={20} />
-        </button>
-      </td>
-    </tr>
   );
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function StaffDashboardPage() {
+export default function StaffDashboard() {
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const navigate  = useNavigate();
   const { user, profile } = useAuth();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [search, setSearch]         = useState("");
-  const [loading, setLoading]       = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Loaded for real from Supabase — starts empty until fetch resolves.
-  const [requests, setRequests]               = useState([]);
-  const [departmentCount, setDepartmentCount] = useState(0);
-  const [totalAssets, setTotalAssets]         = useState(0);
+  const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [stats, setStats] = useState({
+    pendingCount: 0,
+    approvedCount: 0,
+    rejectedCount: 0,
+    unreadNotifs: 0,
+  });
 
-  const firstName = profile?.full_name?.split(" ")[0] || "Staff Member";
-  const department = profile?.department || null;
+  const firstName = profile?.full_name?.split(" ")[0] ?? "there";
 
-  useEffect(() => {
-    ["aatu-fonts", "aatu-icons"].forEach((id, i) => {
-      if (!document.getElementById(id)) {
-        const el = document.createElement("link");
-        el.id  = id;
-        el.rel = "stylesheet";
-        el.href = i === 0
-          ? "https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-          : "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200";
-        document.head.appendChild(el);
-      }
-    });
-  }, []);
-
-  // ── Fetch — requests for this staff member's department, plus their own ────
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboard = useCallback(async () => {
     if (!user?.id) return;
     setLoading(true);
     try {
-      // Requests query — scoped by department if known, otherwise falls back
-      // to just this staff member's own submitted requests. RLS on the
-      // `requests` table should already enforce the same boundary server-side.
-      let query = supabase
-        .from("requests")
-        .select("id, title, category, priority, status, location, department, created_by, created_at")
-        .order("created_at", { ascending: false });
+      const [{ data: pending }, { count: approvedCount }, { count: rejectedCount }, { count: unreadNotifs }] = await Promise.all([
+        supabase
+          .from("requests")
+          .select(`
+            id, title, category, priority, location, created_at,
+            requester:profiles!requests_created_by_fkey ( full_name, role )
+          `)
+          .eq("monitor_id", user.id)
+          .eq("status", "Pending Monitor Approval")
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase.from("requests").select("id", { count: "exact", head: true }).eq("monitor_id", user.id).not("status", "eq", "Pending Monitor Approval").not("status", "eq", "Rejected by Monitor"),
+        supabase.from("requests").select("id", { count: "exact", head: true }).eq("monitor_id", user.id).eq("status", "Rejected by Monitor"),
+        supabase.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("read", false),
+      ]);
 
-      query = department
-        ? query.or(`department.eq.${department},created_by.eq.${user.id}`)
-        : query.eq("created_by", user.id);
+      setPendingApprovals((pending ?? []).map((r) => ({
+        id: r.id,
+        title: r.title,
+        category: r.category,
+        priority: r.priority,
+        location: r.location,
+        requesterName: r.requester?.full_name ?? "Unknown",
+        requesterRole: r.requester?.role === "hod" ? "HOD" : r.requester?.role === "dean" ? "Dean" : r.requester?.role,
+      })));
 
-      const { data: reqData, error: reqError } = await query;
-      if (reqError) throw reqError;
-      setRequests(reqData ?? []);
-
-      // Department count — total distinct departments in the org, if you
-      // track a separate departments table; otherwise this stays 0 safely.
-      const { count: deptCount, error: deptError } = await supabase
-        .from("departments")
-        .select("*", { count: "exact", head: true });
-      if (!deptError) setDepartmentCount(deptCount ?? 0);
-
-      // Total assets — scoped to this staff member's department if available.
-      let assetQuery = supabase.from("assets").select("*", { count: "exact", head: true });
-      if (department) assetQuery = assetQuery.eq("department", department);
-      const { count: assetCount, error: assetError } = await assetQuery;
-      if (!assetError) setTotalAssets(assetCount ?? 0);
+      setStats({
+        pendingCount: pending?.length ?? 0,
+        approvedCount: approvedCount ?? 0,
+        rejectedCount: rejectedCount ?? 0,
+        unreadNotifs: unreadNotifs ?? 0,
+      });
     } catch (err) {
       console.error("Staff dashboard fetch error:", err);
-      setRequests([]);
     } finally {
       setLoading(false);
     }
-  }, [user?.id, department]);
+  }, [user?.id]);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  // ── Realtime — refetch when requests in this department change ─────────────
   useEffect(() => {
     if (!user?.id) return;
     const channel = supabase
-      .channel("staff-dashboard-requests")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "requests" },
-        () => fetchDashboardData()
-      )
+      .channel("staff-dashboard-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "requests", filter: `monitor_id=eq.${user.id}` }, () => fetchDashboard())
       .subscribe();
-
     return () => supabase.removeChannel(channel);
-  }, [user?.id, fetchDashboardData]);
+  }, [user?.id, fetchDashboard]);
 
-  // ── Live-derived stats — no hardcoded numbers ──────────────────────────────
-  const totalRequests = requests.length;
-  const emergencyCount = requests.filter((r) => r.priority === "Emergency").length;
-  const inProgressCount = requests.filter((r) => r.status === "In Progress").length;
-  const pendingCount = requests.filter((r) => r.status === "Pending").length;
-  const completedCount = requests.filter((r) => r.status === "Completed").length;
-
-  const monthlyData = useMemo(() => buildMonthlyData(requests), [requests]);
-
-  const statCards = [
-    {
-      label: "Total Requests", value: totalRequests, icon: "analytics",
-      trend: totalRequests === 0 ? "No requests yet" : "Across your department",
-      trendColor: C.onSurfaceVariant,
-      iconBg: C.surfaceContainerHigh, iconColor: C.primary,
-      borderLeft: "none",
-    },
-    {
-      label: "Emergency", value: emergencyCount, icon: "emergency",
-      trend: emergencyCount > 0 ? "Critical attention needed" : "No active emergencies",
-      trendColor: emergencyCount > 0 ? C.error : C.onSurfaceVariant,
-      iconBg: C.errorContainer, iconColor: C.error,
-      borderLeft: emergencyCount > 0 ? `4px solid ${C.error}` : "none",
-      labelColor: emergencyCount > 0 ? C.error : undefined,
-      valueColor: emergencyCount > 0 ? C.error : undefined,
-    },
-    {
-      label: "In Progress", value: inProgressCount, icon: "sync",
-      trend: "Live count", trendColor: C.onSurfaceVariant,
-      iconBg: C.surfaceContainerHigh, iconColor: C.primary,
-      borderLeft: "none",
-    },
-    {
-      label: "Total Assets", value: totalAssets, icon: "category",
-      trend: department ? department : "Main Campus Hub",
-      trendColor: C.onSurfaceVariant,
-      iconBg: C.surfaceContainerHigh, iconColor: C.primary,
-      borderLeft: "none",
-    },
-  ];
-
-  const secondaryStats = [
-    {
-      label: "Pending Review", value: pendingCount,
-      badge: pendingCount === 0 ? "Clear" : `${pendingCount} waiting`,
-      badgeBg: pendingCount === 0 ? C.surfaceContainerLow : C.errorContainer,
-      badgeText: pendingCount === 0 ? C.onSurfaceVariant : C.onErrorContainer,
-    },
-    {
-      label: "Completed", value: completedCount,
-      badge: completedCount > 0 ? "Resolved" : "None yet",
-      badgeBg: C.secondaryContainer, badgeText: C.onSecondaryContainer,
-    },
-    {
-      label: "Departments", value: departmentCount,
-      badge: "Active", badgeBg: C.surfaceContainerLow, badgeText: C.onSurfaceVariant,
-    },
-  ];
+  async function handleRefresh() {
+    setRefreshing(true);
+    await fetchDashboard();
+    setRefreshing(false);
+  }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: C.surface, fontFamily: SANS }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: C.surface, fontFamily: SANS, color: C.onSurface }}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
-      <main style={{
-        marginLeft: isMobile ? 0 : 260, flex: 1, display: "flex", flexDirection: "column",
-        paddingBottom: isMobile ? 60 : 0, minWidth: 0,
-      }}>
-        <TopBar
-          onMenuClick={() => setDrawerOpen(true)}
-          search={search}
-          setSearch={setSearch}
-          onReportIssue={() => navigate("/staff/requests")}
-          onSettings={() => navigate("/staff/profile")}
-        />
+      <main style={{ marginLeft: isMobile ? 0 : 260, flex: 1, display: "flex", flexDirection: "column", paddingBottom: isMobile ? 64 : 0, minWidth: 0 }}>
+        <TopBar isMobile={isMobile} onMenu={() => setDrawerOpen(true)} onRefresh={handleRefresh} refreshing={refreshing} />
 
-        <div style={{
-          flex: 1, padding: isMobile ? "20px 16px 40px" : "32px 32px 48px",
-          maxWidth: 1600, width: "100%", margin: "0 auto", boxSizing: "border-box",
-          display: "flex", flexDirection: "column", gap: isMobile ? 20 : 28,
-        }}>
+        <div style={{ flex: 1, padding: isMobile ? "20px 16px 40px" : "32px", maxWidth: 1200, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
 
-          {/* Welcome Banner */}
-          <WelcomeBanner
-            requests={requests}
-            isMobile={isMobile}
-            firstName={firstName}
-            onViewRequests={() => navigate("/staff/requests")}
-            onFileRequest={() => navigate("/staff/requests")}
-          />
-
-          {/* Primary Stat Cards */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)",
-            gap: isMobile ? 12 : 20,
-          }}>
-            {statCards.map((c, i) => <StatCard key={i} card={c} loading={loading} />)}
+          <div style={{ marginBottom: 28 }}>
+            <h2 style={{ margin: "0 0 4px", fontSize: isMobile ? 22 : 28, fontWeight: 700 }}>{getGreeting()}, {firstName}</h2>
+            <p style={{ margin: 0, fontSize: 14, color: C.onSurfaceVariant }}>Here's what needs your attention as a monitor today.</p>
           </div>
 
-          {/* Secondary Stats + Bar Chart */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "1fr 2fr",
-            gap: isMobile ? 16 : 20,
-          }}>
-            {/* Secondary stats column */}
-            <div style={{
-              display: isMobile ? "grid" : "flex",
-              gridTemplateColumns: isMobile ? "1fr 1fr 1fr" : undefined,
-              flexDirection: isMobile ? undefined : "column",
-              gap: isMobile ? 10 : 16,
-            }}>
-              {secondaryStats.map((s, i) => (
-                <div key={i} style={{
-                  background: 'var(--color-surface-container-lowest)', border: `1px solid ${C.outlineVariant}`,
-                  borderRadius: 10, padding: isMobile ? "14px 12px" : "20px 22px",
-                  display: "flex", alignItems: isMobile ? "flex-start" : "center",
-                  justifyContent: "space-between", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 8 : 0,
-                }}>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 10, color: C.onSurfaceVariant, fontFamily: MONO, letterSpacing: "0.1em", textTransform: "uppercase", opacity: 0.7 }}>
-                      {s.label}
-                    </p>
-                    <h3 style={{ margin: "4px 0 0", fontSize: isMobile ? 18 : 22, fontWeight: 700, color: C.onSurface }}>{s.value}</h3>
-                  </div>
-                  <div style={{
-                    padding: "4px 10px", background: s.badgeBg, color: s.badgeText,
-                    borderRadius: 6, fontSize: 10, fontFamily: MONO, fontWeight: 700, whiteSpace: "nowrap",
-                  }}>{s.badge}</div>
-                </div>
-              ))}
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? 12 : 20, marginBottom: 32 }}>
+            <StatCard
+              icon="fact_check" iconBg={C.tertiaryFixed} iconColor={C.onTertiaryFixedVariant}
+              label="Awaiting Your Review" value={stats.pendingCount} loading={loading}
+              onClick={() => navigate("/staff/monitor-approvals")}
+            />
+            <StatCard
+              icon="check_circle" iconBg="#DCFCE7" iconColor="#166534"
+              label="Approved (Total)" value={stats.approvedCount} loading={loading}
+              onClick={() => navigate("/staff/monitored-requests")}
+            />
+            <StatCard
+              icon="cancel" iconBg={C.errorContainer} iconColor={C.error}
+              label="Rejected (Total)" value={stats.rejectedCount} loading={loading}
+              onClick={() => navigate("/staff/monitored-requests")}
+            />
+            <StatCard
+              icon="notifications" iconBg={C.secondaryContainer} iconColor={C.secondary}
+              label="Unread Notifications" value={stats.unreadNotifs} loading={loading}
+              onClick={() => navigate("/staff/notifications")}
+            />
+          </div>
+
+          <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden", marginBottom: 24 }}>
+            <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.outlineVariant}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Pending Your Review</h3>
+              <button onClick={() => navigate("/staff/monitor-approvals")} style={{ background: "none", border: "none", cursor: "pointer", color: C.primaryContainer, fontSize: 12, fontFamily: MONO, fontWeight: 700 }}>
+                View All →
+              </button>
             </div>
 
-            {/* Bar chart */}
-            <MiniBarChart monthlyData={monthlyData} />
+            {loading ? (
+              <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+                {[1, 2, 3].map((i) => <div key={i} style={{ height: 60, background: C.surfaceContainerLow, borderRadius: 8 }} />)}
+              </div>
+            ) : pendingApprovals.length === 0 ? (
+              <div style={{ padding: "40px 20px", textAlign: "center" }}>
+                <Icon name="fact_check" size={36} style={{ color: C.outlineVariant, display: "block", margin: "0 auto 10px" }} />
+                <p style={{ margin: 0, fontSize: 13, color: C.onSurfaceVariant }}>No requests waiting on your review.</p>
+              </div>
+            ) : (
+              <div>
+                {pendingApprovals.map((r) => (
+                  <div key={r.id} onClick={() => navigate("/staff/monitor-approvals")} style={{ padding: "14px 20px", borderBottom: `1px solid ${C.outlineVariant}`, display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: C.surfaceContainerHigh, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <Icon name={CATEGORY_ICONS[r.category] || "build"} size={19} style={{ color: C.primaryContainer }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: C.onSurfaceVariant }}>{r.requesterName} ({r.requesterRole}) · {r.location}</p>
+                    </div>
+                    <Icon name="chevron_right" size={18} style={{ color: C.onSurfaceVariant, flexShrink: 0 }} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Recent Requests Table */}
-          <RecentRequests
-            requests={requests}
-            search={search}
-            loading={loading}
-            onViewAll={() => navigate("/staff/requests")}
-            onRowClick={() => navigate("/staff/requests")}
-          />
-
+          <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, padding: 20 }}>
+            <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700 }}>Quick Links</h3>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 10 }}>
+              {[
+                { icon: "fact_check", label: "Monitor Approvals", path: "/staff/monitor-approvals" },
+                { icon: "history",    label: "Request History",   path: "/staff/monitored-requests" },
+                { icon: "list_alt",   label: "Maintenance Requests", path: "/staff/maintenance-requests" },
+                { icon: "domain",     label: "Departmental History", path: "/staff/departmental-history" },
+              ].map((a) => (
+                <button key={a.label} onClick={() => navigate(a.path)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`, borderRadius: 8, cursor: "pointer", color: C.onSurface, fontSize: 13, fontFamily: SANS, textAlign: "left" }}>
+                  <Icon name={a.icon} size={18} style={{ color: C.primaryContainer }} />
+                  {a.label}
+                  <Icon name="chevron_right" size={16} style={{ color: C.onSurfaceVariant, marginLeft: "auto" }} />
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </main>
 

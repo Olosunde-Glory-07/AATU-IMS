@@ -8,6 +8,8 @@ const navItems = [
   { to: '/staff/requests',      label: 'Maintenance Requests', icon: ClipboardList },
   { to: '/staff/history',       label: 'Dept. History',        icon: History },
   { to: '/staff/notifications', label: 'Notifications',        icon: Bell },
+  { to: '/staff/monitor-approvals',       label: 'Monitor Approvals',   icon: LayoutDashboard },
+  { to: '/staff/monitored-requests', label: 'Request History', icon: History },
 ]
 
 export default function StaffLayout() {

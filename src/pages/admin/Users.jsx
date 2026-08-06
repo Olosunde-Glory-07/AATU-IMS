@@ -22,18 +22,22 @@ const AVATAR_COLORS = [
   { bg: 'bg-[#e7eefe] dark:bg-[#232b45]', text: 'text-[#210000] dark:text-[#e7eefe]' },
 ]
 
+// Role badge styling — student removed, hod/dean added
 const ROLE_BADGE = {
   admin:      'bg-[#ffdad5]/30 text-[#4a0404] border border-[#ffb4aa]/40 dark:bg-[#5c2a26]/40 dark:text-[#ffdad5] dark:border-[#7e2b23]',
   staff:      'bg-[#b8ecbe]/30 text-[#1a3d25] border border-[#b8ecbe]/60 dark:bg-[#264d30]/40 dark:text-[#b8ecbe] dark:border-[#396844]',
   technician: 'bg-[#b8ecbe]/20 text-[#396844] border border-[#b8ecbe]/50 dark:bg-[#264d30]/30 dark:text-[#a0d3a6] dark:border-[#396844]',
-  student:    'bg-[#ffdcc3]/20 text-[#6e3900] border border-[#ffdcc3]/40 dark:bg-[#5c3a1a]/30 dark:text-[#ffdcc3] dark:border-[#6e3900]',
+  hod:        'bg-[#dce2f3]/40 text-[#1a3a5c] border border-[#dce2f3]/70 dark:bg-[#2a3550]/40 dark:text-[#dce2f3] dark:border-[#2a3550]',
+  dean:       'bg-[#e7eefe]/40 text-[#210000] border border-[#e7eefe]/70 dark:bg-[#232b45]/40 dark:text-[#e7eefe] dark:border-[#232b45]',
 }
 
+// Role sections shown in the directory — student removed, hod/dean added
 const ROLE_SECTIONS = [
   { key: 'admin',      label: 'Administrators', icon: 'admin_panel_settings' },
-  { key: 'technician', label: 'Technicians',    icon: 'engineering'          },
+  { key: 'hod',        label: 'HODs',           icon: 'supervisor_account'   },
+  { key: 'dean',       label: 'Deans',          icon: 'school'               },
+  { key: 'technician', label: 'Technicians',    icon: 'engineering'         },
   { key: 'staff',      label: 'Staff',          icon: 'badge'                },
-  { key: 'student',    label: 'Students',       icon: 'school'               },
 ]
 
 const ITEMS_PER_PAGE = 10
@@ -193,7 +197,7 @@ export default function Users() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, role, department, specialty, status, created_at, matric_number')
+        .select('id, full_name, role, department, specialty, status, created_at')
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -202,10 +206,9 @@ export default function Users() {
         id:         u.id,
         name:       u.full_name ?? 'Unknown',
         email:      '',
-        role:       u.role ?? 'student',
+        role:       u.role ?? 'staff',
         dept:       u.department ?? u.specialty ?? '—',
         status:     u.status ?? 'Active',
-        matric:     u.matric_number ?? '',
         joined:     u.created_at
           ? new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
           : '—',
@@ -220,6 +223,7 @@ export default function Users() {
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
 
+  // ── Create user via Edge Function ─────────────────────────────────────────
   async function handleSubmit(e) {
     e.preventDefault()
     setFormError('')
@@ -271,6 +275,7 @@ export default function Users() {
     }
   }
 
+  // ── Toggle status ─────────────────────────────────────────────────────────
   async function toggleStatus(id) {
     const user = users.find(u => u.id === id)
     if (!user) return
@@ -295,6 +300,7 @@ export default function Users() {
     }
   }
 
+  // ── Delete user via Edge Function ─────────────────────────────────────────
   function requestDelete(u) {
     if (!canManage(u)) {
       showToast('You cannot delete another admin. Admins may only delete their own account.')
@@ -348,6 +354,7 @@ export default function Users() {
     }
   }
 
+  // ── Save edit ─────────────────────────────────────────────────────────────
   async function saveEdit(e) {
     e.preventDefault()
     if (!editing) return
@@ -371,6 +378,7 @@ export default function Users() {
     }
   }
 
+  // ── Filtered list ─────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return users.filter(u =>
@@ -404,9 +412,9 @@ export default function Users() {
   }
 
   const stats = [
-    { icon: 'group',       iconBg: 'bg-[#ffdad5]/20 dark:bg-[#5c2a26]/40', iconColor: 'text-primary-container', label: 'Total Users',       value: users.length },
-    { icon: 'engineering', iconBg: 'bg-[#b8ecbe]/30 dark:bg-[#264d30]/40', iconColor: 'text-[#396844] dark:text-[#a0d3a6]', label: 'Technicians',       value: users.filter(u => u.role === 'technician').length },
-    { icon: 'school',      iconBg: 'bg-[#ffdcc3]/30 dark:bg-[#5c3a1a]/40', iconColor: 'text-[#6e3900] dark:text-[#ffdcc3]', label: 'Students',          value: users.filter(u => u.role === 'student').length },
+    { icon: 'group',       iconBg: 'bg-[#ffdad5]/20 dark:bg-[#5c2a26]/40', iconColor: 'text-primary-container', label: 'Total Users',    value: users.length },
+    { icon: 'supervisor_account', iconBg: 'bg-[#dce2f3]/30 dark:bg-[#2a3550]/40', iconColor: 'text-[#1a3a5c] dark:text-[#dce2f3]', label: 'HODs & Deans', value: users.filter(u => u.role === 'hod' || u.role === 'dean').length },
+    { icon: 'engineering', iconBg: 'bg-[#b8ecbe]/30 dark:bg-[#264d30]/40', iconColor: 'text-[#396844] dark:text-[#a0d3a6]', label: 'Technicians', value: users.filter(u => u.role === 'technician').length },
     { icon: 'warning',     iconBg: 'bg-error-container/30', iconColor: 'text-error', label: 'Inactive Accounts', value: users.filter(u => u.status === 'Inactive').length },
   ]
 
@@ -440,7 +448,7 @@ export default function Users() {
                 onChange={e => { setRole(e.target.value); setPage(1) }}
                 className="px-3 py-2 border border-outline-variant text-sm rounded-lg focus:outline-none bg-surface-container-lowest text-on-surface cursor-pointer"
               >
-                {['All', 'admin', 'staff', 'technician', 'student'].map(r => (
+                {['All', 'admin', 'hod', 'dean', 'staff', 'technician'].map(r => (
                   <option key={r} value={r}>{r === 'All' ? 'All Roles' : r.charAt(0).toUpperCase() + r.slice(1)}</option>
                 ))}
               </select>
@@ -459,7 +467,7 @@ export default function Users() {
 
           <div>
             <h2 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-on-surface`}>User Management</h2>
-            <p className="text-on-surface-variant mt-1 text-sm">Directory of university administrative and maintenance personnel.</p>
+            <p className="text-on-surface-variant mt-1 text-sm">Directory of HODs, Deans, staff, and technicians on the platform.</p>
           </div>
 
           <div className={`grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-4 gap-6'}`}>
@@ -600,7 +608,7 @@ export default function Users() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-white font-bold text-lg">Create User Account</h3>
-                  <p className="text-white/60 text-xs font-mono mt-0.5">For staff and technician accounts only</p>
+                  <p className="text-white/60 text-xs font-mono mt-0.5">For staff, technician, HOD, or Dean accounts</p>
                 </div>
                 <button onClick={() => setShowNew(false)} className="text-white/70 hover:text-white p-1">
                   <X size={20} />
@@ -649,9 +657,10 @@ export default function Users() {
                 >
                   <option value="staff">Staff</option>
                   <option value="technician">Technician</option>
+                  <option value="hod">HOD</option>
+                  <option value="dean">Dean</option>
                   <option value="admin">Admin</option>
                 </select>
-                <p className="text-[11px] text-on-surface-variant/60 mt-1">Students must self-register via the student portal.</p>
               </div>
 
               <div>
@@ -695,7 +704,7 @@ export default function Users() {
               <div className="flex gap-2 p-3 bg-surface-container-low border border-outline-variant rounded-lg">
                 <span className="material-symbols-outlined text-on-surface-variant text-[16px] flex-shrink-0 mt-0.5">info</span>
                 <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                  When the user logs in for the first time, AATU IMS will send a <strong>6-digit OTP</strong> to their email to confirm it. After verification they will be required to <strong>change their password</strong> before accessing the app.
+                  When the user logs in for the first time, Supabase will send a <strong>6-digit OTP</strong> to their email to confirm it. After verification they will be required to <strong>change their password</strong> before accessing the app.
                 </p>
               </div>
 
@@ -748,9 +757,10 @@ export default function Users() {
                 <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Role</label>
                 <select className={`${inp} cursor-pointer`} value={editing.role} onChange={e => setEditing(s => ({ ...s, role: e.target.value }))}>
                   <option value="admin">Admin</option>
+                  <option value="hod">HOD</option>
+                  <option value="dean">Dean</option>
                   <option value="staff">Staff</option>
                   <option value="technician">Technician</option>
-                  <option value="student">Student</option>
                 </select>
               </div>
               <div>

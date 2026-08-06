@@ -7,7 +7,6 @@ import ChangePassword from '../pages/auth/ChangePassword'
 
 // Auth pages
 import Login from '../pages/auth/Login'
-import Register from '../pages/auth/Register'
 import ForgotPassword from '../pages/auth/ForgotPassword'
 import ResetPassword from '../pages/auth/ResetPassword'
 import Callback from '../pages/auth/Callback'
@@ -16,7 +15,7 @@ import Callback from '../pages/auth/Callback'
 import AdminLayout from '../layouts/AdminLayout'
 import StaffLayout from '../layouts/StaffLayout'
 import TechnicianLayout from '../layouts/TechnicianLayout'
-import StudentLayout from '../layouts/StudentLayout'
+import RequesterLayout from '../layouts/RequesterLayout'
 
 // Admin pages
 import AdminDashboard from '../pages/admin/Dashboard'
@@ -31,6 +30,8 @@ import AdminNotifications from '../pages/admin/Notifications'
 // Staff pages
 import StaffDashboard from '../pages/staff/Dashboard'
 import StaffMaintenanceRequests from '../pages/staff/MaintenanceRequests'
+import StaffMonitorApprovals from '../pages/staff/MonitorApprovals'
+import MonitoredRequests from '../pages/staff/MonitoredRequests'
 import StaffDepartmentalHistory from '../pages/staff/DepartmentalHistory'
 import StaffNotifications from '../pages/staff/Notifications'
 
@@ -39,11 +40,11 @@ import TechnicianDashboard from '../pages/technician/Dashboard'
 import TechnicianMyJobs from '../pages/technician/MyJobs'
 import TechnicianNotifications from '../pages/technician/Notifications'
 
-// Student pages
-import StudentDashboard from '../pages/student/Dashboard'
-import StudentMyRequests from '../pages/student/MyRequests'
-import StudentMyHistory from '../pages/student/MyHistory'
-import StudentNotifications from '../pages/student/Notifications'
+// Requester (HOD / Dean) pages — replaces the old student portal
+import RequesterDashboard from '../pages/requester/Dashboard'
+import RequesterMyRequests from '../pages/requester/MyRequests'
+import RequesterMyHistory from '../pages/requester/MyHistory'
+import RequesterNotifications from '../pages/requester/Notifications'
 
 // Guards
 import ProtectedRoute from './ProtectedRoute'
@@ -70,7 +71,8 @@ export default function AppRoutes() {
       admin: '/admin/dashboard',
       staff: '/staff/dashboard',
       technician: '/technician/dashboard',
-      student: '/student/dashboard',
+      hod: '/requester/dashboard',
+      dean: '/requester/dashboard',
     }
 
     return map[role] || '/login'
@@ -92,9 +94,8 @@ export default function AppRoutes() {
       {/* Change Password route */}
       <Route path="/auth/change-password" element={<ChangePassword />} />
 
-      {/* Auth routes */}
+      {/* Auth routes — no more /register: every account is admin-created now */}
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/callback" element={<Callback />} />
@@ -121,6 +122,8 @@ export default function AppRoutes() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<StaffDashboard />} />
           <Route path="requests" element={<StaffMaintenanceRequests />} />
+          <Route path="monitor-approvals" element={<StaffMonitorApprovals />} />
+          <Route path="monitored-requests" element={<MonitoredRequests />} />
           <Route path="history" element={<StaffDepartmentalHistory />} />
           <Route path="notifications" element={<StaffNotifications />} />
           <Route path="profile" element={<Profile role="staff" />} />
@@ -138,15 +141,15 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      {/* Student routes */}
-      <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-        <Route path="/student" element={<StudentLayout />}>
+      {/* Requester routes (HOD / Dean) — replaces the old /student/* routes */}
+      <Route element={<ProtectedRoute allowedRoles={['hod', 'dean']} />}>
+        <Route path="/requester" element={<RequesterLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<StudentDashboard />} />
-          <Route path="my-requests" element={<StudentMyRequests />} />
-          <Route path="my-history" element={<StudentMyHistory />} />
-          <Route path="notifications" element={<StudentNotifications />} />
-          <Route path="profile" element={<Profile role="student" />} />
+          <Route path="dashboard" element={<RequesterDashboard />} />
+          <Route path="my-requests" element={<RequesterMyRequests />} />
+          <Route path="my-history" element={<RequesterMyHistory />} />
+          <Route path="notifications" element={<RequesterNotifications />} />
+          <Route path="profile" element={<Profile role="requester" />} />
         </Route>
       </Route>
 
