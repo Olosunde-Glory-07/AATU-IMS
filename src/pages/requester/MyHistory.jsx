@@ -4,27 +4,32 @@ import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
+// These pull from the CSS variables defined in index.css, so they flip
+// automatically with the `dark` class on <html>.
 const C = {
-  primary:                "#210000",
-  primaryContainer:       "#4a0404",
-  primaryFixedDim:        "#ffb4aa",
-  secondary:              "#396844",
-  secondaryContainer:     "#b8ecbe",
-  onSecondaryContainer:   "#3e6d47",
-  errorContainer:         "#ffdad6",
-  onErrorContainer:       "#93000a",
-  error:                  "#ba1a1a",
-  surface:                "#f9f9ff",
-  surfaceContainer:       "#e7eefe",
-  surfaceContainerLow:    "#f0f3ff",
-  surfaceContainerHigh:   "#e2e8f8",
-  surfaceContainerHighest:"#dce2f3",
-  onSurface:              "#151c27",
-  onSurfaceVariant:       "#554240",
-  outlineVariant:         "#dcc0bd",
-  outline:                "#89726f",
+  primary:                "var(--color-primary)",
+  primaryContainer:       "var(--color-primary-container)",
+  primaryFixedDim:        "var(--color-primary-fixed-dim)",
+  secondary:              "var(--color-secondary)",
+  secondaryContainer:     "var(--color-secondary-container)",
+  onSecondaryContainer:   "var(--color-on-secondary-container)",
+  errorContainer:         "var(--color-error-container)",
+  onErrorContainer:       "var(--color-on-error-container)",
+  error:                  "var(--color-error)",
+  surface:                "var(--color-background)",
+  surfaceContainer:       "var(--color-surface-container)",
+  surfaceContainerLow:    "var(--color-surface-container-low)",
+  surfaceContainerHigh:   "var(--color-surface-container-high)",
+  surfaceContainerHighest:"var(--color-surface-container-highest)",
+  onSurface:              "var(--color-on-surface)",
+  onSurfaceVariant:       "var(--color-on-surface-variant)",
+  outlineVariant:         "var(--color-outline-variant)",
+  outline:                "var(--color-outline)",
   white:                  "#ffffff",
 };
+// Cards/panels/timeline items should use this instead of C.white so they
+// flip to a dark surface in dark mode.
+const CARD = "var(--color-surface-container-lowest)";
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
@@ -84,7 +89,7 @@ function TopBar({ search, setSearch, isMobile, onNavigate, firstName }) {
     <header style={{
       height: 64, display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "0 16px 0 20px", position: "sticky", top: 0, zIndex: 40,
-      background: "rgba(249,249,255,0.94)", backdropFilter: "blur(12px)",
+      background: "color-mix(in srgb, var(--color-background) 94%, transparent)", backdropFilter: "blur(12px)",
       borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 10,
     }}>
       <div style={{ flex: 1, maxWidth: isMobile ? "100%" : 360, position: "relative" }}>
@@ -134,7 +139,7 @@ function FiltersPanel({ typeFilter, setTypeFilter, statusFilters, toggleStatus, 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Filters Card */}
-      <div style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
+      <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.surfaceContainerLow, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.onSurface }}>Filters</h3>
           <button onClick={onReset} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontFamily: MONO, color: C.primaryContainer, fontWeight: 700 }}>
@@ -225,7 +230,7 @@ function DetailDrawer({ item, onClose }) {
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.22)", zIndex: 100 }} />
       <div style={{
         position: "fixed", right: 0, top: 0, bottom: 0, width: "min(420px, 100vw)",
-        background: C.white, zIndex: 101, boxShadow: "-6px 0 32px rgba(0,0,0,0.12)",
+        background: CARD, zIndex: 101, boxShadow: "-6px 0 32px rgba(0,0,0,0.12)",
         display: "flex", flexDirection: "column", fontFamily: SANS, overflowY: "auto",
       }}>
         {/* Header */}
@@ -348,7 +353,7 @@ function TimelineItem({ item, onSelect }) {
         width: 20, height: 20, borderRadius: "50%",
         background: cfg.dot,
         border: `3px solid ${C.surface}`,
-        boxShadow: `0 0 0 2px ${cfg.dot}40`,
+        boxShadow: `0 0 0 2px color-mix(in srgb, ${cfg.dot} 25%, transparent)`,
         zIndex: 1,
         transform: hov ? "scale(1.2)" : "scale(1)",
         transition: "transform 0.18s",
@@ -359,8 +364,8 @@ function TimelineItem({ item, onSelect }) {
 
       {/* Card */}
       <div style={{
-        background: C.white, borderRadius: 14, padding: "18px 20px",
-        border: `1px solid ${hov ? C.outlineVariant : C.outlineVariant}`,
+        background: CARD, borderRadius: 14, padding: "18px 20px",
+        border: `1px solid ${C.outlineVariant}`,
         boxShadow: hov ? "0 6px 18px rgba(0,0,0,0.09)" : "0 1px 4px rgba(0,0,0,0.04)",
         transform: hov ? "translateY(-2px)" : "none",
         transition: "box-shadow 0.18s, transform 0.15s",
@@ -554,7 +559,7 @@ export default function RequesterMyHistory() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, flexShrink: 0 }}>
               {STAT_CARDS.map((s) => (
-                <div key={s.label} style={{ background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                <div key={s.label} style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 36, height: 36, borderRadius: "50%", background: s.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <Icon name={s.icon} size={18} filled style={{ color: s.iconColor }} />
                   </div>
@@ -571,7 +576,7 @@ export default function RequesterMyHistory() {
 
           {/* ── Mobile filter toggle ───────────────────────── */}
           {isMobile && (
-            <button onClick={() => setShowFilters((p) => !p)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 8, cursor: "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.onSurface, marginBottom: 16 }}>
+            <button onClick={() => setShowFilters((p) => !p)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 8, cursor: "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.onSurface, marginBottom: 16 }}>
               <Icon name="filter_list" size={18} />
               {showFilters ? "Hide Filters" : "Show Filters"}
             </button>
@@ -582,7 +587,7 @@ export default function RequesterMyHistory() {
 
             {/* ── Filters Panel ─────────────────────────── */}
             {(!isMobile || showFilters) && (
-              <div style={{ position: isMobile ? "static" : "sticky", top: 88 }}>
+              <div style={{ position: isMobile ? "static" : "sticky", top: 88, paddingBottom: isMobile ? 76 : 0 }}>
                 <FiltersPanel
                   typeFilter={typeFilter} setTypeFilter={setTypeFilter}
                   statusFilters={statusFilters} toggleStatus={toggleStatus}
@@ -604,11 +609,11 @@ export default function RequesterMyHistory() {
               {loading ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {[1, 2, 3].map((i) => (
-                    <div key={i} style={{ height: 120, background: C.white, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, animation: "pulse 1.5s ease-in-out infinite", marginLeft: isMobile ? 0 : 48 }} />
+                    <div key={i} style={{ height: 120, background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, animation: "pulse 1.5s ease-in-out infinite", marginLeft: isMobile ? 0 : 48 }} />
                   ))}
                 </div>
               ) : Object.keys(grouped).length === 0 ? (
-                <div style={{ padding: "56px 24px", textAlign: "center", background: C.white, borderRadius: 14, border: `1px solid ${C.outlineVariant}`, marginLeft: isMobile ? 0 : 48 }}>
+                <div style={{ padding: "56px 24px", textAlign: "center", background: CARD, borderRadius: 14, border: `1px solid ${C.outlineVariant}`, marginLeft: isMobile ? 0 : 48 }}>
                   <Icon name="history_toggle_off" size={48} style={{ color: C.outlineVariant, display: "block", margin: "0 auto 12px" }} />
                   <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.onSurface }}>
                     {history.length === 0 ? "No history yet" : "No results match your filters"}
@@ -629,7 +634,7 @@ export default function RequesterMyHistory() {
                   {Object.entries(grouped).map(([month, items]) => (
                     <div key={month} style={{ marginBottom: 28 }}>
                       {/* Month label */}
-                      <div style={{ position: "sticky", top: 64, zIndex: 20, paddingBottom: 14, paddingLeft: isMobile ? 0 : 48, background: `${C.surface}e0`, backdropFilter: "blur(8px)" }}>
+                      <div style={{ position: "sticky", top: 64, zIndex: 20, paddingBottom: 14, paddingLeft: isMobile ? 0 : 48, background: "color-mix(in srgb, var(--color-background) 88%, transparent)", backdropFilter: "blur(8px)" }}>
                         <span style={{ display: "inline-block", background: C.primary, color: C.white, padding: "4px 14px", borderRadius: 99, fontSize: 10, fontFamily: MONO, letterSpacing: "0.12em", textTransform: "uppercase", fontWeight: 700 }}>
                           {month}
                         </span>
@@ -641,7 +646,7 @@ export default function RequesterMyHistory() {
                           isMobile ? (
                             // Mobile: no timeline offset
                             <div key={item.id} onClick={() => setSelected(item)} style={{ cursor: "pointer" }}>
-                              <div style={{ background: C.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${C.outlineVariant}` }}>
+                              <div style={{ background: CARD, borderRadius: 14, padding: "16px 18px", border: `1px solid ${C.outlineVariant}` }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginBottom: 8 }}>
                                   <div style={{ display: "flex", gap: 10, alignItems: "center", flex: 1, minWidth: 0 }}>
                                     <div style={{ width: 36, height: 36, borderRadius: 8, background: C.surfaceContainerHigh, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -673,13 +678,13 @@ export default function RequesterMyHistory() {
                     <div style={{ paddingLeft: isMobile ? 0 : 48, paddingTop: 8 }}>
                       <button onClick={() => setVisibleCount((p) => p + 6)} style={{
                         width: "100%", padding: "12px 0",
-                        background: C.white, border: `2px dashed ${C.outlineVariant}`,
+                        background: CARD, border: `2px dashed ${C.outlineVariant}`,
                         borderRadius: 12, cursor: "pointer",
                         fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.onSurfaceVariant,
                         transition: "background 0.15s",
                       }}
                         onMouseEnter={(e) => e.currentTarget.style.background = C.surfaceContainerLow}
-                        onMouseLeave={(e) => e.currentTarget.style.background = C.white}
+                        onMouseLeave={(e) => e.currentTarget.style.background = CARD}
                       >
                         Load more ({filtered.length - visibleCount} remaining)
                       </button>
@@ -691,6 +696,33 @@ export default function RequesterMyHistory() {
           </div>
         </main>
       </div>
+
+      {/* ── Mobile sticky bottom action bar — only while the filter panel is open ── */}
+      {isMobile && showFilters && (
+        <div style={{
+          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90,
+          display: "flex", gap: 10, padding: "12px 16px",
+          background: CARD, borderTop: `1px solid ${C.outlineVariant}`,
+          boxShadow: "0 -4px 16px rgba(0,0,0,0.08)",
+        }}>
+          <button onClick={resetFilters} style={{
+            flex: 1, padding: "12px 0", background: "none",
+            border: `1px solid ${C.outlineVariant}`, borderRadius: 10,
+            cursor: "pointer", fontSize: 13, fontFamily: MONO, fontWeight: 700, color: C.onSurface,
+          }}>
+            Reset
+          </button>
+          <button onClick={() => setShowFilters(false)} style={{
+            flex: 2, padding: "12px 0", background: C.primaryContainer, color: C.white,
+            border: "none", borderRadius: 10, cursor: "pointer",
+            fontSize: 13, fontFamily: MONO, fontWeight: 700,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          }}>
+            <Icon name="check" size={16} style={{ color: C.white }} />
+            Apply Filters
+          </button>
+        </div>
+      )}
 
       {/* Detail Drawer */}
       {selected && <DetailDrawer item={selected} onClose={() => setSelected(null)} />}
