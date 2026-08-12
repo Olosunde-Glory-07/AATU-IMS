@@ -29,7 +29,6 @@ import AdminNotifications from '../pages/admin/Notifications'
 
 // Staff pages
 import StaffDashboard from '../pages/staff/Dashboard'
-import StaffMaintenanceRequests from '../pages/staff/MaintenanceRequests'
 import StaffMonitorApprovals from '../pages/staff/MonitorApprovals'
 import MonitoredRequests from '../pages/staff/MonitoredRequests'
 import StaffDepartmentalHistory from '../pages/staff/DepartmentalHistory'
@@ -121,7 +120,6 @@ export default function AppRoutes() {
         <Route path="/staff" element={<StaffLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<StaffDashboard />} />
-          <Route path="requests" element={<StaffMaintenanceRequests />} />
           <Route path="monitor-approvals" element={<StaffMonitorApprovals />} />
           <Route path="monitored-requests" element={<MonitoredRequests />} />
           <Route path="history" element={<StaffDepartmentalHistory />} />

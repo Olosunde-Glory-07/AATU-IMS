@@ -27,13 +27,13 @@ const SIDEBAR_BG = "#4a0404";
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
+// ─── UNIFIED nav — identical across every staff page ─────────────────────────
 const NAV_ITEMS = [
-  { icon: "dashboard",     label: "Dashboard",  path: "/staff/dashboard"            },
-  { icon: "list_alt",      label: "Requests",   path: "/staff/maintenance-requests" },
-  { icon: "fact_check",    label: "Approvals",  path: "/staff/monitor-approvals"    },
-  { icon: "history",       label: "History",    path: "/staff/monitored-requests"   },
-  { icon: "domain",        label: "Dept.",      path: "/staff/departmental-history"  },
-  { icon: "notifications", label: "Alerts",     path: "/staff/notifications"        },
+  { icon: "dashboard",     label: "Dashboard",           shortLabel: "Home",    path: "/staff/dashboard"            },
+  { icon: "fact_check",    label: "Monitor Approvals",   shortLabel: "Approve", path: "/staff/monitor-approvals"    },
+  { icon: "history",       label: "Request History",     shortLabel: "History", path: "/staff/monitored-requests"   },
+  { icon: "domain",        label: "Dept. History & Log", shortLabel: "Dept.",   path: "/staff/departmental-history" },
+  { icon: "notifications", label: "Notifications",       shortLabel: "Alerts",  path: "/staff/notifications"        },
 ];
 
 const STATUS_CFG = {
@@ -143,11 +143,11 @@ function BottomNav() {
               alignItems: "center", justifyContent: "center", gap: 2,
               background: "none", border: "none", cursor: "pointer",
               color: isActive ? C.primaryContainer : C.onSurfaceVariant,
-              fontSize: 8, fontFamily: MONO, padding: "4px 2px", minWidth: 0,
+              fontSize: 9, fontFamily: MONO, padding: "4px 2px", minWidth: 0,
             }}
           >
-            <Icon name={item.icon} size={18} filled={isActive} style={{ color: isActive ? C.primaryContainer : C.onSurfaceVariant }} />
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{item.label}</span>
+            <Icon name={item.icon} size={20} filled={isActive} style={{ color: isActive ? C.primaryContainer : C.onSurfaceVariant }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{item.shortLabel}</span>
           </button>
         );
       })}
@@ -180,7 +180,6 @@ function TopBar({ isMobile, onMenu, search, setSearch }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function MonitoredRequests() {
   const navigate = useNavigate();
-  const location = useLocation();
   const isMobile = useIsMobile();
   const { user } = useAuth();
 

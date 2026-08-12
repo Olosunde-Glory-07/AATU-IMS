@@ -29,13 +29,15 @@ const SIDEBAR_BG = "#4a0404";
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
+// ─── UNIFIED nav — identical across every staff page ─────────────────────────
+// Maintenance Requests removed: staff can no longer submit requests under the
+// HOD/Dean → Monitor → Admin flow (blocked by RLS), so that page is gone.
 const NAV_ITEMS = [
-  { icon: "dashboard",     label: "Dashboard",           path: "/staff/dashboard"            },
-  { icon: "list_alt",      label: "Requests",            path: "/staff/maintenance-requests" },
-  { icon: "fact_check",    label: "Approvals",           path: "/staff/monitor-approvals"    },
-  { icon: "history",       label: "History",             path: "/staff/monitored-requests"   },
-  { icon: "domain",        label: "Dept.",                path: "/staff/departmental-history"  },
-  { icon: "notifications", label: "Alerts",               path: "/staff/notifications"        },
+  { icon: "dashboard",     label: "Dashboard",           shortLabel: "Home",    path: "/staff/dashboard"            },
+  { icon: "fact_check",    label: "Monitor Approvals",   shortLabel: "Approve", path: "/staff/monitor-approvals"    },
+  { icon: "history",       label: "Request History",     shortLabel: "History", path: "/staff/monitored-requests"   },
+  { icon: "domain",        label: "Dept. History & Log", shortLabel: "Dept.",   path: "/staff/departmental-history" },
+  { icon: "notifications", label: "Notifications",       shortLabel: "Alerts",  path: "/staff/notifications"        },
 ];
 
 const CATEGORY_ICONS = {
@@ -142,8 +144,7 @@ function Sidebar({ open, onClose }) {
   );
 }
 
-// ─── Bottom Nav — FIX: now shows all 6 items (was previously sliced to 5,
-// silently dropping "Notifications"), with tighter sizing so they all fit ──
+// ─── Bottom Nav — all 5 items, correctly using useLocation ───────────────────
 function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -161,12 +162,11 @@ function BottomNav() {
               alignItems: "center", justifyContent: "center", gap: 2,
               background: "none", border: "none", cursor: "pointer",
               color: isActive ? C.primaryContainer : C.onSurfaceVariant,
-              fontSize: 8, fontFamily: MONO, padding: "4px 2px",
-              minWidth: 0,
+              fontSize: 9, fontFamily: MONO, padding: "4px 2px", minWidth: 0,
             }}
           >
-            <Icon name={item.icon} size={18} filled={isActive} style={{ color: isActive ? C.primaryContainer : C.onSurfaceVariant }} />
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{item.label}</span>
+            <Icon name={item.icon} size={20} filled={isActive} style={{ color: isActive ? C.primaryContainer : C.onSurfaceVariant }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{item.shortLabel}</span>
           </button>
         );
       })}
@@ -372,10 +372,10 @@ export default function StaffDashboard() {
             <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700 }}>Quick Links</h3>
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 10 }}>
               {[
-                { icon: "fact_check", label: "Monitor Approvals", path: "/staff/monitor-approvals" },
-                { icon: "history",    label: "Request History",   path: "/staff/monitored-requests" },
-                { icon: "list_alt",   label: "Maintenance Requests", path: "/staff/maintenance-requests" },
-                { icon: "domain",     label: "Departmental History", path: "/staff/departmental-history" },
+                { icon: "fact_check", label: "Monitor Approvals",   path: "/staff/monitor-approvals"    },
+                { icon: "history",    label: "Request History",     path: "/staff/monitored-requests"   },
+                { icon: "domain",     label: "Dept. History & Log", path: "/staff/departmental-history" },
+                { icon: "notifications", label: "Notifications",    path: "/staff/notifications"        },
               ].map((a) => (
                 <button key={a.label} onClick={() => navigate(a.path)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: C.surfaceContainerLow, border: `1px solid ${C.outlineVariant}`, borderRadius: 8, cursor: "pointer", color: C.onSurface, fontSize: 13, fontFamily: SANS, textAlign: "left" }}>
                   <Icon name={a.icon} size={18} style={{ color: C.primaryContainer }} />

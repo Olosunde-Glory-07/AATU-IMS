@@ -25,13 +25,13 @@ const SIDEBAR_BG = "#4a0404";
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
+// ─── UNIFIED nav — identical across every staff page ─────────────────────────
 const NAV_ITEMS = [
-  { icon: "dashboard",     label: "Dashboard",           path: "/staff/dashboard" },
-  { icon: "list_alt",      label: "Requests",            path: "/staff/maintenance-requests" },
-  { icon: "fact_check",    label: "Monitor Approvals",   path: "/staff/monitor-approvals" },
-  { icon: "history",       label: "Request History",     path: "/staff/monitored-requests" },
-  { icon: "domain",        label: "Dept. History",       path: "/staff/departmental-history" },
-  { icon: "notifications", label: "Notifications",       path: "/staff/notifications" },
+  { icon: "dashboard",     label: "Dashboard",           shortLabel: "Home",    path: "/staff/dashboard"            },
+  { icon: "fact_check",    label: "Monitor Approvals",   shortLabel: "Approve", path: "/staff/monitor-approvals"    },
+  { icon: "history",       label: "Request History",     shortLabel: "History", path: "/staff/monitored-requests"   },
+  { icon: "domain",        label: "Dept. History & Log", shortLabel: "Dept.",   path: "/staff/departmental-history" },
+  { icon: "notifications", label: "Notifications",       shortLabel: "Alerts",  path: "/staff/notifications"        },
 ];
 
 const CATEGORY_ICONS = {
@@ -79,8 +79,11 @@ function PriorityBadge({ priority }) {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
+// FIX: previously referenced `location.pathname` without ever calling
+// useLocation() inside this component — threw a ReferenceError on render.
 function Sidebar({ open, onClose }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
 
   const content = (
@@ -88,7 +91,7 @@ function Sidebar({ open, onClose }) {
       <div style={{ padding: "24px 24px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.white }}>AATU</h1>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: MONO }}>Infrastructure Mgmt</p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: MONO }}>Staff Portal</p>
         </div>
         {isMobile && (
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.7)" }}>
@@ -106,7 +109,11 @@ function Sidebar({ open, onClose }) {
               color: isActive ? C.white : "rgba(255,255,255,0.7)", fontWeight: isActive ? 700 : 400,
               borderLeft: isActive ? "4px solid #ffb4aa" : "4px solid transparent",
               border: "none", cursor: "pointer", textAlign: "left", fontSize: 12, letterSpacing: "0.04em", fontFamily: MONO,
-            }}>
+              transition: "background 0.15s",
+            }}
+              onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+              onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+            >
               <Icon name={item.icon} size={20} filled={isActive} style={{ color: isActive ? C.white : "rgba(255,255,255,0.7)" }} />
               {item.label}
             </button>
@@ -134,16 +141,26 @@ function Sidebar({ open, onClose }) {
   );
 }
 
+// ─── Bottom Nav ───────────────────────────────────────────────────────────────
+// FIX: previously referenced `location.pathname` without calling useLocation()
+// inside this component — same bug as Sidebar. Also previously only showed 5
+// of 6 items via .slice(0, 5); now maps all 5 real items with useLocation fixed.
 function BottomNav() {
   const navigate = useNavigate();
+  const location = useLocation();
   return (
     <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90, background: CARD, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 60 }}>
-      {NAV_ITEMS.slice(0, 5).map((item) => {
+      {NAV_ITEMS.map((item) => {
         const isActive = location.pathname === item.path;
         return (
-          <button key={item.label} onClick={() => navigate(item.path)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, background: "none", border: "none", cursor: "pointer", color: isActive ? C.primaryContainer : C.onSurfaceVariant, fontSize: 9, fontFamily: MONO }}>
-            <Icon name={item.icon} size={22} filled={isActive} style={{ color: isActive ? C.primaryContainer : C.onSurfaceVariant }} />
-            {item.label}
+          <button
+            key={item.label}
+            type="button"
+            onClick={() => navigate(item.path)}
+            style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, background: "none", border: "none", cursor: "pointer", color: isActive ? C.primaryContainer : C.onSurfaceVariant, fontSize: 9, fontFamily: MONO, padding: "4px 2px", minWidth: 0 }}
+          >
+            <Icon name={item.icon} size={20} filled={isActive} style={{ color: isActive ? C.primaryContainer : C.onSurfaceVariant }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{item.shortLabel}</span>
           </button>
         );
       })}
@@ -264,7 +281,6 @@ function RequestCard({ req, onApprove, onReject, actingId }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function MonitorApprovals() {
   const navigate = useNavigate();
-  const location = useLocation();
   const isMobile = useIsMobile();
   const { user, profile } = useAuth();
 
@@ -345,18 +361,19 @@ export default function MonitorApprovals() {
 
       const { data: fullReq } = await supabase.from("requests").select("created_by").eq("id", req.id).single();
       if (fullReq?.created_by) {
-        await supabase.from("notifications").insert({
+        const { error: notifErr } = await supabase.from("notifications").insert({
           user_id: fullReq.created_by,
           type: "StatusUpdate",
           title: "Request Approved by Monitor",
           body: `${profile?.full_name ?? "Your monitor"} approved "${req.title}". It has been forwarded to the admin for technician assignment.`,
           read: false,
         });
+        if (notifErr) console.error("Notification insert failed:", notifErr.message);
       }
 
       const { data: admins } = await supabase.from("profiles").select("id").eq("role", "admin");
       if (admins?.length) {
-        await supabase.from("notifications").insert(
+        const { error: adminNotifErr } = await supabase.from("notifications").insert(
           admins.map((a) => ({
             user_id: a.id,
             type: "NewRequest",
@@ -365,6 +382,7 @@ export default function MonitorApprovals() {
             read: false,
           }))
         );
+        if (adminNotifErr) console.error("Admin notification insert failed:", adminNotifErr.message);
       }
 
       setRequests((prev) => prev.filter((r) => r.id !== req.id));
@@ -395,13 +413,14 @@ export default function MonitorApprovals() {
 
       const { data: fullReq } = await supabase.from("requests").select("created_by").eq("id", rejectTarget.id).single();
       if (fullReq?.created_by) {
-        await supabase.from("notifications").insert({
+        const { error: notifErr } = await supabase.from("notifications").insert({
           user_id: fullReq.created_by,
           type: "StatusUpdate",
           title: "Request Rejected by Monitor",
           body: `${profile?.full_name ?? "Your monitor"} rejected "${rejectTarget.title}". Reason: ${reason.trim()}. Please review and resubmit with changes.`,
           read: false,
         });
+        if (notifErr) console.error("Notification insert failed:", notifErr.message);
       }
 
       setRequests((prev) => prev.filter((r) => r.id !== rejectTarget.id));
@@ -427,7 +446,7 @@ export default function MonitorApprovals() {
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
-      <main style={{ marginLeft: isMobile ? 0 : 260, flex: 1, display: "flex", flexDirection: "column", paddingBottom: isMobile ? 60 : 0, minWidth: 0 }}>
+      <main style={{ marginLeft: isMobile ? 0 : 260, flex: 1, display: "flex", flexDirection: "column", paddingBottom: isMobile ? 64 : 0, minWidth: 0 }}>
         <TopBar onMenuClick={() => setDrawerOpen(true)} search={search} setSearch={setSearch} isMobile={isMobile} />
 
         <div style={{ flex: 1, padding: isMobile ? "20px 16px 40px" : "32px", maxWidth: 1200, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
