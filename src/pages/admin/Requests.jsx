@@ -369,25 +369,41 @@ function AssignTechnicianModal({ req, technicians, onClose, onAssign, loadingTec
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {technicians.map((tech) => {
+                  {technicians.map((tech, i) => {
                     const isSelected = selectedId === tech.id;
                     const loadColor  = tech.activeJobs === 0 ? C.secondary : tech.activeJobs <= 2 ? "#b45309" : C.error;
                     const loadLabel  = tech.activeJobs === 0 ? "Available" : tech.activeJobs <= 2 ? "Moderate" : "High load";
+                    const prevMatched = i > 0 && technicians[i - 1].matchesCategory;
+                    const showDivider = prevMatched && !tech.matchesCategory;
                     return (
-                      <button key={tech.id} onClick={() => setSelectedId(tech.id)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", border: `2px solid ${isSelected ? C.primaryContainer : C.outlineVariant}`, background: isSelected ? "color-mix(in srgb, var(--color-primary-container) 8%, transparent)" : CARD, borderRadius: 10, cursor: "pointer", textAlign: "left", width: "100%", transition: "all 0.15s" }}>
-                        <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.surfaceContainerHigh, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, color: C.onSurfaceVariant, fontSize: 14 }}>
-                          {tech.name?.[0] ?? "T"}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.onSurface }}>{tech.name}</p>
-                          <p style={{ margin: "1px 0 0", fontSize: 12, color: C.onSurfaceVariant }}>{tech.specialty || "General Maintenance"}</p>
-                        </div>
-                        <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <p style={{ margin: 0, fontSize: 12, fontWeight: 700, fontFamily: MONO, color: loadColor }}>{loadLabel}</p>
-                          <p style={{ margin: "1px 0 0", fontSize: 11, color: C.onSurfaceVariant, fontFamily: MONO }}>{tech.activeJobs} active</p>
-                        </div>
-                        {isSelected && <Icon name="check_circle" filled size={20} style={{ color: C.primaryContainer, flexShrink: 0 }} />}
-                      </button>
+                      <div key={tech.id}>
+                        {showDivider && (
+                          <p style={{ margin: "4px 0 8px", fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", textTransform: "uppercase", borderTop: `1px solid ${C.outlineVariant}`, paddingTop: 12 }}>
+                            Other Technicians
+                          </p>
+                        )}
+                        <button onClick={() => setSelectedId(tech.id)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 14px", border: `2px solid ${isSelected ? C.primaryContainer : C.outlineVariant}`, background: isSelected ? "color-mix(in srgb, var(--color-primary-container) 8%, transparent)" : CARD, borderRadius: 10, cursor: "pointer", textAlign: "left", width: "100%", transition: "all 0.15s" }}>
+                          <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.surfaceContainerHigh, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, color: C.onSurfaceVariant, fontSize: 14 }}>
+                            {tech.name?.[0] ?? "T"}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.onSurface }}>{tech.name}</p>
+                              {tech.matchesCategory && (
+                                <span style={{ padding: "1px 7px", borderRadius: 99, background: "#DCFCE7", color: "#166534", fontSize: 9, fontWeight: 700, fontFamily: MONO, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                  Recommended
+                                </span>
+                              )}
+                            </div>
+                            <p style={{ margin: "1px 0 0", fontSize: 12, color: C.onSurfaceVariant }}>{tech.specialty || "General Maintenance"}</p>
+                          </div>
+                          <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, fontFamily: MONO, color: loadColor }}>{loadLabel}</p>
+                            <p style={{ margin: "1px 0 0", fontSize: 11, color: C.onSurfaceVariant, fontFamily: MONO }}>{tech.activeJobs} active</p>
+                          </div>
+                          {isSelected && <Icon name="check_circle" filled size={20} style={{ color: C.primaryContainer, flexShrink: 0 }} />}
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -647,7 +663,7 @@ export default function AdminRequests() {
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
-  // ── Open assign modal — load technicians with live workload ───────────────
+  // ── Open assign modal — load technicians, prioritizing category match ─────
   async function openAssignModal(req) {
     setAssignTarget(req);
     setLoadingTechs(true);
@@ -666,10 +682,19 @@ export default function AdminRequests() {
       const countMap = {};
       (jobCounts ?? []).forEach(j => { countMap[j.technician_id] = (countMap[j.technician_id] || 0) + 1; });
 
-      setTechnicians((techs ?? []).map(t => ({
+      const mapped = (techs ?? []).map(t => ({
         id: t.id, name: t.full_name,
         specialty: t.specialty, activeJobs: countMap[t.id] || 0,
-      })));
+        matchesCategory: t.specialty === req.category,
+      }));
+
+      // Matching specialty first, then by lightest current workload.
+      mapped.sort((a, b) => {
+        if (a.matchesCategory !== b.matchesCategory) return a.matchesCategory ? -1 : 1;
+        return a.activeJobs - b.activeJobs;
+      });
+
+      setTechnicians(mapped);
     } catch (err) {
       showToast("Failed to load technicians.", "error");
     } finally {
@@ -677,69 +702,74 @@ export default function AdminRequests() {
     }
   }
 
-  // ── Assign technician → create job order → generate PDF ──────────────────
-  async function handleAssign(req, technicianId, note) {
-    const technician = technicians.find(t => t.id === technicianId);
-    if (!technician) throw new Error("Technician not found.");
+// ── Assign technician → create job order → generate PDF ──────────────────
+async function handleAssign(req, technicianId, note) {
+  const technician = technicians.find(t => t.id === technicianId);
+  if (!technician) throw new Error("Technician not found.");
 
-    // 1. Create job order
-    const { data: jobOrder, error: joErr } = await supabase
-      .from("job_orders")
-      .insert({
-        request_id:      req.id,
-        technician_id:   technicianId,
-        title:           req.title,
-        location:        req.location,
-        department:      req.department,
-        priority:        req.priority,
-        status:          "Pending Approval",
-        progress:        0,
-        notes:           note || null,
-        admin_signed_by: profile?.id,
-        admin_signed_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-    if (joErr) throw joErr;
+  // 1. Create job order
+  const { data: jobOrder, error: joErr } = await supabase
+    .from("job_orders")
+    .insert({
+      request_id:      req.id,
+      technician_id:   technicianId,
+      title:           req.title,
+      location:        req.location,
+      department:      req.department,
+      priority:        req.priority,
+      status:          "Pending Approval",
+      progress:        0,
+      notes:           note || null,
+      admin_signed_by: profile?.id,
+      admin_signed_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  if (joErr) throw joErr;
 
-    // 2. Generate PDF
-    const pdfBytes = await generateJobOrderPdf({
-      id: jobOrder.id, requestId: req.id, title: req.title,
-      location: req.location, department: req.department,
-      priority: req.priority, category: req.category,
-      description: req.description,
-      reporterName: req.reporterName, reporterRole: req.reporterRole,
-      technicianName: technician.name,
-      adminName: profile?.full_name ?? "Administrator",
-      adminSignedAt: jobOrder.admin_signed_at,
-      notes: note, createdAt: jobOrder.created_at,
-    });
+  // 2. Generate PDF
+  const pdfBytes = await generateJobOrderPdf({
+    id: jobOrder.id, requestId: req.id, title: req.title,
+    location: req.location, department: req.department,
+    priority: req.priority, category: req.category,
+    description: req.description,
+    reporterName: req.reporterName, reporterRole: req.reporterRole,
+    technicianName: technician.name,
+    adminName: profile?.full_name ?? "Administrator",
+    adminSignedAt: jobOrder.admin_signed_at,
+    notes: note, createdAt: jobOrder.created_at,
+  });
 
-    // 3. Upload PDF
-    const pdfUrl = await uploadJobOrderPdf(supabase, jobOrder.id, pdfBytes);
+  // 3. Upload PDF
+  const pdfUrl = await uploadJobOrderPdf(supabase, jobOrder.id, pdfBytes);
 
-    // 4. Save pdf_url on job order
-    await supabase.from("job_orders").update({ pdf_url: pdfUrl }).eq("id", jobOrder.id);
+  // 4. Save pdf_url on job order
+  await supabase.from("job_orders").update({ pdf_url: pdfUrl }).eq("id", jobOrder.id);
 
-    // 5. Update request — status → Assigned
-    const { error: reqErr } = await supabase
-      .from("requests")
-      .update({ status: "Assigned", assigned_technician_id: technicianId, job_order_id: jobOrder.id })
-      .eq("id", req.id);
-    if (reqErr) throw reqErr;
+  // 5. Update request — status → Assigned
+  const { error: reqErr } = await supabase
+    .from("requests")
+    .update({ status: "Assigned", assigned_technician_id: technicianId, job_order_id: jobOrder.id })
+    .eq("id", req.id);
+  if (reqErr) throw reqErr;
 
-    // 6. Notify technician
+  // 6. Notify technician — non-blocking, wrapped so a notification failure
+  // never breaks the actual assignment (which already succeeded above).
+  try {
     await supabase.from("notifications").insert({
       user_id: technicianId, type: "Assigned",
       title: "New Job Order Assigned",
       body: `You've been assigned: ${req.title}. Download the job order PDF and get HOD sign-off before starting.`,
       read: false,
-    }).catch(() => {});
-
-    // 7. Refresh
-    await fetchRequests();
-    showToast(`Assigned to ${technician.name}. Job order PDF generated.`);
+    });
+  } catch (notifErr) {
+    console.warn("Failed to notify technician (non-fatal):", notifErr);
   }
+
+  // 7. Refresh
+  await fetchRequests();
+  showToast(`Assigned to ${technician.name}. Job order PDF generated.`);
+}
 
   // ── Mark complete ──────────────────────────────────────────────────────────
   async function handleMarkComplete(req) {

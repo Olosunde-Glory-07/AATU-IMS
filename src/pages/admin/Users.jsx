@@ -40,15 +40,25 @@ const ROLE_SECTIONS = [
   { key: 'staff',      label: 'Staff',          icon: 'badge'                },
 ]
 
+// Same category list used across the app's request forms — technicians pick
+// their specialty from this set instead of typing free text.
+const CATEGORY_OPTIONS = [
+  'Electrical', 'Plumbing', 'HVAC', 'Structural',
+  'IT Services', 'Furniture', 'Lighting', 'Elevator', 'Other',
+]
+
 const ITEMS_PER_PAGE = 10
 
+// department/program are now selected via cascading dropdowns (see
+// useDepartments/useProgramsForDept below) instead of free text.
 const EMPTY_FORM = {
-  full_name:  '',
-  email:      '',
-  role:       'staff',
-  department: '',
-  specialty:  '',
-  password:   '',
+  full_name:     '',
+  email:         '',
+  role:          'staff',
+  department_id: '',
+  program_id:    '',
+  specialty:     '',
+  password:      '',
 }
 
 function initials(name = '') {
@@ -68,6 +78,62 @@ function useIsMobile() {
     return () => window.removeEventListener('resize', fn)
   }, [])
   return mobile
+}
+
+// ── Departments dropdown data ────────────────────────────────────────────────
+function useDepartments() {
+  const [departments, setDepartments] = useState([])
+  const [loadingDepartments, setLoadingDepartments] = useState(true)
+
+  useEffect(() => {
+    (async () => {
+      setLoadingDepartments(true)
+      try {
+        const { data, error } = await supabase
+          .from('departments')
+          .select('id, name')
+          .order('name')
+        if (error) throw error
+        setDepartments(data ?? [])
+      } catch (err) {
+        console.error('Failed to load departments:', err)
+        setDepartments([])
+      } finally {
+        setLoadingDepartments(false)
+      }
+    })()
+  }, [])
+
+  return { departments, loadingDepartments }
+}
+
+// ── Programs dropdown data — depends on the selected department ─────────────
+function useProgramsForDept(departmentId) {
+  const [programs, setPrograms] = useState([])
+  const [loadingPrograms, setLoadingPrograms] = useState(false)
+
+  useEffect(() => {
+    if (!departmentId) { setPrograms([]); return }
+    (async () => {
+      setLoadingPrograms(true)
+      try {
+        const { data, error } = await supabase
+          .from('programs')
+          .select('id, name')
+          .eq('department_id', departmentId)
+          .order('name')
+        if (error) throw error
+        setPrograms(data ?? [])
+      } catch (err) {
+        console.error('Failed to load programs:', err)
+        setPrograms([])
+      } finally {
+        setLoadingPrograms(false)
+      }
+    })()
+  }, [departmentId])
+
+  return { programs, loadingPrograms }
 }
 
 // ─── Sidebar (pinned brand color — does not change with dark mode) ──────────
@@ -178,6 +244,9 @@ export default function Users() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [deleting,     setDeleting]     = useState(false)
 
+  const { departments, loadingDepartments } = useDepartments()
+  const { programs, loadingPrograms } = useProgramsForDept(form.department_id)
+
   function showToast(msg) {
     setToast(msg)
     setTimeout(() => setToast(null), 3000)
@@ -197,7 +266,7 @@ export default function Users() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, role, department, specialty, status, created_at')
+        .select('id, full_name, role, department, program, specialty, status, created_at')
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -208,6 +277,7 @@ export default function Users() {
         email:      '',
         role:       u.role ?? 'staff',
         dept:       u.department ?? u.specialty ?? '—',
+        program:    u.program ?? '—',
         status:     u.status ?? 'Active',
         joined:     u.created_at
           ? new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
@@ -223,6 +293,20 @@ export default function Users() {
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
 
+  // Reset the program selection whenever department changes — a program
+  // chosen under the old department would no longer be valid.
+  function handleDepartmentChange(e) {
+    const department_id = e.target.value
+    setForm(f => ({ ...f, department_id, program_id: '' }))
+  }
+
+  // Reset department/program/specialty whenever the role changes, since
+  // each role uses a different subset of these fields.
+  function handleRoleChange(e) {
+    const role = e.target.value
+    setForm(f => ({ ...f, role, department_id: '', program_id: '', specialty: '' }))
+  }
+
   // ── Create user via Edge Function ─────────────────────────────────────────
   async function handleSubmit(e) {
     e.preventDefault()
@@ -232,11 +316,22 @@ export default function Users() {
     if (!form.email.trim())     { setFormError('Email is required.');       return }
     if (!form.password.trim())  { setFormError('Temporary password is required.'); return }
     if (form.password.length < 8) { setFormError('Password must be at least 8 characters.'); return }
+    if (form.role === 'technician' && !form.specialty) { setFormError('Please select a specialty category.'); return }
 
     setSubmitting(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.access_token) throw new Error('Not authenticated. Please log in again.')
+
+      // The DB stores department/program as text on profiles — resolve the
+      // selected IDs back to their names before sending. Technicians don't
+      // use department/program at all.
+      const departmentName = form.role === 'technician'
+        ? null
+        : departments.find(d => d.id === form.department_id)?.name ?? null
+      const programName = form.role === 'technician'
+        ? null
+        : programs.find(p => p.id === form.program_id)?.name ?? null
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
@@ -251,8 +346,9 @@ export default function Users() {
             password:   form.password.trim(),
             full_name:  form.full_name.trim(),
             role:       form.role,
-            department: form.department.trim() || null,
-            specialty:  form.specialty.trim()  || null,
+            department: departmentName,
+            program:    programName,
+            specialty:  form.role === 'technician' ? form.specialty : null,
           }),
         }
       )
@@ -354,17 +450,19 @@ export default function Users() {
     }
   }
 
-  // ── Save edit ─────────────────────────────────────────────────────────────
+ // ── Save edit ─────────────────────────────────────────────────────────────
   async function saveEdit(e) {
     e.preventDefault()
     if (!editing) return
     try {
+      const isTechnician = editing.role === 'technician'
       const { error } = await supabase
         .from('profiles')
         .update({
           full_name:  editing.name,
           role:       editing.role,
-          department: editing.dept,
+          department: isTechnician ? null        : editing.dept,
+          specialty:  isTechnician ? editing.dept : null,
           status:     editing.status,
         })
         .eq('id', editing.id)
@@ -526,7 +624,7 @@ export default function Users() {
                                     <span className="px-1.5 py-0.5 bg-surface-container-high text-on-surface text-[10px] font-bold rounded uppercase">You</span>
                                   )}
                                 </h4>
-                                <p className="text-xs font-mono text-on-surface-variant">{u.dept}</p>
+                                <p className="text-xs font-mono text-on-surface-variant">{u.dept}{u.program && u.program !== '—' ? ` · ${u.program}` : ''}</p>
                               </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-3 mt-4 lg:mt-0">
@@ -652,7 +750,7 @@ export default function Users() {
                 <select
                   className={`${inp} cursor-pointer`}
                   value={form.role}
-                  onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
+                  onChange={handleRoleChange}
                   required
                 >
                   <option value="staff">Staff</option>
@@ -663,25 +761,51 @@ export default function Users() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Department</label>
-                <input
-                  className={inp}
-                  value={form.department}
-                  onChange={e => setForm(f => ({ ...f, department: e.target.value }))}
-                  placeholder="e.g. Faculty of Engineering"
-                />
-              </div>
+              {form.role !== 'technician' && (
+                <div>
+                  <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Department</label>
+                  <select
+                    className={`${inp} cursor-pointer`}
+                    value={form.department_id}
+                    onChange={handleDepartmentChange}
+                    disabled={loadingDepartments}
+                  >
+                    <option value="">{loadingDepartments ? 'Loading departments…' : 'Select a department…'}</option>
+                    {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {form.role !== 'technician' && form.department_id && (
+                <div>
+                  <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Program</label>
+                  <select
+                    className={`${inp} cursor-pointer`}
+                    value={form.program_id}
+                    onChange={e => setForm(f => ({ ...f, program_id: e.target.value }))}
+                    disabled={loadingPrograms}
+                  >
+                    <option value="">{loadingPrograms ? 'Loading programs…' : 'Select a program…'}</option>
+                    {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+              )}
 
               {form.role === 'technician' && (
                 <div>
-                  <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Specialty</label>
-                  <input
-                    className={inp}
+                  <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Specialty *</label>
+                  <select
+                    className={`${inp} cursor-pointer`}
                     value={form.specialty}
                     onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))}
-                    placeholder="e.g. Electrical, Plumbing, HVAC"
-                  />
+                    required
+                  >
+                    <option value="">Select a category…</option>
+                    {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <p className="text-[11px] text-on-surface-variant/60 mt-1">
+                    The type of request this technician is assigned to handle.
+                  </p>
                 </div>
               )}
 
@@ -764,8 +888,21 @@ export default function Users() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Department</label>
-                <input className={inp} value={editing.dept} onChange={e => setEditing(s => ({ ...s, dept: e.target.value }))} />
+                <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">
+                  {editing.role === 'technician' ? 'Specialty' : 'Department'}
+                </label>
+                {editing.role === 'technician' ? (
+                  <select
+                    className={`${inp} cursor-pointer`}
+                    value={editing.dept === '—' ? '' : editing.dept}
+                    onChange={e => setEditing(s => ({ ...s, dept: e.target.value }))}
+                  >
+                    <option value="">Select a category…</option>
+                    {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                ) : (
+                  <input className={inp} value={editing.dept} onChange={e => setEditing(s => ({ ...s, dept: e.target.value }))} />
+                )}
               </div>
               <div>
                 <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Status</label>
@@ -804,6 +941,7 @@ export default function Users() {
               </div>
               {[
                 ['Department', selected.dept],
+                ['Program',    selected.program],
                 ['Status',     selected.status],
                 ['Joined',     selected.joined],
               ].map(([label, value]) => (

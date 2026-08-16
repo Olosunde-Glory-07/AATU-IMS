@@ -1,85 +1,79 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { supabase } from "../../lib/supabase";
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
-  primary:                "var(--color-on-surface)",
-  primaryContainer:       "var(--color-primary-container)",
-  onPrimaryContainer:     "var(--color-on-primary-container)",
-  primaryFixed:           "var(--color-primary-fixed)",
-  primaryFixedDim:        "var(--color-primary-fixed-dim)",
-  onPrimaryFixed:         "var(--color-on-primary-fixed)",
-  secondary:              "var(--color-secondary)",
-  secondaryContainer:     "var(--color-secondary-container)",
-  onSecondaryContainer:   "var(--color-on-secondary-container)",
-  secondaryFixed:         "var(--color-secondary-fixed)",
-  tertiaryFixed:          "var(--color-tertiary-fixed)",
-  onTertiaryFixedVariant: "var(--color-on-tertiary-fixed-variant)",
-  errorContainer:         "var(--color-error-container)",
-  onErrorContainer:       "var(--color-on-error-container)",
-  error:                  "var(--color-error)",
-  surface:                "var(--color-background)",
-  surfaceContainer:       "var(--color-surface-container)",
-  surfaceContainerLow:    "var(--color-surface-container-low)",
-  surfaceContainerHigh:   "var(--color-surface-container-high)",
-  surfaceContainerHighest:"var(--color-surface-container-highest)",
-  surfaceContainerLowest: "var(--color-surface-container-lowest)",
-  surfaceDim:             "var(--color-surface-dim)",
-  onSurface:              "var(--color-on-surface)",
-  onSurfaceVariant:       "var(--color-on-surface-variant)",
-  outlineVariant:         "var(--color-outline-variant)",
-  outline:                "var(--color-outline)",
-  white:                  "#ffffff",
+  primaryContainer:     "var(--color-primary-container)",
+  onPrimaryContainer:   "var(--color-on-primary-container)",
+  secondary:            "var(--color-secondary)",
+  secondaryContainer:   "var(--color-secondary-container)",
+  onSecondaryContainer: "var(--color-on-secondary-container)",
+  tertiaryFixed:        "var(--color-tertiary-fixed)",
+  onTertiaryFixedVariant:"var(--color-on-tertiary-fixed-variant)",
+  errorContainer:       "var(--color-error-container)",
+  onErrorContainer:     "var(--color-on-error-container)",
+  error:                "var(--color-error)",
+  surface:              "var(--color-background)",
+  surfaceContainerLow:  "var(--color-surface-container-low)",
+  surfaceContainerHigh: "var(--color-surface-container-high)",
+  onSurface:            "var(--color-on-surface)",
+  onSurfaceVariant:     "var(--color-on-surface-variant)",
+  outlineVariant:        "var(--color-outline-variant)",
+  outline:               "var(--color-outline)",
+  white:                "#ffffff",
 };
-// Sidebar stays a fixed brand color in both themes.
+const CARD = "var(--color-surface-container-lowest)";
 const SIDEBAR_BG = "#4a0404";
-
 const MONO = "'JetBrains Mono', monospace";
 const SANS = "'Hanken Grotesk', sans-serif";
 
-// ─── Nav config ───────────────────────────────────────────────────────────────
+// ─── UNIFIED nav — identical across every staff page ─────────────────────────
 const NAV_ITEMS = [
-  { icon: "dashboard",     label: "Dashboard",     path: "/staff/dashboard" },
-  { icon: "list_alt",      label: "Requests",      path: "/staff/maintenance-requests" },
-  { icon: "history",       label: "Dept. History", path: "/staff/departmental-history" },
-  { icon: "notifications", label: "Notifications", path: "/staff/notifications" },
+  { icon: "dashboard",     label: "Dashboard",           shortLabel: "Home",    path: "/staff/dashboard"            },
+  { icon: "fact_check",    label: "Monitor Approvals",   shortLabel: "Approve", path: "/staff/monitor-approvals"    },
+  { icon: "history",       label: "Request History",     shortLabel: "History", path: "/staff/monitored-requests"   },
+  { icon: "domain",        label: "Dept. History & Log", shortLabel: "Dept.",   path: "/staff/departmental-history" },
+  { icon: "notifications", label: "Notifications",       shortLabel: "Alerts",  path: "/staff/notifications"        },
 ];
 
-// ─── Notification type config (styling only — not records) ───────────────────
-// These already reference C.* tokens, so they automatically follow dark mode.
+// Notification type styling — matches the types actually inserted elsewhere
+// in the app (MonitorApprovals uses StatusUpdate/NewRequest; admin/create-user
+// use Memo; job assignment flows use Assigned/Completed/Emergency).
 const TYPE_CFG = {
-  Emergency:   { iconBg: C.errorContainer,      iconColor: C.error,               icon: "priority_high", dotColor: C.error     },
-  Completed:   { iconBg: "#DCFCE7",             iconColor: "#166534",             icon: "check_circle",  dotColor: C.secondary },
-  Maintenance: { iconBg: C.tertiaryFixed,        iconColor: C.onTertiaryFixedVariant, icon: "calendar_month", dotColor: "#f59e0b" },
-  Assigned:    { iconBg: C.surfaceContainerHigh, iconColor: C.primaryContainer,    icon: "assignment",    dotColor: "#6366f1"   },
-  Info:        { iconBg: C.surfaceContainerHigh, iconColor: C.onSurfaceVariant,    icon: "info",          dotColor: C.outline   },
+  StatusUpdate: { iconBg: "#EEF2FF",          iconColor: "#4338ca", icon: "update",             dotColor: "#6366f1" },
+  NewRequest:   { iconBg: C.tertiaryFixed,    iconColor: C.onTertiaryFixedVariant, icon: "inbox", dotColor: "#f59e0b" },
+  Assigned:     { iconBg: C.secondaryContainer, iconColor: C.secondary, icon: "assignment",       dotColor: C.secondary },
+  Completed:    { iconBg: "#DCFCE7",          iconColor: "#166534", icon: "check_circle",       dotColor: C.secondary },
+  Emergency:    { iconBg: C.errorContainer,   iconColor: C.error,   icon: "priority_high",      dotColor: C.error },
+  Memo:         { iconBg: C.surfaceContainerHigh, iconColor: C.onSurfaceVariant, icon: "info",  dotColor: C.outline },
 };
+const DEFAULT_TYPE_CFG = TYPE_CFG.Memo;
 
-const TAG_CFG = {
-  Emergency:   { bg: C.errorContainer,    text: C.onErrorContainer    },
-  Completed:   { bg: "#DCFCE7",           text: "#166534"             },
-  Maintenance: { bg: "#FEF3C7",           text: "#92400E"             },
-  Assigned:    { bg: "#EEF2FF",           text: "#3730A3"             },
-  Info:        { bg: C.surfaceContainer,  text: C.onSurfaceVariant    },
-};
+function timeAgo(iso) {
+  if (!iso) return "—";
+  const diff  = Date.now() - new Date(iso).getTime();
+  const mins  = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days  = Math.floor(diff / 86400000);
+  if (mins  <  1) return "Just now";
+  if (mins  < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days  <  7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
 
-const TABS = ["All Alerts", "Requests", "Maintenance"];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function Icon({ name, size = 22, filled = false, style = {} }) {
   return (
-    <span
-      className="material-symbols-outlined"
-      style={{
-        fontSize: size, lineHeight: 1, verticalAlign: "middle",
-        fontVariationSettings: filled ? "'FILL' 1,'wght' 400" : "'FILL' 0,'wght' 400",
-        ...style,
-      }}
-    >{name}</span>
+    <span className="material-symbols-outlined" style={{
+      fontSize: size, lineHeight: 1, verticalAlign: "middle",
+      fontVariationSettings: filled ? "'FILL' 1,'wght' 400" : "'FILL' 0,'wght' 400",
+      ...style,
+    }}>{name}</span>
   );
 }
 
-// ─── Responsive hook ──────────────────────────────────────────────────────────
 function useIsMobile() {
   const [mobile, setMobile] = useState(() => window.innerWidth < 768);
   useEffect(() => {
@@ -97,44 +91,30 @@ function Sidebar({ open, onClose }) {
   const isMobile = useIsMobile();
 
   const content = (
-    <aside style={{
-      width: 260, background: SIDEBAR_BG, color: C.white,
-      display: "flex", flexDirection: "column", height: "100%",
-      overflowY: "auto", borderRight: `1px solid ${C.outlineVariant}`,
-      fontFamily: SANS,
-    }}>
+    <aside style={{ width: 260, background: SIDEBAR_BG, color: C.white, display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", borderRight: `1px solid ${C.outlineVariant}`, fontFamily: SANS }}>
       <div style={{ padding: "24px 24px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.white, letterSpacing: "-0.02em" }}>AATU</h1>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: MONO, letterSpacing: "0.04em" }}>
-            Infrastructure Mgmt
-          </p>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.white }}>AATU</h1>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.6)", fontFamily: MONO }}>Staff Portal</p>
         </div>
         {isMobile && (
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.7)", padding: 4 }}>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.7)" }}>
             <Icon name="close" size={22} />
           </button>
         )}
       </div>
-
       <nav style={{ flex: 1, padding: "16px 8px 0", display: "flex", flexDirection: "column", gap: 2 }}>
         {NAV_ITEMS.map((item) => {
           const isActive = location.pathname === item.path;
           return (
-            <button
-              key={item.label}
-              onClick={() => { navigate(item.path); if (isMobile) onClose(); }}
-              style={{
-                width: "100%", display: "flex", alignItems: "center", gap: 12,
-                padding: "12px 16px",
-                background: isActive ? "rgba(255,255,255,0.10)" : "transparent",
-                color: isActive ? C.white : "rgba(255,255,255,0.7)",
-                fontWeight: isActive ? 700 : 400,
-                borderLeft: isActive ? "4px solid #ffb4aa" : "4px solid transparent",
-                border: "none", cursor: "pointer", textAlign: "left",
-                fontSize: 12, letterSpacing: "0.04em", fontFamily: MONO,
-                transition: "background 0.15s",
-              }}
+            <button key={item.label} onClick={() => { navigate(item.path); if (isMobile) onClose(); }} style={{
+              width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
+              background: isActive ? "rgba(255,255,255,0.10)" : "transparent",
+              color: isActive ? C.white : "rgba(255,255,255,0.7)", fontWeight: isActive ? 700 : 400,
+              borderLeft: isActive ? "4px solid #ffb4aa" : "4px solid transparent",
+              border: "none", cursor: "pointer", textAlign: "left", fontSize: 12, letterSpacing: "0.04em", fontFamily: MONO,
+              transition: "background 0.15s",
+            }}
               onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
               onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
             >
@@ -144,79 +124,50 @@ function Sidebar({ open, onClose }) {
           );
         })}
       </nav>
-
       <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", padding: "12px 8px" }}>
-        <button
-          onClick={() => navigate("/staff/dashboard")}
-          style={{
-            width: "100%", display: "flex", alignItems: "center", gap: 12,
-            padding: "12px 16px", background: "transparent",
-            color: "rgba(255,255,255,0.7)", border: "none",
-            cursor: "pointer", fontSize: 12, fontFamily: MONO,
-            transition: "background 0.15s",
-          }}
-        >
-          <Icon name="account_circle" size={20} style={{ color: "rgba(255,255,255,0.7)" }} />
-          User Profile
+        <button onClick={() => navigate("/staff/profile")} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "transparent", color: "rgba(255,255,255,0.7)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
+          <Icon name="account_circle" size={20} /> User Profile
         </button>
-        <button
-          onClick={() => navigate("/login")}
-          style={{
-            width: "100%", marginTop: 8, padding: "8px 16px",
-            background: "rgba(255,255,255,0.10)", color: C.white,
-            border: "none", borderRadius: 6, cursor: "pointer",
-            fontSize: 12, fontFamily: MONO, letterSpacing: "0.04em", transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.18)"}
-          onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.10)"}
-        >
-          Logout
+        <button onClick={() => supabase.auth.signOut().then(() => navigate("/login"))} style={{ width: "100%", marginTop: 4, display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "transparent", color: "rgba(255,255,255,0.5)", border: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO }}>
+          <Icon name="logout" size={20} /> Logout
         </button>
       </div>
     </aside>
   );
 
-  if (!isMobile) {
-    return <div style={{ width: 260, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 50 }}>{content}</div>;
-  }
-
+  if (!isMobile) return <div style={{ width: 260, height: "100vh", position: "fixed", left: 0, top: 0, zIndex: 50 }}>{content}</div>;
   if (!open) return null;
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100 }} />
-      <div style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 260, zIndex: 101, boxShadow: "4px 0 20px rgba(0,0,0,0.2)" }}>
-        {content}
-      </div>
+      <div style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 260, zIndex: 101, boxShadow: "4px 0 20px rgba(0,0,0,0.2)" }}>{content}</div>
     </>
   );
 }
 
-// ─── Mobile bottom tab bar ────────────────────────────────────────────────────
+// ─── Bottom Nav ───────────────────────────────────────────────────────────────
 function BottomNav() {
   const navigate = useNavigate();
   const location = useLocation();
   return (
-    <nav style={{
-      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90,
-      background: C.surfaceContainerLowest, borderTop: `1px solid ${C.outlineVariant}`,
-      display: "flex", height: 60,
-    }}>
+    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 90, background: CARD, borderTop: `1px solid ${C.outlineVariant}`, display: "flex", height: 60 }}>
       {NAV_ITEMS.map((item) => {
         const isActive = location.pathname === item.path;
         return (
           <button
             key={item.label}
+            type="button"
             onClick={() => navigate(item.path)}
             style={{
               flex: 1, display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center", gap: 2,
               background: "none", border: "none", cursor: "pointer",
               color: isActive ? C.primaryContainer : C.onSurfaceVariant,
-              fontSize: 9, fontFamily: MONO, letterSpacing: "0.06em",
+              fontSize: 9, fontFamily: MONO, padding: "4px 2px", minWidth: 0,
             }}
           >
-            <Icon name={item.icon} size={22} filled={isActive} style={{ color: isActive ? C.primaryContainer : C.onSurfaceVariant }} />
-            {item.label}
+            <Icon name={item.icon} size={20} filled={isActive} style={{ color: isActive ? C.primaryContainer : C.onSurfaceVariant }} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>{item.shortLabel}</span>
           </button>
         );
       })}
@@ -224,171 +175,31 @@ function BottomNav() {
   );
 }
 
-// ─── TopBar ───────────────────────────────────────────────────────────────────
-function TopBar({ onMenuClick, search, setSearch }) {
-  const isMobile = useIsMobile();
+function TopBar({ onMenuClick, search, setSearch, isMobile }) {
   return (
-    <header style={{
-      height: 64, display: "flex", alignItems: "center",
-      justifyContent: "space-between", padding: isMobile ? "0 16px" : "0 32px",
-      position: "sticky", top: 0, zIndex: 40,
-      background: "color-mix(in srgb, var(--color-background) 94%, transparent)", backdropFilter: "blur(12px)",
-      borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 12,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
-        {isMobile && (
-          <button onClick={onMenuClick} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurface, padding: 4, flexShrink: 0, display: "flex" }}>
-            <Icon name="menu" size={24} />
-          </button>
-        )}
-        <div style={{ flex: 1, maxWidth: isMobile ? "100%" : 440, position: "relative" }}>
-          <Icon name="search" size={20} style={{
-            position: "absolute", left: 12, top: "50%",
-            transform: "translateY(-50%)", color: C.onSurfaceVariant,
-          }} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search notifications..."
-            style={{
-              width: "100%", paddingLeft: 40, paddingRight: 16,
-              paddingTop: 9, paddingBottom: 9,
-              background: C.surfaceContainerLow,
-              border: "none", borderRadius: 99,
-              fontSize: 14, outline: "none",
-              color: C.onSurface, fontFamily: SANS, boxSizing: "border-box",
-              transition: "box-shadow 0.15s",
-            }}
-            onFocus={(e) => e.target.style.boxShadow = `0 0 0 2px ${C.primaryFixedDim}`}
-            onBlur={(e) => e.target.style.boxShadow = "none"}
-          />
-        </div>
-      </div>
-
-      {!isMobile && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button style={{
-            background: "none", border: "none", cursor: "pointer",
-            padding: 8, color: C.onSurfaceVariant, borderRadius: "50%", display: "flex",
-            transition: "background 0.15s",
-          }}
-            onMouseEnter={(e) => e.currentTarget.style.background = C.surfaceContainer}
-            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-          >
-            <Icon name="settings" size={22} />
-          </button>
-          <div style={{ width: 1, height: 28, background: C.outlineVariant }} />
-          <div style={{ textAlign: "right" }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.onSurface, lineHeight: 1.2 }}>Staff Services</p>
-            <p style={{ margin: 0, fontSize: 11, color: C.onSurfaceVariant, fontFamily: MONO }}>Infrastructure Mgmt</p>
-          </div>
-          <div style={{
-            width: 38, height: 38, borderRadius: "50%",
-            background: C.surfaceContainerHighest,
-            border: `1px solid ${C.outlineVariant}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontWeight: 700, color: C.onSurface, fontSize: 14,
-          }}>S</div>
-        </div>
+    <header style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "0 16px" : "0 32px", position: "sticky", top: 0, zIndex: 40, background: "color-mix(in srgb, var(--color-background) 94%, transparent)", backdropFilter: "blur(12px)", borderBottom: `1px solid ${C.outlineVariant}`, fontFamily: SANS, gap: 12 }}>
+      {isMobile && (
+        <button onClick={onMenuClick} style={{ background: "none", border: "none", cursor: "pointer", color: C.onSurface, padding: 4, display: "flex" }}>
+          <Icon name="menu" size={24} />
+        </button>
       )}
+      <div style={{ flex: 1, maxWidth: isMobile ? "100%" : 440, position: "relative" }}>
+        <Icon name="search" size={18} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.onSurfaceVariant }} />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search notifications…"
+          style={{ width: "100%", paddingLeft: 36, paddingRight: 16, paddingTop: 9, paddingBottom: 9, background: C.surfaceContainerLow, border: "none", borderRadius: 8, fontSize: 14, outline: "none", color: C.onSurface, fontFamily: SANS, boxSizing: "border-box" }}
+        />
+      </div>
     </header>
   );
 }
 
-// ─── Pulse Dot ────────────────────────────────────────────────────────────────
-function PulseDot({ color = C.secondaryFixed, size = 8 }) {
-  const [on, setOn] = useState(true);
-  useEffect(() => {
-    const id = setInterval(() => setOn((v) => !v), 900);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: "50%",
-      background: color, flexShrink: 0,
-      opacity: on ? 1 : 0.3, transition: "opacity 0.5s ease",
-    }} />
-  );
-}
-
-// ─── Overview Panel — live counts, no hardcoded numbers ───────────────────────
-function OverviewPanel({ notifications, isMobile }) {
-  const critical = notifications.filter((n) => n.type === "Emergency").length;
-  const pending  = notifications.filter((n) => n.unread).length;
-
-  return (
-    <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", gap: 16, flexWrap: "wrap" }}>
-      {/* Metrics card */}
-      <div style={{
-        background: C.surfaceContainerLowest, border: `1px solid ${C.outlineVariant}`,
-        borderRadius: 14, padding: 24, flex: isMobile ? "1 1 100%" : "initial",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <span style={{
-            fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant,
-            letterSpacing: "0.1em", textTransform: "uppercase", opacity: 0.7,
-          }}>Overview</span>
-          <Icon name="analytics" size={20} style={{ color: C.primaryContainer }} />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <div style={{ background: C.errorContainer, borderRadius: 10, padding: "16px 14px" }}>
-            <p style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700, color: C.onErrorContainer, fontFamily: SANS }}>
-              {String(critical).padStart(2, "0")}
-            </p>
-            <p style={{ margin: 0, fontSize: 11, fontFamily: MONO, color: C.onErrorContainer, opacity: 0.8 }}>Critical</p>
-          </div>
-          <div style={{ background: C.secondaryContainer, borderRadius: 10, padding: "16px 14px" }}>
-            <p style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700, color: C.onSecondaryContainer, fontFamily: SANS }}>
-              {String(pending).padStart(2, "0")}
-            </p>
-            <p style={{ margin: 0, fontSize: 11, fontFamily: MONO, color: C.onSecondaryContainer, opacity: 0.8 }}>Unread</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Monitoring status card — desktop only, decorative */}
-      {!isMobile && (
-        <div style={{
-          background: "#4a0404", borderRadius: 14,
-          padding: 24, position: "relative", overflow: "hidden",
-          minHeight: 180, display: "flex", flexDirection: "column", justifyContent: "space-between",
-        }}>
-          {[160, 220, 280].map((s, i) => (
-            <div key={i} style={{
-              position: "absolute", right: -60 + i * 10, bottom: -60 + i * 10,
-              width: s, height: s, borderRadius: "50%",
-              border: "1px solid rgba(255,180,170,0.12)", pointerEvents: "none",
-            }} />
-          ))}
-          <div style={{ position: "relative", zIndex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <PulseDot />
-              <span style={{ fontSize: 10, fontFamily: MONO, fontWeight: 700, color: C.secondaryFixed, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-                Active Monitoring
-              </span>
-            </div>
-            <h4 style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#ffffff" }}>
-              Departmental Dashboard Visualizer
-            </h4>
-            <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.70)", lineHeight: 1.5 }}>
-              Real-time tracking of infrastructure health and notification streams.
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── Notification Item ────────────────────────────────────────────────────────
-function NotifItem({ notif, onMarkRead, searchTerm, isMobile }) {
+function NotifItem({ notif, onMarkRead, isMobile }) {
   const [hov, setHov] = useState(false);
-  const cfg = TYPE_CFG[notif.type] || TYPE_CFG.Info;
-
-  const highlighted = searchTerm && (
-    notif.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    notif.body.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const cfg = TYPE_CFG[notif.type] || DEFAULT_TYPE_CFG;
 
   return (
     <div
@@ -396,360 +207,182 @@ function NotifItem({ notif, onMarkRead, searchTerm, isMobile }) {
       onMouseLeave={() => setHov(false)}
       onClick={() => notif.unread && onMarkRead(notif.id)}
       style={{
-        padding: isMobile ? "16px 16px" : "20px 24px",
+        padding: isMobile ? "16px" : "20px 24px",
         borderBottom: `1px solid ${C.outlineVariant}`,
         display: "flex", gap: isMobile ? 12 : 16,
-        background: highlighted
-          ? "color-mix(in srgb, var(--color-surface-container) 60%, transparent)"
-          : hov ? C.surfaceContainerLow : "transparent",
-        transition: "background 0.15s",
-        cursor: "pointer",
-        position: "relative",
+        background: hov ? C.surfaceContainerLow : "transparent",
+        transition: "background 0.15s", cursor: "pointer", position: "relative",
       }}
     >
       {notif.unread && (
-        <div style={{
-          position: "absolute", left: isMobile ? 6 : 8, top: isMobile ? 22 : "50%", transform: isMobile ? "none" : "translateY(-50%)",
-          width: 7, height: 7, borderRadius: "50%",
-          background: cfg.dotColor,
-        }} />
+        <div style={{ position: "absolute", left: isMobile ? 6 : 8, top: isMobile ? 22 : "50%", transform: isMobile ? "none" : "translateY(-50%)", width: 7, height: 7, borderRadius: "50%", background: cfg.dotColor }} />
       )}
 
-      <div style={{
-        width: isMobile ? 36 : 42, height: isMobile ? 36 : 42, borderRadius: "50%", flexShrink: 0,
-        background: cfg.iconBg,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        marginLeft: notif.unread ? 6 : 0,
-      }}>
+      <div style={{ width: isMobile ? 36 : 42, height: isMobile ? 36 : 42, borderRadius: "50%", flexShrink: 0, background: cfg.iconBg, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: notif.unread ? 6 : 0 }}>
         <Icon name={cfg.icon} size={isMobile ? 17 : 20} filled style={{ color: cfg.iconColor }} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: isMobile ? "wrap" : "nowrap" }}>
-          <h4 style={{ margin: 0, fontSize: isMobile ? 13 : 14, fontWeight: 700, color: C.onSurface, lineHeight: 1.3 }}>
-            {notif.title}
-          </h4>
+          <h4 style={{ margin: 0, fontSize: isMobile ? 13 : 14, fontWeight: 700, color: C.onSurface, lineHeight: 1.3 }}>{notif.title}</h4>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
-            <span style={{ fontSize: 11, color: C.onSurfaceVariant, fontFamily: MONO, opacity: 0.7, whiteSpace: "nowrap" }}>
-              {notif.time}
-            </span>
+            <span style={{ fontSize: 11, color: C.onSurfaceVariant, fontFamily: MONO, opacity: 0.7, whiteSpace: "nowrap" }}>{timeAgo(notif.created_at)}</span>
             {notif.unread && (
               <button
                 onClick={(e) => { e.stopPropagation(); onMarkRead(notif.id); }}
-                style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  fontSize: 10, fontFamily: MONO, fontWeight: 700,
-                  color: C.primaryContainer, padding: 0,
-                  opacity: isMobile || hov ? 1 : 0, transition: "opacity 0.15s",
-                  whiteSpace: "nowrap",
-                }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 10, fontFamily: MONO, fontWeight: 700, color: C.primaryContainer, padding: 0, opacity: isMobile || hov ? 1 : 0, transition: "opacity 0.15s", whiteSpace: "nowrap" }}
               >
                 Mark read
               </button>
             )}
           </div>
         </div>
-
-        <p style={{ margin: "5px 0 10px", fontSize: isMobile ? 12 : 13, color: C.onSurfaceVariant, lineHeight: 1.6 }}>
-          {notif.body}
-        </p>
-
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {notif.tags.map((tag, i) => {
-            const tagCfg = TAG_CFG[tag.type] || TAG_CFG.Info;
-            return (
-              <span key={i} style={{
-                padding: "2px 9px", borderRadius: 4,
-                background: tagCfg.bg, color: tagCfg.text,
-                fontSize: 10, fontWeight: 700, fontFamily: MONO,
-                letterSpacing: "0.06em", textTransform: "uppercase",
-              }}>{tag.label}</span>
-            );
-          })}
-        </div>
+        <p style={{ margin: "5px 0 0", fontSize: isMobile ? 12 : 13, color: C.onSurfaceVariant, lineHeight: 1.6 }}>{notif.body}</p>
       </div>
     </div>
   );
 }
 
-// ─── Automated Maintenance Banner ─────────────────────────────────────────────
-function MaintenanceBanner({ onReviewSchedule, isMobile }) {
-  return (
-    <section style={{
-      background: "#4a0404", borderRadius: 14,
-      padding: isMobile ? "24px 20px" : "36px 40px", position: "relative", overflow: "hidden",
-      display: "flex", alignItems: "center", gap: isMobile ? 24 : 40, flexWrap: "wrap",
-    }}>
-      {!isMobile && (
-        <div style={{
-          position: "absolute", right: -80, bottom: -80,
-          width: 320, height: 320,
-          background: "rgba(255,255,255,0.05)",
-          borderRadius: "50%", filter: "blur(40px)",
-          pointerEvents: "none",
-        }} />
-      )}
-
-      <div style={{ flex: 1, minWidth: 220, position: "relative", zIndex: 1 }}>
-        <h3 style={{ margin: "0 0 10px", fontSize: isMobile ? 18 : 22, fontWeight: 700, color: "#ffffff" }}>
-          Automated Maintenance Schedule
-        </h3>
-        <p style={{ margin: "0 0 24px", fontSize: isMobile ? 13 : 14, color: "rgba(255,255,255,0.80)", lineHeight: 1.65, maxWidth: 540 }}>
-          Our predictive maintenance engine analyses asset health data and adds scheduled tasks to your queue to help prevent infrastructure degradation. New tasks will appear here once generated.
-        </p>
-        <button onClick={onReviewSchedule} style={{
-          padding: "11px 24px", background: "#ffffff",
-          color: "#4a0404", border: "none", borderRadius: 8,
-          cursor: "pointer", fontWeight: 700, fontSize: 13, fontFamily: SANS,
-          transition: "opacity 0.15s",
-        }}
-          onMouseEnter={(e) => e.currentTarget.style.opacity = "0.90"}
-          onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
-        >
-          Review Schedule
-        </button>
-      </div>
-
-      {!isMobile && (
-        <div style={{
-          width: 220, flexShrink: 0, position: "relative", zIndex: 1,
-          background: "rgba(255,255,255,0.08)", backdropFilter: "blur(10px)",
-          border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: 16,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <PulseDot />
-            <span style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, color: C.secondaryFixed, letterSpacing: "0.12em", textTransform: "uppercase" }}>
-              Active Monitoring
-            </span>
-          </div>
-          <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>
-            Asset health metrics will appear here once monitoring data is connected.
-          </p>
-          <div style={{
-            marginTop: 12, background: "rgba(255,255,255,0.08)", borderRadius: 4,
-            padding: "4px 8px", fontSize: 9, fontFamily: MONO, color: "rgba(255,255,255,0.75)",
-          }}>
-            SYS_ID: AWAITING_DATA
-          </div>
-        </div>
-      )}
-    </section>
-  );
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function StaffNotificationsPage() {
+export default function StaffNotifications() {
   const isMobile = useIsMobile();
+  const { user } = useAuth();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [search, setSearch]       = useState("");
-  const [activeTab, setActiveTab] = useState("All Alerts");
-  const [toast, setToast]         = useState(null);
-
+  const [search, setSearch] = useState("");
+  const [tab, setTab] = useState("All");
+  const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
-
-  useEffect(() => {
-    ["aatu-fonts", "aatu-icons"].forEach((id, i) => {
-      if (!document.getElementById(id)) {
-        const el = document.createElement("link");
-        el.id  = id;
-        el.rel = "stylesheet";
-        el.href = i === 0
-          ? "https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-          : "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block";
-        document.head.appendChild(el);
-      }
-    });
-  }, []);
 
   function showToast(msg) {
     setToast(msg);
     setTimeout(() => setToast(null), 2500);
   }
 
-  const markRead    = (id) => setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, unread: false } : n));
-  const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })));
-    showToast("All notifications marked as read.");
-  };
+  // ── Fetch real notifications for this staff member ────────────────────────
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("id, type, title, body, read, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
 
-  const filtered = useMemo(() => notifications.filter((n) => {
-    const tabOk    = activeTab === "All Alerts" || n.tab === activeTab;
-    const q        = search.toLowerCase();
-    const searchOk = !q || [n.title, n.body, n.type].some((f) => f.toLowerCase().includes(q));
-    return tabOk && searchOk;
-  }), [notifications, activeTab, search]);
+      if (error) throw error;
+
+      setNotifications((data ?? []).map((n) => ({ ...n, unread: !n.read })));
+    } catch (err) {
+      console.error("Notifications fetch error:", err);
+      showToast(`Failed to load notifications: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
+
+  // ── Real-time: new notifications appear instantly ─────────────────────────
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel("staff-notifications-rt")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` }, (payload) => {
+        setNotifications((prev) => [{ ...payload.new, unread: !payload.new.read }, ...prev]);
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [user?.id]);
+
+  async function markRead(id) {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false, read: true } : n)));
+    const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
+    if (error) {
+      console.error("Mark read error:", error.message);
+      fetchNotifications();
+    }
+  }
+
+  async function markAllRead() {
+    const unreadIds = notifications.filter((n) => n.unread).map((n) => n.id);
+    if (unreadIds.length === 0) return;
+    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false, read: true })));
+    const { error } = await supabase.from("notifications").update({ read: true }).in("id", unreadIds);
+    if (error) {
+      console.error("Mark all read error:", error.message);
+      fetchNotifications();
+      return;
+    }
+    showToast("All notifications marked as read.");
+  }
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return notifications.filter((n) => {
+      const tabOk = tab === "All" || (tab === "Unread" && n.unread);
+      const searchOk = !q || [n.title, n.body, n.type].some((f) => f?.toLowerCase().includes(q));
+      return tabOk && searchOk;
+    });
+  }, [notifications, tab, search]);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: C.surface, fontFamily: SANS }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: C.surface, fontFamily: SANS, color: C.onSurface }}>
+      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}`}</style>
       <Sidebar open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
-      <main style={{
-        marginLeft: isMobile ? 0 : 260, flex: 1, display: "flex", flexDirection: "column",
-        paddingBottom: isMobile ? 60 : 0, minWidth: 0,
-      }}>
-        <TopBar onMenuClick={() => setDrawerOpen(true)} search={search} setSearch={setSearch} />
+      <main style={{ marginLeft: isMobile ? 0 : 260, flex: 1, display: "flex", flexDirection: "column", paddingBottom: isMobile ? 64 : 0, minWidth: 0 }}>
+        <TopBar onMenuClick={() => setDrawerOpen(true)} search={search} setSearch={setSearch} isMobile={isMobile} />
 
-        <div style={{
-          flex: 1, padding: isMobile ? "20px 16px 40px" : "32px 32px 48px",
-          maxWidth: 1600, width: "100%", margin: "0 auto", boxSizing: "border-box",
-        }}>
+        <div style={{ flex: 1, padding: isMobile ? "20px 16px 40px" : "32px", maxWidth: 900, width: "100%", margin: "0 auto", boxSizing: "border-box" }}>
 
-          {/* Page Header */}
-          <div style={{
-            display: "flex", justifyContent: "space-between",
-            alignItems: isMobile ? "flex-start" : "flex-end",
-            flexDirection: isMobile ? "column" : "row",
-            gap: 16, marginBottom: isMobile ? 20 : 28,
-          }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "center", flexDirection: isMobile ? "column" : "row", gap: 14, marginBottom: 24 }}>
             <div>
-              <h2 style={{ margin: "0 0 4px", fontSize: isMobile ? 22 : 28, fontWeight: 700, color: C.primary }}>
-                System Notifications
-              </h2>
-              <p style={{ margin: 0, fontSize: 14, color: C.onSurfaceVariant }}>
-                Stay updated with facility requests, asset health, and administrative approvals.
-              </p>
+              <h1 style={{ margin: "0 0 4px", fontSize: isMobile ? 22 : 28, fontWeight: 700 }}>Notifications</h1>
+              <p style={{ margin: 0, fontSize: 14, color: C.onSurfaceVariant }}>Alerts about requests assigned to you and your monitoring activity.</p>
             </div>
-            <div style={{ display: "flex", gap: 10, width: isMobile ? "100%" : "auto" }}>
-              <button
-                onClick={markAllRead}
-                disabled={unreadCount === 0}
-                style={{
-                  padding: "9px 18px",
-                  border: `1px solid ${C.outlineVariant}`,
-                  borderRadius: 8, background: C.surfaceContainerLowest,
-                  color: C.onSurface, cursor: unreadCount === 0 ? "default" : "pointer",
-                  fontSize: 12, fontFamily: MONO, fontWeight: 700,
-                  display: "flex", alignItems: "center", gap: 6,
-                  opacity: unreadCount === 0 ? 0.5 : 1, flex: isMobile ? 1 : "initial",
-                  justifyContent: "center",
-                }}
-              >
-                <Icon name="done_all" size={15} />
-                {!isMobile && "Mark all as read"}
-                {unreadCount > 0 && (
-                  <span style={{
-                    background: C.primaryContainer, color: C.white,
-                    borderRadius: 99, fontSize: 9, fontWeight: 700,
-                    padding: "1px 6px", fontFamily: MONO,
-                  }}>{unreadCount}</span>
-                )}
-              </button>
-              <button
-                onClick={() => showToast("Use the search bar and tabs above to filter notifications.")}
-                style={{
-                  padding: "9px 18px", background: C.primaryContainer, color: C.white,
-                  border: "none", borderRadius: 8, cursor: "pointer",
-                  fontSize: 12, fontFamily: MONO, fontWeight: 700,
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  flex: isMobile ? 1 : "initial",
-                }}
-              >
-                <Icon name="filter_list" size={15} style={{ color: C.white }} />
-                {isMobile ? "Filter" : "Filter View"}
-              </button>
-            </div>
+            <button
+              onClick={markAllRead}
+              disabled={unreadCount === 0}
+              style={{ padding: "9px 18px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: CARD, color: C.onSurface, cursor: unreadCount === 0 ? "default" : "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, opacity: unreadCount === 0 ? 0.5 : 1, flexShrink: 0 }}
+            >
+              <Icon name="done_all" size={15} />
+              Mark all read
+              {unreadCount > 0 && (
+                <span style={{ background: C.primaryContainer, color: C.white, borderRadius: 99, fontSize: 9, fontWeight: 700, padding: "1px 6px", fontFamily: MONO }}>{unreadCount}</span>
+              )}
+            </button>
           </div>
 
-          {/* Bento Grid */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "300px 1fr",
-            gap: 24, alignItems: "start",
-          }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
+            {["All", "Unread"].map((t) => (
+              <button key={t} onClick={() => setTab(t)} style={{ padding: "6px 16px", borderRadius: 99, fontSize: 12, fontWeight: 700, fontFamily: MONO, border: "none", cursor: "pointer", background: tab === t ? C.primaryContainer : C.surfaceContainerHigh, color: tab === t ? C.white : C.onSurfaceVariant }}>
+                {t}{t === "Unread" && unreadCount > 0 ? ` (${unreadCount})` : ""}
+              </button>
+            ))}
+          </div>
 
-            {/* ── Overview Panel ───── */}
-            <div style={isMobile ? {} : { position: "sticky", top: 88 }}>
-              <OverviewPanel notifications={notifications} isMobile={isMobile} />
-            </div>
-
-            {/* ── Notifications List ─ */}
-            <div style={{
-              background: C.surfaceContainerLowest,
-              border: `1px solid ${C.outlineVariant}`,
-              borderRadius: 14, overflow: "hidden",
-            }}>
-              {/* Tab bar */}
-              <div style={{
-                padding: isMobile ? "0 16px" : "0 24px",
-                borderBottom: `1px solid ${C.outlineVariant}`,
-                display: "flex", gap: isMobile ? 16 : 28,
-                background: C.surfaceContainerLowest, overflowX: "auto",
-              }}>
-                {TABS.map((tab) => {
-                  const isActive = activeTab === tab;
-                  return (
-                    <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                      padding: "16px 0", border: "none", background: "none",
-                      cursor: "pointer", fontSize: 12, fontFamily: MONO,
-                      fontWeight: isActive ? 700 : 500, letterSpacing: "0.04em",
-                      color: isActive ? C.primary : C.onSurfaceVariant,
-                      borderBottom: isActive ? `2px solid ${C.primary}` : "2px solid transparent",
-                      marginBottom: -1, transition: "color 0.15s, border-color 0.15s",
-                      whiteSpace: "nowrap", flexShrink: 0,
-                    }}>{tab}</button>
-                  );
-                })}
+          <div style={{ background: CARD, border: `1px solid ${C.outlineVariant}`, borderRadius: 14, overflow: "hidden" }}>
+            {loading ? (
+              <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+                {[1, 2, 3].map((i) => <div key={i} style={{ height: 70, background: C.surfaceContainerLow, borderRadius: 8, animation: "pulse 1.5s ease-in-out infinite" }} />)}
               </div>
-
-              {/* Notification items */}
-              {filtered.length === 0 ? (
-                <div style={{
-                  padding: isMobile ? 40 : 60, textAlign: "center",
-                  color: C.onSurfaceVariant, fontSize: 14,
-                }}>
-                  <Icon name="notifications_off" size={36} style={{ display: "block", margin: "0 auto 12px", color: C.outlineVariant }} />
-                  {notifications.length === 0 ? "No notifications yet." : "No notifications match your filters."}
-                </div>
-              ) : (
-                <div>
-                  {filtered.map((notif) => (
-                    <NotifItem
-                      key={notif.id}
-                      notif={notif}
-                      onMarkRead={markRead}
-                      searchTerm={search}
-                      isMobile={isMobile}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Footer */}
-              {notifications.length > 0 && (
-                <div style={{
-                  padding: "16px 24px",
-                  borderTop: `1px solid ${C.outlineVariant}`,
-                  display: "flex", justifyContent: "center",
-                  background: C.surfaceContainerLowest,
-                }}>
-                  <button
-                    onClick={() => showToast("You're viewing all available notifications.")}
-                    style={{
-                      background: "none", border: "none", cursor: "pointer",
-                      fontSize: 12, fontFamily: MONO, fontWeight: 700,
-                      color: C.onSurfaceVariant, display: "flex", alignItems: "center", gap: 6,
-                      transition: "color 0.15s",
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = C.primary}
-                    onMouseLeave={(e) => e.currentTarget.style.color = C.onSurfaceVariant}
-                  >
-                    View all past notifications
-                    <Icon name="arrow_forward" size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Automated Maintenance Banner */}
-          <div style={{ marginTop: isMobile ? 20 : 28 }}>
-            <MaintenanceBanner
-              isMobile={isMobile}
-              onReviewSchedule={() => showToast("Maintenance schedule review coming soon.")}
-            />
+            ) : filtered.length === 0 ? (
+              <div style={{ padding: isMobile ? 40 : 60, textAlign: "center", color: C.onSurfaceVariant, fontSize: 14 }}>
+                <Icon name="notifications_off" size={36} style={{ display: "block", margin: "0 auto 12px", color: C.outlineVariant }} />
+                {notifications.length === 0 ? "No notifications yet." : "No notifications match your filters."}
+              </div>
+            ) : (
+              <div>
+                {filtered.map((notif) => (
+                  <NotifItem key={notif.id} notif={notif} onMarkRead={markRead} isMobile={isMobile} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </main>
@@ -757,12 +390,7 @@ export default function StaffNotificationsPage() {
       {isMobile && <BottomNav />}
 
       {toast && (
-        <div style={{
-          position: "fixed", bottom: isMobile ? 76 : 24, left: "50%", transform: "translateX(-50%)",
-          background: "var(--color-inverse-surface)", color: "var(--color-inverse-on-surface)", padding: "12px 24px",
-          borderRadius: 30, fontSize: 13, fontFamily: MONO, zIndex: 300,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.2)", whiteSpace: "nowrap",
-        }}>
+        <div style={{ position: "fixed", bottom: isMobile ? 76 : 24, left: "50%", transform: "translateX(-50%)", background: "var(--color-inverse-surface)", color: "var(--color-inverse-on-surface)", padding: "12px 24px", borderRadius: 30, fontSize: 13, fontFamily: MONO, zIndex: 300, boxShadow: "0 8px 24px rgba(0,0,0,0.2)", maxWidth: "90vw", textAlign: "center" }}>
           {toast}
         </div>
       )}

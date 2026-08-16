@@ -54,7 +54,7 @@ serve(async (req: Request) => {
       })
     }
 
-    const { email, password, full_name, role, department, specialty } = await req.json()
+    const { email, password, full_name, role, department, program, specialty } = await req.json()
 
     if (!email || !password || !full_name || !role) {
       return new Response(JSON.stringify({ error: 'email, password, full_name and role are required.' }), {
@@ -106,6 +106,7 @@ serve(async (req: Request) => {
         full_name,
         role,
         department:           department ?? null,
+        program:              program    ?? null,
         specialty:            specialty  ?? null,
         status:               'Active',
         must_change_password: true,

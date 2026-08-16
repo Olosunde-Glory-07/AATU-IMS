@@ -11,14 +11,16 @@ const ROLE_THEME = {
   admin:      { accent: '#4a0404', accentText: '#fff', light: '#ffdad5', label: 'Administrator' },
   staff:      { accent: '#4a0404', accentText: '#fff', light: '#ffdad5', label: 'Staff Member'  },
   technician: { accent: '#210000', accentText: '#fff', light: '#dce2f3', label: 'Technician'    },
-  student:    { accent: '#1a3a5c', accentText: '#fff', light: '#dbe9fb', label: 'Student'       },
+  hod:        { accent: '#1a3a5c', accentText: '#fff', light: '#dbe9fb', label: 'Head of Department' },
+  dean:       { accent: '#1a3a5c', accentText: '#fff', light: '#dbe9fb', label: 'Dean'          },
 }
 
 const ROLE_BACK_PATH = {
   admin:      '/admin/dashboard',
   staff:      '/staff/dashboard',
   technician: '/technician/dashboard',
-  student:    '/student/dashboard',
+  hod:        '/requester/dashboard',
+  dean:       '/requester/dashboard',
 }
 
 // Notification toggles — keys match profiles.notification_prefs JSON
@@ -66,8 +68,13 @@ export default function Profile({ role: roleProp }) {
   const navigate     = useNavigate()
   const fileInputRef = useRef(null)
 
-  const role  = roleProp ?? profile?.role ?? 'student'
-  const theme = ROLE_THEME[role] ?? ROLE_THEME.student
+  // profile?.role is the actual signed-in user's role (e.g. "hod" or "dean"),
+  // which is more specific than roleProp — AppRoutes passes a single generic
+  // "requester" for both HOD and Dean routes, so relying on roleProp alone
+  // would show the same label/theme for both. Prefer the real role, and only
+  // fall back to roleProp/'staff' while profile is still loading.
+  const role  = profile?.role ?? roleProp ?? 'staff'
+  const theme = ROLE_THEME[role] ?? ROLE_THEME.staff
 
   // ── Avatar ────────────────────────────────────────────────────────────────
   const [avatarUrl,  setAvatarUrl]  = useState(profile?.avatar_url ?? null)
