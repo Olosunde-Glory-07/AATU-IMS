@@ -5,33 +5,37 @@ import { useAuth } from '../context/AuthContext'
  * ProtectedRoute - wraps any route that requires auth
  * @param {string[]} allowedRoles - if provided, only those roles can access
  */
+// ✅ Correct — waits for session to restore before redirecting
 export default function ProtectedRoute({ allowedRoles }) {
   const { user, profile, loading } = useAuth()
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-full border-4 border-primary-container border-t-transparent animate-spin" />
-          <p className="text-label-md text-on-surface-variant font-mono">Loading...</p>
-        </div>
+  
+  // Still checking session — show nothing (or a spinner)
+  if (loading) return (
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      background: '#f9f9ff'
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <span 
+          className="material-symbols-outlined" 
+          style={{ fontSize: 40, color: '#4a0404', animation: 'spin 1s linear infinite' }}
+        >
+          progress_activity
+        </span>
+        <p style={{ marginTop: 12, fontSize: 13, color: '#554240', fontFamily: 'monospace' }}>
+          Loading...
+        </p>
       </div>
-    )
-  }
-
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+    </div>
+  )
+  
+  // Session fully loaded — now safe to check auth
   if (!user) return <Navigate to="/login" replace />
-
-  if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
-    // Redirect to their correct dashboard
-    const roleHome = {
-      admin: '/admin/dashboard',
-      staff: '/staff/dashboard',
-      technician: '/technician/dashboard',
-      hod: '/requester/dashboard',
-      dean: '/requester/dashboard',
-    }
-    return <Navigate to={roleHome[profile.role] ?? '/login'} replace />
-  }
-
+  if (!allowedRoles.includes(profile?.role)) return <Navigate to="/login" replace />
+  
   return <Outlet />
 }

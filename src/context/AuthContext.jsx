@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
@@ -14,13 +15,44 @@ const ROLE_HOME = {
   dean:       '/requester/dashboard',
 }
 
+// Path prefix each role is allowed to be restored into. Guards against
+// restoring a stale path that no longer matches the signed-in user's role
+// (e.g. their role changed, or the saved path belonged to a different account).
+const ROLE_PREFIX = {
+  admin:      '/admin',
+  staff:      '/staff',
+  technician: '/technician',
+  hod:        '/requester',
+  dean:       '/requester',
+}
+
+// Pages that should never be "restored to" — auth flows and the root redirect.
+const SKIP_PERSIST = new Set([
+  '/', '/login', '/forgot-password', '/reset-password', '/callback', '/auth/change-password',
+])
+
+const LAST_PATH_KEY = 'aatu:lastPath'
+
 export function AuthProvider({ children }) {
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [user, setUser]       = useState(null)
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  // Only restore the saved path once, on the very first load — not on every
+  // token refresh or profile refetch that happens afterward.
+  const hasRestoredPath = useRef(false)
+
+  // ── Remember the current page so we can return to it after the browser
+  //    is closed and reopened (session persists via Supabase's own storage) ──
+  useEffect(() => {
+    if (!SKIP_PERSIST.has(location.pathname)) {
+      localStorage.setItem(LAST_PATH_KEY, location.pathname)
+    }
+  }, [location.pathname])
 
   // ── Fetch (or refetch) the profile row for a given user id ────────────────
   const fetchProfile = useCallback(async (userId) => {
@@ -54,59 +86,77 @@ export function AuthProvider({ children }) {
     navigate(home, { replace: true })
   }, [navigate])
 
-  // ── Initial session check + auth state listener ───────────────────────────
-  useEffect(() => {
-    let isMounted = true
+  // ── Same as redirectByRole, but sends the user back to the last page they
+  //    were on (if any, and if it's valid for their role) instead of always
+  //    landing on the role's default dashboard. Used only for restoring an
+  //    existing session on app load — not after an explicit fresh login. ────
+  const restoreOrRedirect = useCallback((profileRow) => {
+    if (!profileRow) return
 
-    async function init() {
-      const { data: { session: initialSession } } = await supabase.auth.getSession()
-      if (!isMounted) return
-
-      setSession(initialSession)
-      setUser(initialSession?.user ?? null)
-
-      if (initialSession?.user) {
-        await fetchProfile(initialSession.user.id)
-      }
-
-      setLoading(false)
+    if (profileRow.must_change_password) {
+      navigate('/auth/change-password', { replace: true })
+      return
     }
 
-    init()
+    const prefix   = ROLE_PREFIX[profileRow.role]
+    const lastPath = localStorage.getItem(LAST_PATH_KEY)
+
+    if (prefix && lastPath && lastPath.startsWith(prefix)) {
+      navigate(lastPath, { replace: true })
+    } else {
+      const home = ROLE_HOME[profileRow.role] ?? '/login'
+      navigate(home, { replace: true })
+    }
+  }, [navigate])
+
+  // ── Initial session check + auth state listener ───────────────────────────
+  useEffect(() => {
+    // Get existing session on mount
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      if (error) {
+        // Stale/invalid refresh token (e.g. the browser was closed long enough
+        // that it expired) — this is the source of the 400 on reopen. Clear
+        // the broken session instead of leaving the app stuck loading.
+        console.error('getSession error:', error.message)
+        await supabase.auth.signOut().catch(() => {})
+        setUser(null)
+        setProfile(null)
+        setLoading(false)
+        return
+      }
+
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        const profileRow = await fetchProfile(session.user.id)
+        setLoading(false)
+        if (profileRow && !hasRestoredPath.current) {
+          hasRestoredPath.current = true
+          // Only restore if we're currently sitting on a page that isn't
+          // meant to be landed on directly (i.e. app just booted on "/").
+          if (location.pathname === '/' || SKIP_PERSIST.has(location.pathname)) {
+            restoreOrRedirect(profileRow)
+          }
+        }
+      } else {
+        setLoading(false)
+      }
+    })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        setSession(newSession)
-        setUser(newSession?.user ?? null)
-
-        if (event === 'SIGNED_OUT') {
+      async (event, session) => {
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          await fetchProfile(session.user.id)
+        } else {
           setProfile(null)
-          return
-        }
-
-        if (newSession?.user) {
-          // Always fetch a FRESH profile here rather than trusting stale
-          // local state — important on shared devices / after role changes.
-          const freshProfile = await fetchProfile(newSession.user.id)
-
-          if (event === 'SIGNED_IN') {
-            redirectByRole(freshProfile)
-          }
-
-          if (event === 'USER_UPDATED') {
-            // e.g. after a password change — re-route in case
-            // must_change_password just flipped to false.
-            redirectByRole(freshProfile)
-          }
+          setLoading(false)
         }
       }
     )
 
-    return () => {
-      isMounted = false
-      subscription.unsubscribe()
-    }
-  }, [fetchProfile, redirectByRole])
+    return () => subscription.unsubscribe()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchProfile])
 
   // ── Sign in with email + password ──────────────────────────────────────────
   async function signIn(email, password) {
@@ -132,6 +182,9 @@ export function AuthProvider({ children }) {
     setUser(null)
     setSession(null)
     setProfile(null)
+    // Clear the saved path so the next person to log in on this browser
+    // doesn't get dropped into wherever this account last was.
+    localStorage.removeItem(LAST_PATH_KEY)
     return { error }
   }
 
