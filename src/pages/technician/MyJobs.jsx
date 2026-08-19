@@ -619,6 +619,26 @@ export default function MyJobs() {
 
     if (error) throw error
 
+    // Notify all admins that the signed approval was uploaded — non-blocking,
+    // wrapped so a notification failure never breaks the approval itself
+    // (which already succeeded above).
+    try {
+      const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin')
+      if (admins?.length) {
+        await supabase.from('notifications').insert(
+          admins.map((a) => ({
+            user_id: a.id,
+            type:    'JobUpdate',
+            title:   'HOD Approval Uploaded',
+            body:    `${profile?.full_name ?? 'A technician'} uploaded the signed job order for "${job.title}", approved by ${hodName}.`,
+            read:    false,
+          }))
+        )
+      }
+    } catch (notifErr) {
+      console.warn('Failed to notify admins (non-fatal):', notifErr)
+    }
+
     await fetchJobs()
     setSelected((s) => s && s.id === job.id
       ? { ...s, status: 'Approved', hodName, hodSignedAtFormatted: 'Just now' }

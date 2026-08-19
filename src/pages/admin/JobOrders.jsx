@@ -456,8 +456,49 @@ function MobileOrderCard({ order, onSelect }) {
   );
 }
 
+// ─── Reject Proof Modal ───────────────────────────────────────────────────────
+function RejectProofModal({ order, onClose, onConfirm, submitting }) {
+  const [reason, setReason] = useState("");
+  return (
+    <>
+      <div onClick={!submitting ? onClose : undefined} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 200 }} />
+      <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(460px, 95vw)", background: CARD, borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.22)", zIndex: 201, fontFamily: SANS, overflow: "hidden" }}>
+        <div style={{ padding: "18px 22px", borderBottom: `1px solid ${C.outlineVariant}`, background: C.errorContainer, display: "flex", alignItems: "center", gap: 10 }}>
+          <Icon name="cancel" size={22} filled style={{ color: C.onErrorContainer }} />
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.onErrorContainer }}>Reject Signed Approval</h3>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: C.onErrorContainer, opacity: 0.85 }}>{order.title}</p>
+          </div>
+        </div>
+        <div style={{ padding: 22 }}>
+          <label style={{ display: "block", fontSize: 10, fontFamily: MONO, letterSpacing: "0.08em", textTransform: "uppercase", color: C.onSurfaceVariant, marginBottom: 6 }}>
+            Reason (sent to the technician)
+          </label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={4}
+            placeholder="e.g. The photo doesn't show a signature, or this isn't the job order document…"
+            style={{ width: "100%", padding: "10px 12px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, fontSize: 14, outline: "none", resize: "vertical", boxSizing: "border-box", background: C.surface, color: C.onSurface, fontFamily: SANS }}
+          />
+        </div>
+        <div style={{ padding: "14px 22px", borderTop: `1px solid ${C.outlineVariant}`, display: "flex", justifyContent: "flex-end", gap: 10, background: C.surfaceContainerLow }}>
+          <button onClick={onClose} disabled={submitting} style={{ padding: "9px 18px", border: `1px solid ${C.outlineVariant}`, borderRadius: 8, background: "none", cursor: "pointer", fontSize: 12, fontFamily: MONO, color: C.onSurface }}>Cancel</button>
+          <button
+            onClick={() => onConfirm(reason)}
+            disabled={submitting || !reason.trim()}
+            style={{ padding: "9px 20px", background: C.error, color: "#ffffff", border: "none", borderRadius: 8, cursor: submitting || !reason.trim() ? "not-allowed" : "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700, opacity: submitting || !reason.trim() ? 0.6 : 1 }}
+          >
+            {submitting ? "Rejecting…" : "Reject & Notify Technician"}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Detail Drawer ────────────────────────────────────────────────────────────
-function DetailDrawer({ order, onClose, onUpdateProgress, onMarkComplete, isMobile }) {
+function DetailDrawer({ order, onClose, onUpdateProgress, onMarkComplete, onRejectProof, isMobile }) {
   const [progress, setProgress] = useState(order?.progress ?? 0);
 
   useEffect(() => {
@@ -466,6 +507,9 @@ function DetailDrawer({ order, onClose, onUpdateProgress, onMarkComplete, isMobi
 
   if (!order) return null;
   const canEdit = order.status !== "Completed";
+  // Only offer rejection while there's an actual proof on file and the job
+  // isn't already wrapped up — rejecting a completed job doesn't make sense.
+  const canRejectProof = !!order.hodProofUrl && order.status !== "Completed";
 
   return (
     <>
@@ -521,6 +565,18 @@ function DetailDrawer({ order, onClose, onUpdateProgress, onMarkComplete, isMobi
             <StatusChip status={order.status} />
           </div>
 
+          {/* Previous rejection banner — visible until the technician re-uploads */}
+          {order.hodProofRejectionReason && !order.hodProofUrl && (
+            <div style={{ background: C.errorContainer, border: `1px solid color-mix(in srgb, ${C.error} 20%, transparent)`, borderRadius: 10, padding: "12px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <Icon name="report" size={18} style={{ color: C.onErrorContainer, flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.onErrorContainer }}>You rejected the last upload</p>
+                <p style={{ margin: "3px 0 0", fontSize: 12, color: C.onErrorContainer, lineHeight: 1.5 }}>{order.hodProofRejectionReason}</p>
+                <p style={{ margin: "4px 0 0", fontSize: 11, color: C.onErrorContainer, opacity: 0.8 }}>Waiting for the technician to re-upload.</p>
+              </div>
+            </div>
+          )}
+
           <div>
             <div style={{ fontSize: 11, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: "0.08em", marginBottom: 8, textTransform: "uppercase" }}>HOD Approval</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 8, background: order.hodSignedAt ? "#DCFCE7" : "#FEF3C7" }}>
@@ -531,6 +587,33 @@ function DetailDrawer({ order, onClose, onUpdateProgress, onMarkComplete, isMobi
                   : "Awaiting Head of Department's physical signature"}
               </span>
             </div>
+
+            {/* Uploaded proof photo — the actual thing an admin needs to review */}
+            {order.hodProofUrl && (
+              <div style={{ marginTop: 10 }}>
+                <button
+                  onClick={() => window.open(order.hodProofUrl, "_blank", "noopener,noreferrer")}
+                  style={{ display: "block", width: "100%", padding: 0, border: `1px solid ${C.outlineVariant}`, borderRadius: 10, overflow: "hidden", cursor: "pointer", background: "none" }}
+                >
+                  <img
+                    src={order.hodProofUrl}
+                    alt="Uploaded signed job order"
+                    style={{ width: "100%", maxHeight: 260, objectFit: "cover", display: "block" }}
+                  />
+                </button>
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: C.onSurfaceVariant, textAlign: "center" }}>Tap the photo to view full size</p>
+
+                {canRejectProof && (
+                  <button
+                    onClick={() => onRejectProof(order)}
+                    style={{ marginTop: 10, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", background: "none", border: `1px solid ${C.error}`, color: C.error, borderRadius: 8, cursor: "pointer", fontSize: 12, fontFamily: MONO, fontWeight: 700 }}
+                  >
+                    <Icon name="cancel" size={15} style={{ color: C.error }} />
+                    Reject This Upload
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {order.pdfUrl && (
@@ -606,10 +689,13 @@ function Toast({ msg }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdminJobOrdersPage() {
   const isMobile  = useIsMobile();
+  const { profile } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [search,     setSearch]     = useState("");
   const [activeTab,  setActiveTab]  = useState("All Orders");
   const [selected,   setSelected]   = useState(null);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejecting,  setRejecting]  = useState(false);
   const [page,       setPage]       = useState(1);
   const [toast,      setToast]      = useState(null);
   const [loading,    setLoading]    = useState(true);
@@ -623,8 +709,8 @@ export default function AdminJobOrdersPage() {
         .from("job_orders")
         .select(`
           id, title, location, department, priority, status,
-          progress, notes, created_at, request_id,
-          pdf_url, hod_signed_at, hod_name,
+          progress, notes, created_at, request_id, technician_id,
+          pdf_url, hod_signed_at, hod_name, hod_proof_url, hod_proof_rejection_reason,
           technician:profiles!job_orders_technician_id_fkey ( full_name )
         `)
         .order("created_at", { ascending: false });
@@ -632,19 +718,22 @@ export default function AdminJobOrdersPage() {
       if (error) { console.error("Job orders fetch error:", error.message); showToast(`Failed to load job orders: ${error.message}`); return; }
 
       setOrders((data ?? []).map((o) => ({
-        id:           o.id,
-        title:        o.title,
-        location:     o.location,
-        department:   o.department,
-        priority:     o.priority,
-        status:       o.status,
-        progress:     o.progress ?? 0,
-        notes:        o.notes,
-        pdfUrl:       o.pdf_url,
-        hodSignedAt:  o.hod_signed_at,
-        hodName:      o.hod_name,
-        requestId:    o.request_id,
-        assigneeName: o.technician?.full_name ?? "Unassigned",
+        id:                      o.id,
+        title:                   o.title,
+        location:                o.location,
+        department:              o.department,
+        priority:                o.priority,
+        status:                  o.status,
+        progress:                o.progress ?? 0,
+        notes:                   o.notes,
+        pdfUrl:                  o.pdf_url,
+        hodSignedAt:             o.hod_signed_at,
+        hodName:                 o.hod_name,
+        hodProofUrl:             o.hod_proof_url,
+        hodProofRejectionReason: o.hod_proof_rejection_reason,
+        requestId:               o.request_id,
+        technicianId:            o.technician_id,
+        assigneeName:            o.technician?.full_name ?? "Unassigned",
         createdAt:    new Date(o.created_at).toLocaleDateString("en-GB", {
           day: "numeric", month: "short", year: "numeric",
           hour: "2-digit", minute: "2-digit",
@@ -680,6 +769,50 @@ export default function AdminJobOrdersPage() {
       setSelected(null);
       showToast("Job order marked complete.");
     } catch (err) { showToast("Failed to mark complete."); }
+  }
+
+  // ── Reject the uploaded HOD proof — clears the approval and notifies the
+  //    technician so they know to re-upload with what's wrong. ──────────────
+  async function handleRejectProof(reason) {
+    if (!rejectTarget) return;
+    setRejecting(true);
+    try {
+      const { error } = await supabase
+        .from("job_orders")
+        .update({
+          status:                     "Pending Approval",
+          hod_name:                   null,
+          hod_signed_at:              null,
+          hod_proof_url:              null,
+          hod_proof_rejection_reason: reason.trim(),
+        })
+        .eq("id", rejectTarget.id);
+      if (error) throw error;
+
+      if (rejectTarget.technicianId) {
+        try {
+          await supabase.from("notifications").insert({
+            user_id: rejectTarget.technicianId,
+            type:    "JobUpdate",
+            title:   "Signed Approval Rejected",
+            body:    `${profile?.full_name ?? "The admin"} rejected the uploaded approval for "${rejectTarget.title}". Reason: ${reason.trim()}. Please re-upload a clear photo of the signed job order.`,
+            read:    false,
+          });
+        } catch (notifErr) {
+          console.warn("Failed to notify technician (non-fatal):", notifErr);
+        }
+      }
+
+      await fetchOrders();
+      setSelected(null);
+      setRejectTarget(null);
+      showToast("Upload rejected. Technician notified.");
+    } catch (err) {
+      console.error("Reject proof error:", err);
+      showToast("Failed to reject upload.");
+    } finally {
+      setRejecting(false);
+    }
   }
 
   const filtered = useMemo(() => {
@@ -841,7 +974,17 @@ export default function AdminJobOrdersPage() {
           onClose={() => setSelected(null)}
           onUpdateProgress={handleUpdateProgress}
           onMarkComplete={handleMarkComplete}
+          onRejectProof={(order) => setRejectTarget(order)}
           isMobile={isMobile}
+        />
+      )}
+
+      {rejectTarget && (
+        <RejectProofModal
+          order={rejectTarget}
+          submitting={rejecting}
+          onClose={() => setRejectTarget(null)}
+          onConfirm={handleRejectProof}
         />
       )}
 
