@@ -247,6 +247,10 @@ export default function Users() {
   const { departments, loadingDepartments } = useDepartments()
   const { programs, loadingPrograms } = useProgramsForDept(form.department_id)
 
+  // Separate department/program lookups for the Edit modal, so they don't
+  // interfere with whatever's currently selected in the Add User form.
+  const { programs: editPrograms, loadingPrograms: loadingEditPrograms } = useProgramsForDept(editing?.department_id)
+
   function showToast(msg) {
     setToast(msg)
     setTimeout(() => setToast(null), 3000)
@@ -266,7 +270,7 @@ export default function Users() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, role, department, program, specialty, status, created_at')
+        .select('id, full_name, email, role, department, program, specialty, status, created_at')
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -274,7 +278,7 @@ export default function Users() {
       setUsers((data ?? []).map(u => ({
         id:         u.id,
         name:       u.full_name ?? 'Unknown',
-        email:      '',
+        email:      u.email ?? '',
         role:       u.role ?? 'staff',
         dept:       u.department ?? u.specialty ?? '—',
         program:    u.program ?? '—',
@@ -305,6 +309,39 @@ export default function Users() {
   function handleRoleChange(e) {
     const role = e.target.value
     setForm(f => ({ ...f, role, department_id: '', program_id: '', specialty: '' }))
+  }
+
+  // ── Open the Edit modal — resolve the stored department/program NAME back
+  //    to an ID so the dropdowns pre-select the right option. ────────────────
+  function openEdit(u) {
+    const deptMatch = departments.find(d => d.name === u.dept)
+    setEditing({
+      ...u,
+      department_id: deptMatch?.id ?? '',
+      program_id:    '', // resolved below once editPrograms loads for this department
+    })
+  }
+
+  // Once the program list for the edit target's department has loaded, match
+  // the stored program NAME to its ID so the Program dropdown pre-selects too.
+  useEffect(() => {
+    if (!editing || editing.role === 'technician') return
+    if (editing.program_id) return // already resolved
+    if (!editing.program || editing.program === '—') return
+    const match = editPrograms.find(p => p.name === editing.program)
+    if (match) setEditing(s => (s ? { ...s, program_id: match.id } : s))
+  }, [editPrograms, editing])
+
+  // Reset program_id whenever the edited department changes.
+  function handleEditDepartmentChange(e) {
+    const department_id = e.target.value
+    setEditing(s => ({ ...s, department_id, program_id: '' }))
+  }
+
+  // Reset department/program/specialty whenever the edited role changes.
+  function handleEditRoleChange(e) {
+    const role = e.target.value
+    setEditing(s => ({ ...s, role, department_id: '', program_id: '', dept: '' }))
   }
 
   // ── Create user via Edge Function ─────────────────────────────────────────
@@ -450,25 +487,40 @@ export default function Users() {
     }
   }
 
- // ── Save edit ─────────────────────────────────────────────────────────────
+  // ── Save edit ─────────────────────────────────────────────────────────────
   async function saveEdit(e) {
     e.preventDefault()
     if (!editing) return
     try {
       const isTechnician = editing.role === 'technician'
+
+      const departmentName = isTechnician
+        ? null
+        : departments.find(d => d.id === editing.department_id)?.name ?? editing.dept ?? null
+      const programName = isTechnician
+        ? null
+        : editPrograms.find(p => p.id === editing.program_id)?.name ?? null
+
       const { error } = await supabase
         .from('profiles')
         .update({
           full_name:  editing.name,
           role:       editing.role,
-          department: isTechnician ? null        : editing.dept,
+          department: isTechnician ? null        : departmentName,
+          program:    isTechnician ? null         : programName,
           specialty:  isTechnician ? editing.dept : null,
           status:     editing.status,
         })
         .eq('id', editing.id)
       if (error) throw error
-      setUsers(p => p.map(u => u.id === editing.id ? { ...u, ...editing } : u))
-      if (selected?.id === editing.id) setSelected(s => ({ ...s, ...editing }))
+
+      const updatedRow = {
+        ...editing,
+        dept:    isTechnician ? editing.dept : (departmentName ?? '—'),
+        program: isTechnician ? '—'          : (programName ?? '—'),
+      }
+      setUsers(p => p.map(u => u.id === editing.id ? { ...u, ...updatedRow } : u))
+      if (selected?.id === editing.id) setSelected(s => ({ ...s, ...updatedRow }))
       setEditing(null)
       showToast('User updated.')
     } catch (err) {
@@ -624,7 +676,7 @@ export default function Users() {
                                     <span className="px-1.5 py-0.5 bg-surface-container-high text-on-surface text-[10px] font-bold rounded uppercase">You</span>
                                   )}
                                 </h4>
-                                <p className="text-xs font-mono text-on-surface-variant">{u.dept}{u.program && u.program !== '—' ? ` · ${u.program}` : ''}</p>
+                                <p className="text-xs font-mono text-on-surface-variant">{u.email || u.dept}{u.program && u.program !== '—' ? ` · ${u.program}` : ''}</p>
                               </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-3 mt-4 lg:mt-0">
@@ -637,7 +689,7 @@ export default function Users() {
                               </div>
                               <div className="flex gap-0.5">
                                 <button
-                                  onClick={() => setEditing({ ...u })}
+                                  onClick={() => openEdit(u)}
                                   className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-full transition-colors"
                                   title="Edit user"
                                 >
@@ -867,7 +919,7 @@ export default function Users() {
       {editing && (
         <>
           <div onClick={() => setEditing(null)} className="fixed inset-0 bg-black/30 z-[200]" />
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-surface-container-lowest rounded-xl shadow-2xl z-[201] overflow-hidden">
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-surface-container-lowest rounded-xl shadow-2xl z-[201] overflow-hidden" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="bg-primary-container px-6 py-5 flex items-center justify-between">
               <h3 className="text-white font-bold text-lg">Edit User</h3>
               <button onClick={() => setEditing(null)} className="text-white/70 hover:text-white p-1"><X size={20} /></button>
@@ -877,9 +929,16 @@ export default function Users() {
                 <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Full Name</label>
                 <input className={inp} value={editing.name} onChange={e => setEditing(s => ({ ...s, name: e.target.value }))} required />
               </div>
+
+              <div>
+                <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Email</label>
+                <input className={`${inp} bg-surface-container-low text-on-surface-variant cursor-not-allowed`} value={editing.email || '—'} disabled />
+                <p className="text-[11px] text-on-surface-variant/60 mt-1">Email cannot be changed here.</p>
+              </div>
+
               <div>
                 <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Role</label>
-                <select className={`${inp} cursor-pointer`} value={editing.role} onChange={e => setEditing(s => ({ ...s, role: e.target.value }))}>
+                <select className={`${inp} cursor-pointer`} value={editing.role} onChange={handleEditRoleChange}>
                   <option value="admin">Admin</option>
                   <option value="hod">HOD</option>
                   <option value="dean">Dean</option>
@@ -887,11 +946,10 @@ export default function Users() {
                   <option value="technician">Technician</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">
-                  {editing.role === 'technician' ? 'Specialty' : 'Department'}
-                </label>
-                {editing.role === 'technician' ? (
+
+              {editing.role === 'technician' ? (
+                <div>
+                  <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Specialty</label>
                   <select
                     className={`${inp} cursor-pointer`}
                     value={editing.dept === '—' ? '' : editing.dept}
@@ -900,10 +958,39 @@ export default function Users() {
                     <option value="">Select a category…</option>
                     {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
-                ) : (
-                  <input className={inp} value={editing.dept} onChange={e => setEditing(s => ({ ...s, dept: e.target.value }))} />
-                )}
-              </div>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Department</label>
+                    <select
+                      className={`${inp} cursor-pointer`}
+                      value={editing.department_id}
+                      onChange={handleEditDepartmentChange}
+                      disabled={loadingDepartments}
+                    >
+                      <option value="">{loadingDepartments ? 'Loading departments…' : 'Select a department…'}</option>
+                      {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>
+
+                  {editing.department_id && (
+                    <div>
+                      <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Program</label>
+                      <select
+                        className={`${inp} cursor-pointer`}
+                        value={editing.program_id}
+                        onChange={e => setEditing(s => ({ ...s, program_id: e.target.value }))}
+                        disabled={loadingEditPrograms}
+                      >
+                        <option value="">{loadingEditPrograms ? 'Loading programs…' : 'Select a program…'}</option>
+                        {editPrograms.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </>
+              )}
+
               <div>
                 <label className="block text-xs font-mono text-on-surface-variant uppercase tracking-wider mb-1.5">Status</label>
                 <select className={`${inp} cursor-pointer`} value={editing.status} onChange={e => setEditing(s => ({ ...s, status: e.target.value }))}>
@@ -940,6 +1027,7 @@ export default function Users() {
                 </div>
               </div>
               {[
+                ['Email',      selected.email],
                 ['Department', selected.dept],
                 ['Program',    selected.program],
                 ['Status',     selected.status],
@@ -951,7 +1039,7 @@ export default function Users() {
                 </div>
               ))}
               <div className="flex gap-2 pt-2">
-                <button onClick={() => { setEditing({ ...selected }); setSelected(null) }} className="flex-1 py-2 border border-outline-variant rounded-lg text-sm hover:bg-surface-container-low transition-colors flex items-center justify-center gap-1.5 text-on-surface">
+                <button onClick={() => { openEdit(selected); setSelected(null) }} className="flex-1 py-2 border border-outline-variant rounded-lg text-sm hover:bg-surface-container-low transition-colors flex items-center justify-center gap-1.5 text-on-surface">
                   <span className="material-symbols-outlined text-[16px]">edit</span> Edit
                 </button>
                 <button

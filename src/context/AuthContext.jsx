@@ -144,15 +144,25 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null)
+        setUser(session?.user ?? null);
+        setSession(session ?? null);
+
         if (session?.user) {
-          await fetchProfile(session.user.id)
+          const profileRow = await fetchProfile(session.user.id);
+
+          setLoading(false);
+
+          // Fresh login
+          if (event === "SIGNED_IN" && profileRow) {
+            redirectByRole(profileRow);
+          }
         } else {
-          setProfile(null)
-          setLoading(false)
+          setProfile(null);
+          setSession(null);
+          setLoading(false);
         }
       }
-    )
+    );
 
     return () => subscription.unsubscribe()
     // eslint-disable-next-line react-hooks/exhaustive-deps

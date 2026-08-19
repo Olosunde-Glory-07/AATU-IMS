@@ -44,12 +44,21 @@ const MARGIN = 48;
  * @param {string} order.priority        - "Emergency" | "High" | "Medium" | "Low"
  * @param {string} order.category        - Category, e.g. "Electrical"
  * @param {string} order.description     - Full description from the original request
- * @param {string} order.reporterName    - Who originally filed the request
- * @param {string} order.reporterRole    - "Student" | "Staff"
+ * @param {string} order.reporterName    - The requester's name. Since only HOD/Dean
+ *                                          can create requests, this IS the person
+ *                                          who must physically sign the job order.
+ * @param {string} order.reporterRole    - "HOD" | "Dean"
  * @param {string} order.technicianName  - Assigned technician's name
  * @param {string} order.technicianSpecialty - Technician's specialty/trade
  * @param {string} order.adminName       - Admin who approved/assigned (auto-signed)
  * @param {string} order.adminSignedAt   - ISO date string of admin approval
+ * @param {string} order.hodSignedAt     - ISO date string once the technician has
+ *                                          uploaded proof of physical signature (set
+ *                                          by admin verification, not before)
+ * @param {string} order.hodName         - Name captured from the physically signed
+ *                                          proof, once verified. Compare this against
+ *                                          order.reporterName to confirm the actual
+ *                                          requester signed it (not someone else).
  * @param {string} order.notes           - Optional note left for the technician
  * @param {string} [order.createdAt]     - ISO date string of when the job order was created
  * @returns {Promise<Uint8Array>}
@@ -141,7 +150,7 @@ export async function generateJobOrderPdf(order) {
     ["CATEGORY",         order.category || "—"],
     ["LOCATION",         order.location || "—"],
     ["DEPARTMENT",       order.department || "—"],
-    ["REPORTED BY",      `${order.reporterName || "—"}${order.reporterRole ? ` (${order.reporterRole})` : ""}`],
+    ["REQUESTED BY",     `${order.reporterName || "—"}${order.reporterRole ? ` (${order.reporterRole})` : ""}`],
     ["ASSIGNED TECHNICIAN", order.technicianName || "—"],
   ];
 
@@ -213,6 +222,9 @@ export async function generateJobOrderPdf(order) {
   y -= 28;
 
   const sigColWidth = (contentWidth - 24) / 2;
+
+  // Left block: admin — this one really is already digitally signed at
+  // generation time, so the name prints directly on the signature line.
   drawSignatureBlock(page, {
     x: MARGIN, y, width: sigColWidth,
     label: "ADMINISTRATOR APPROVAL",
@@ -222,14 +234,21 @@ export async function generateJobOrderPdf(order) {
     font, fontBold, signed: !!order.adminSignedAt,
   });
 
-  drawSignatureBlock(page, {
+  // Right block: the requester (HOD/Dean) must physically sign this printed
+  // page. Since only HOD/Dean can create requests, order.reporterName IS the
+  // person who must sign — so we always pre-print their name and role as a
+  // label of who should sign, while leaving the actual signature stroke and
+  // date blank for them to fill in by hand. Once the technician uploads a
+  // photo of the signed page and admin verifies it, order.hodName/hodSignedAt
+  // get set — at that point this block confirms the signature was captured
+  // (see the admin verification note below).
+  drawRequesterSignatureBlock(page, {
     x: MARGIN + sigColWidth + 24, y, width: sigColWidth,
-    label: "HEAD OF DEPARTMENT APPROVAL",
-    name: order.hodName || null,
-    date: order.hodSignedAt ? formatDate(order.hodSignedAt) : null,
-    statusText: order.hodSignedAt ? "Physically signed — see uploaded proof" : "Pending physical signature",
-    font, fontBold, signed: !!order.hodSignedAt,
-    isPhysical: true,
+    requesterName: order.reporterName || "—",
+    requesterRole: order.reporterRole || "Requester",
+    signed: !!order.hodSignedAt,
+    signedDate: order.hodSignedAt ? formatDate(order.hodSignedAt) : null,
+    font, fontBold,
   });
 
   y -= 100;
@@ -250,11 +269,10 @@ export async function generateJobOrderPdf(order) {
   return pdfDoc.save();
 }
 
-// ─── Signature block drawer ────────────────────────────────────────────────
-function drawSignatureBlock(page, { x, y, width, label, name, date, statusText, font, fontBold, signed, isPhysical }) {
+// ─── Signature block drawer (admin — digitally signed at generation time) ──
+function drawSignatureBlock(page, { x, y, width, label, name, date, statusText, font, fontBold, signed }) {
   page.drawText(label, { x, y, size: 8, font: fontBold, color: COLORS.textMuted });
 
-  // Signature line
   const lineY = y - 38;
   page.drawLine({
     start: { x, y: lineY }, end: { x: x + width, y: lineY },
@@ -263,8 +281,6 @@ function drawSignatureBlock(page, { x, y, width, label, name, date, statusText, 
 
   if (signed && name) {
     page.drawText(name, { x, y: lineY + 6, size: 13, font: fontBold, color: COLORS.text });
-  } else if (isPhysical) {
-    page.drawText("(Sign here)", { x, y: lineY + 6, size: 10, font, color: COLORS.textMuted });
   }
 
   page.drawText("Name & Signature", { x, y: lineY - 12, size: 7, font, color: COLORS.textMuted });
@@ -277,6 +293,38 @@ function drawSignatureBlock(page, { x, y, width, label, name, date, statusText, 
 
   const statusColor = signed ? COLORS.secondary : COLORS.high;
   page.drawText(statusText, { x, y: lineY - 38, size: 7.5, font, color: statusColor });
+}
+
+// ─── Requester (HOD/Dean) signature block ──────────────────────────────────
+// Unlike the admin block, this person hasn't signed yet at generation time —
+// they need to sign the PRINTED page by hand. So we print their name/role as
+// an instruction ("Print Name: ...") ABOVE a genuinely blank signature line,
+// rather than putting the name on the line itself (which would look like a
+// pre-filled/forged signature). The date line is also left blank for them.
+function drawRequesterSignatureBlock(page, { x, y, width, requesterName, requesterRole, signed, signedDate, font, fontBold }) {
+  page.drawText("REQUESTER SIGNATURE (HOD / DEAN)", { x, y, size: 8, font: fontBold, color: COLORS.textMuted });
+
+  // Pre-printed name + role — tells whoever is holding the page exactly who
+  // is authorized/expected to sign here.
+  const nameLine = `${requesterName} (${requesterRole})`;
+  page.drawText(nameLine, { x, y: y - 16, size: 11, font: fontBold, color: COLORS.text, maxWidth: width });
+
+  // Genuinely blank signature line for the physical signature.
+  const lineY = y - 40;
+  page.drawLine({
+    start: { x, y: lineY }, end: { x: x + width, y: lineY },
+    thickness: 1, color: COLORS.text,
+  });
+  page.drawText("Signature", { x, y: lineY - 12, size: 7, font, color: COLORS.textMuted });
+
+  // Blank date line — filled in by hand when they sign.
+  page.drawText("Date: _______________", { x, y: lineY - 24, size: 8, font, color: COLORS.textMuted });
+
+  const statusText = signed
+    ? `Signed & verified${signedDate ? ` — ${signedDate}` : ""}`
+    : "Pending physical signature — technician must upload proof after signing";
+  const statusColor = signed ? COLORS.secondary : COLORS.high;
+  page.drawText(statusText, { x, y: lineY - 38, size: 7.5, font, color: statusColor, maxWidth: width });
 }
 
 // ─── Text wrapping helper ───────────────────────────────────────────────────
@@ -342,7 +390,8 @@ export async function uploadJobOrderPdf(supabase, jobOrderId, pdfBytes, expiresI
 
 /**
  * Upload a technician-submitted photo of the physically signed job order
- * (the "proof of HOD signature" image) to a separate path in the same bucket.
+ * (the "proof of requester signature" image) to a separate path in the
+ * same bucket.
  *
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} jobOrderId
