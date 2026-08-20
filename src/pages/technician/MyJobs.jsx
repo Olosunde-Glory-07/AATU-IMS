@@ -262,7 +262,10 @@ function JobCard({ job, onOpen }) {
 
 // ─── Upload HOD Proof Modal ───────────────────────────────────────────────────
 function UploadProofModal({ job, onClose, onConfirm }) {
-  const [hodName,    setHodName]    = useState('')
+  // Pre-filled with the requester's name (fetched via the linked request),
+  // since that's normally who's actually signing — but the technician can
+  // still edit it in case a different HOD/Dean physically signed instead.
+  const [hodName,    setHodName]    = useState(job.requesterName || '')
   const [file,       setFile]       = useState(null)
   const [preview,    setPreview]    = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -320,6 +323,11 @@ function UploadProofModal({ job, onClose, onConfirm }) {
               Head of Department's Name *
             </label>
             <input value={hodName} onChange={(e) => setHodName(e.target.value)} placeholder="e.g. Dr. Adeyemi Okafor" style={{ width: '100%', padding: '10px 12px', border: `1px solid ${C.outlineVariant}`, borderRadius: 10, fontSize: 14, fontFamily: SANS, color: C.onSurface, background: 'var(--color-surface-container-lowest)', outline: 'none', boxSizing: 'border-box' }} />
+            {job.requesterName && (
+              <p style={{ margin: '4px 0 0', fontSize: 11, color: C.onSurfaceVariant }}>
+                Pre-filled from the request's HOD/Dean — edit if someone else signed.
+              </p>
+            )}
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 10, fontFamily: MONO, color: C.onSurfaceVariant, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 5 }}>
@@ -538,12 +546,21 @@ export default function MyJobs() {
   // Previously was querying 'requests' table filtered by 'assigned_to' which
   // doesn't exist. Job orders live in the 'job_orders' table, linked by
   // technician_id (the technician's UUID from auth.users / profiles).
+  //
+  // Also joins through request_id → requests.created_by → profiles.full_name
+  // so we can pre-fill the HOD Name field with the actual requester's name.
   const fetchJobs = useCallback(async () => {
     if (!user?.id) return
     try {
       const { data, error } = await supabase
         .from('job_orders')
-        .select('*')
+        .select(`
+          *,
+          request:requests!job_orders_request_id_fkey (
+            created_by,
+            reporter:profiles!requests_created_by_fkey ( full_name )
+          )
+        `)
         .eq('technician_id', user.id)   // ← correct column + correct value
         .order('created_at', { ascending: false })
 
@@ -573,6 +590,7 @@ export default function MyJobs() {
             })
           : null,
         requestId:          j.request_id,
+        requesterName:      j.request?.reporter?.full_name ?? null,
         createdAt:          j.created_at
           ? new Date(j.created_at).toLocaleDateString('en-US', {
               month: 'long', day: 'numeric', year: 'numeric',
